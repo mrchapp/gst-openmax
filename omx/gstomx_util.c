@@ -156,6 +156,7 @@ imp_new (const gchar *name)
         void *handle;
 
         imp->dl_handle = handle = dlopen (name, RTLD_LAZY);
+        GST_DEBUG ("dlopen(%s) -> %p", name, handle);
         if (!handle)
         {
             g_warning ("%s\n", dlerror ());
@@ -302,6 +303,8 @@ g_omx_core_init (GOmxCore *core,
                  const gchar *library_name,
                  const gchar *component_name)
 {
+    GST_DEBUG ("loading: %s (%s)", component_name, library_name);
+
     core->imp = request_imp (library_name);
 
     if (!core->imp)
@@ -311,6 +314,9 @@ g_omx_core_init (GOmxCore *core,
                                                        (char *) component_name,
                                                        core,
                                                        &callbacks);
+
+    GST_DEBUG ("OMX_GetHandle(%s) -> %d", component_name, core->omx_error);
+
     if (!core->omx_error)
         core->omx_state = OMX_StateLoaded;
 }
@@ -837,6 +843,8 @@ EventHandler (OMX_HANDLETYPE omx_handle,
 
                 cmd = (OMX_COMMANDTYPE) data_1;
 
+                GST_DEBUG_OBJECT (core->object, "OMX_EventCmdComplete: %d", cmd);
+
                 switch (cmd)
                 {
                     case OMX_CommandStateSet:
@@ -855,6 +863,7 @@ EventHandler (OMX_HANDLETYPE omx_handle,
             }
         case OMX_EventBufferFlag:
             {
+                GST_DEBUG_OBJECT (core->object, "OMX_EventBufferFlag");
                 if (data_2 & OMX_BUFFERFLAG_EOS)
                 {
                     g_omx_core_set_done (core);
@@ -863,6 +872,7 @@ EventHandler (OMX_HANDLETYPE omx_handle,
             }
         case OMX_EventPortSettingsChanged:
             {
+                GST_DEBUG_OBJECT (core->object, "OMX_EventPortSettingsChanged");
                 /** @todo only on the relevant port. */
                 if (core->settings_changed_cb)
                 {

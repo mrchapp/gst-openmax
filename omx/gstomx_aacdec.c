@@ -203,12 +203,20 @@ sink_setcaps (GstPad *pad,
 }
 
 static void
+omx_setup (GstOmxBaseFilter *omx_base)
+{
+
+}
+
+static void
 type_instance_init (GTypeInstance *instance,
                     gpointer g_class)
 {
     GstOmxBaseFilter *omx_base;
 
     omx_base = GST_OMX_BASE_FILTER (instance);
+
+    omx_base->omx_setup = omx_setup;
 
     omx_base->gomx->settings_changed_cb = settings_changed_cb;
 
