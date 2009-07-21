@@ -733,7 +733,7 @@ wait_for_state (GOmxCore *core,
         goto leave;
 
     g_get_current_time (&tv);
-    g_time_val_add (&tv, 1000000);
+    g_time_val_add (&tv, 100000000);
 
     /* try once */
     if (core->omx_state != state)
