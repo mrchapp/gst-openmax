@@ -146,4 +146,34 @@ void g_omx_port_enable (GOmxPort *port);
 void g_omx_port_disable (GOmxPort *port);
 void g_omx_port_finish (GOmxPort *port);
 
+
+/* note:  in case this is a build with TTIF logging, we can optimize slightly
+ * and avoid the gst_caps_to_string() in case logging isn't enabled by using
+ * the TTIF_TRACE_ARG_PROCESSOR feature of ttif_trace_fprintf():
+ */
+#ifdef GST_LOG_OVER_TTIF
+#  define LOG_CAPS(obj, caps)    G_STMT_START {                 \
+    if (caps) {                                                 \
+      static TTIF_TRACE_ARG_PROCESSOR proc = {                  \
+        .convert = (char (*)(void *))gst_caps_to_string,        \
+        .free    = (void (*)(char *))g_free                     \
+      };                                                        \
+      GST_DEBUG_OBJECT (obj, "%s: %qs", #caps, &proc, (caps));  \
+    } else {                                                    \
+      GST_DEBUG_OBJECT (obj, "null");                           \
+    }                                                           \
+  } G_STMT_END
+#else
+#  define LOG_CAPS(obj, caps)    G_STMT_START {                 \
+    if (caps) {                                                 \
+      gchar *capstr = gst_caps_to_string (caps);                \
+      GST_DEBUG_OBJECT (obj, "%s: %s", #caps, capstr);          \
+      g_free (capstr);                                          \
+    } else {                                                    \
+      GST_DEBUG_OBJECT (obj, "null");                           \
+    }                                                           \
+  } G_STMT_END
+#endif
+
+
 #endif /* GSTOMX_UTIL_H */

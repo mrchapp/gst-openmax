@@ -82,7 +82,7 @@ static TableItem element_table[] =
     { "omx_amrwbdec", "libomxil-bellagio.so.0", "OMX.st.audio_decoder.amrwb", GST_RANK_PRIMARY, gst_omx_amrwbdec_get_type },
     { "omx_amrwbenc", "libomxil-bellagio.so.0", "OMX.st.audio_encoder.amrwb", GST_RANK_PRIMARY, gst_omx_amrwbenc_get_type },
     { "omx_aacdec", "libOMX_Core.so", "OMX.TI.AAC.decode", GST_RANK_PRIMARY, gst_omx_aacdec_get_type },
-    { "omx_aacenc", "libomxil-bellagio.so.0", "OMX.st.audio_encoder.aac", GST_RANK_PRIMARY, gst_omx_aacenc_get_type },
+    { "omx_aacenc", "libOMX_Core.so", "OMX.TI.AAC.encode", GST_RANK_PRIMARY, gst_omx_aacenc_get_type },
     { "omx_adpcmdec", "libomxil-bellagio.so.0", "OMX.st.audio_decoder.adpcm", GST_RANK_PRIMARY, gst_omx_adpcmdec_get_type },
     { "omx_adpcmenc", "libomxil-bellagio.so.0", "OMX.st.audio_encoder.adpcm", GST_RANK_PRIMARY, gst_omx_adpcmenc_get_type },
     { "omx_g711dec", "libomxil-bellagio.so.0", "OMX.st.audio_decoder.g711", GST_RANK_PRIMARY, gst_omx_g711dec_get_type },

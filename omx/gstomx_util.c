@@ -336,14 +336,16 @@ g_omx_core_init (GOmxCore *core)
                                                        core,
                                                        &callbacks);
 
+    g_free (component_name);
+    g_free (library_name);
+
     GST_DEBUG_OBJECT (core->object, "OMX_GetHandle(&%p) -> %d",
         core->omx_handle, core->omx_error);
 
+    g_return_if_fail (core->omx_handle);
+
     if (!core->omx_error)
         core->omx_state = OMX_StateLoaded;
-
-    g_free (component_name);
-    g_free (library_name);
 }
 
 void
@@ -487,6 +489,7 @@ OMX_HANDLETYPE
 g_omx_core_get_handle (GOmxCore *core)
 {
   if (!core->omx_handle) g_omx_core_init (core);
+  g_return_val_if_fail (core->omx_handle, NULL);
   return core->omx_handle;
 }
 
