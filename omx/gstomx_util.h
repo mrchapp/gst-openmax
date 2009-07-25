@@ -114,9 +114,9 @@ struct GOmxPort
 void g_omx_init (void);
 void g_omx_deinit (void);
 
-GOmxCore *g_omx_core_new (void);
+GOmxCore *g_omx_core_new (gpointer object);
 void g_omx_core_free (GOmxCore *core);
-void g_omx_core_init (GOmxCore *core, const gchar *library_name, const gchar *component_name);
+void g_omx_core_init (GOmxCore *core);
 void g_omx_core_deinit (GOmxCore *core);
 void g_omx_core_prepare (GOmxCore *core);
 void g_omx_core_start (GOmxCore *core);
@@ -127,6 +127,7 @@ void g_omx_core_set_done (GOmxCore *core);
 void g_omx_core_wait_for_done (GOmxCore *core);
 void g_omx_core_flush_start (GOmxCore *core);
 void g_omx_core_flush_stop (GOmxCore *core);
+OMX_HANDLETYPE g_omx_core_get_handle (GOmxCore *core);
 GOmxPort *g_omx_core_setup_port (GOmxCore *core, OMX_PARAM_PORTDEFINITIONTYPE *omx_port);
 
 GOmxPort *g_omx_port_new (GOmxCore *core);

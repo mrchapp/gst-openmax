@@ -101,7 +101,7 @@ change_state (GstElement *element,
     switch (transition)
     {
         case GST_STATE_CHANGE_NULL_TO_READY:
-            g_omx_core_init (core, self->omx_library, self->omx_component);
+            g_omx_core_init (core);
             if (core->omx_state != OMX_StateLoaded)
             {
                 ret = GST_STATE_CHANGE_FAILURE;
@@ -880,11 +880,7 @@ type_instance_init (GTypeInstance *instance,
     self->use_timestamps = TRUE;
 
     /* GOmx */
-    {
-        GOmxCore *gomx;
-        self->gomx = gomx = g_omx_core_new ();
-        gomx->object = self;
-    }
+    self->gomx = g_omx_core_new (self);
 
     self->ready_lock = g_mutex_new ();
 

@@ -262,12 +262,21 @@ g_omx_deinit (void)
  * Core
  */
 
+/**
+ * Construct new core
+ *
+ * @object: the GstOmx object (ie. GstOmxBaseFilter, GstOmxBaseSrc, or
+ *    GstOmxBaseSink).  The GstOmx object should have "component-name"
+ *    and "library-name" properties.
+ */
 GOmxCore *
-g_omx_core_new (void)
+g_omx_core_new (gpointer object)
 {
     GOmxCore *core;
 
     core = g_new0 (GOmxCore, 1);
+
+    core->object = object;
 
     core->ports = g_ptr_array_new ();
 
@@ -286,6 +295,8 @@ g_omx_core_new (void)
 void
 g_omx_core_free (GOmxCore *core)
 {
+    g_omx_core_deinit (core);     /* just in case we didn't have a READY->NULL.. mainly for gst-inspect */
+
     g_sem_free (core->port_sem);
     g_sem_free (core->flush_sem);
     g_sem_free (core->done_sem);
@@ -299,11 +310,22 @@ g_omx_core_free (GOmxCore *core)
 }
 
 void
-g_omx_core_init (GOmxCore *core,
-                 const gchar *library_name,
-                 const gchar *component_name)
+g_omx_core_init (GOmxCore *core)
 {
-    GST_DEBUG ("loading: %s (%s)", component_name, library_name);
+    gchar *library_name=NULL, *component_name=NULL;
+
+    if (core->omx_handle)
+      return;
+
+    GST_DEBUG_OBJECT (core->object, "loading: %s (%s)", component_name, library_name);
+
+    g_object_get (core->object,
+        "component-name", &component_name,
+        "library-name", &library_name,
+        NULL);
+
+    g_return_if_fail (component_name);
+    g_return_if_fail (library_name);
 
     core->imp = request_imp (library_name);
 
@@ -315,10 +337,14 @@ g_omx_core_init (GOmxCore *core,
                                                        core,
                                                        &callbacks);
 
-    GST_DEBUG ("OMX_GetHandle(%s) -> %d", component_name, core->omx_error);
+    GST_DEBUG_OBJECT (core->object, "OMX_GetHandle(&%p) -> %d",
+        core->omx_handle, core->omx_error);
 
     if (!core->omx_error)
         core->omx_state = OMX_StateLoaded;
+
+    g_free (component_name);
+    g_free (library_name);
 }
 
 void
@@ -334,7 +360,12 @@ g_omx_core_deinit (GOmxCore *core)
         core->omx_state == OMX_StateInvalid)
     {
         if (core->omx_handle)
+        {
             core->omx_error = core->imp->sym_table.free_handle (core->omx_handle);
+            GST_DEBUG_OBJECT (core->object, "OMX_FreeHandle(%p) -> %d",
+                core->omx_handle, core->omx_error);
+            core->omx_handle = NULL;
+        }
     }
 
     release_imp (core->imp);
@@ -455,6 +486,19 @@ g_omx_core_flush_stop (GOmxCore *core)
     core_for_each_port (core, g_omx_port_resume);
 }
 
+/**
+ * Accessor for OMX component handle.  If the OMX component is not constructed
+ * yet, this will trigger it to be constructed (OMX_GetHandle()).  This should
+ * at least be used in places where g_omx_core_init() might not have been
+ * called yet (such as setting/getting properties)
+ */
+OMX_HANDLETYPE
+g_omx_core_get_handle (GOmxCore *core)
+{
+  if (!core->omx_handle) g_omx_core_init (core);
+  return core->omx_handle;
+}
+
 /*
  * Port
  */
@@ -510,6 +554,10 @@ g_omx_port_setup (GOmxPort *port,
     port->num_buffers = omx_port->nBufferCountActual;
     port->buffer_size = omx_port->nBufferSize;
     port->port_index = omx_port->nPortIndex;
+
+    GST_DEBUG_OBJECT (port->core->object,
+        "type=%d, num_buffers=%d, buffer_size=%d, port_index=%d",
+        port->type, port->num_buffers, port->buffer_size, port->port_index);
 
     g_free (port->buffers);
     port->buffers = g_new0 (OMX_BUFFERHEADERTYPE *, port->num_buffers);

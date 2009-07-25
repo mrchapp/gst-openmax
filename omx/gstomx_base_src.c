@@ -67,7 +67,7 @@ start (GstBaseSrc *gst_base)
 
     GST_LOG_OBJECT (self, "begin");
 
-    g_omx_core_init (self->gomx, self->omx_library, self->omx_component);
+    g_omx_core_init (self->gomx);
     if (self->gomx->omx_error)
         return GST_STATE_CHANGE_FAILURE;
 
@@ -453,11 +453,7 @@ type_instance_init (GTypeInstance *instance,
     GST_LOG_OBJECT (self, "begin");
 
     /* GOmx */
-    {
-        GOmxCore *gomx;
-        self->gomx = gomx = g_omx_core_new ();
-        gomx->object = self;
-    }
+    self->gomx = g_omx_core_new (self);
 
     {
         const char *tmp;

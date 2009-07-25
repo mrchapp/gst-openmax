@@ -420,7 +420,7 @@ activate_push (GstPad *pad,
 static inline gboolean
 omx_init (GstOmxBaseSink *self)
 {
-    g_omx_core_init (self->gomx, self->omx_library, self->omx_component);
+    g_omx_core_init (self->gomx);
 
     if (self->gomx->omx_error)
         return FALSE;
@@ -464,11 +464,7 @@ type_instance_init (GTypeInstance *instance,
     GST_LOG_OBJECT (self, "begin");
 
     /* GOmx */
-    {
-        GOmxCore *gomx;
-        self->gomx = gomx = g_omx_core_new ();
-        gomx->object = self;
-    }
+    self->gomx = g_omx_core_new (self);
 
     {
         const char *tmp;
