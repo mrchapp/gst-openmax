@@ -44,21 +44,13 @@ static GstElementClass *parent_class;
 static void
 setup_ports (GstOmxBaseSink *self)
 {
-    GOmxCore *core;
     OMX_PARAM_PORTDEFINITIONTYPE param;
-
-    core = self->gomx;
-
-    memset (&param, 0, sizeof (param));
-    param.nSize = sizeof (OMX_PARAM_PORTDEFINITIONTYPE);
-    param.nVersion.s.nVersionMajor = 1;
-    param.nVersion.s.nVersionMinor = 1;
 
     /* Input port configuration. */
 
-    param.nPortIndex = 0;
-    OMX_GetParameter (core->omx_handle, OMX_IndexParamPortDefinition, &param);
-    self->in_port = g_omx_core_setup_port (core, &param);
+    self->in_port = g_omx_core_get_port (self->gomx, 0);
+    g_omx_port_get_config (self->in_port, &param);
+    g_omx_port_setup (self->in_port, &param);
     gst_pad_set_element_private (self->sinkpad, self->in_port);
 }
 

@@ -22,6 +22,7 @@
 
 #include "gstomx_util.h"
 #include <dlfcn.h>
+#include <string.h>
 
 #include "gstomx.h"
 
@@ -73,9 +74,7 @@ FillBufferDone (OMX_HANDLETYPE omx_handle,
 static inline const char *
 omx_error_to_str (OMX_ERRORTYPE omx_error);
 
-static inline GOmxPort *
-g_omx_core_get_port (GOmxCore *core,
-                     guint index);
+static inline GOmxPort *get_port (GOmxCore *core, guint index);
 
 static inline void
 port_free_buffers (GOmxPort *port);
@@ -130,7 +129,7 @@ core_for_each_port (GOmxCore *core,
     {
         GOmxPort *port;
 
-        port = g_omx_core_get_port (core, index);
+        port = get_port (core, index);
 
         if (port)
             func (port);
@@ -428,30 +427,8 @@ g_omx_core_unload (GOmxCore *core)
     }
 }
 
-GOmxPort *
-g_omx_core_setup_port (GOmxCore *core,
-                       OMX_PARAM_PORTDEFINITIONTYPE *omx_port)
-{
-    GOmxPort *port;
-    guint index;
-
-    index = omx_port->nPortIndex;
-    port = g_omx_core_get_port (core, index);
-
-    if (!port)
-    {
-        port = g_omx_port_new (core);
-        g_ptr_array_insert (core->ports, index, port);
-    }
-
-    g_omx_port_setup (port, omx_port);
-
-    return port;
-}
-
 static inline GOmxPort *
-g_omx_core_get_port (GOmxCore *core,
-                     guint index)
+get_port (GOmxCore *core, guint index)
 {
     if (G_LIKELY (index < core->ports->len))
     {
@@ -459,6 +436,20 @@ g_omx_core_get_port (GOmxCore *core,
     }
 
     return NULL;
+}
+
+GOmxPort *
+g_omx_core_get_port (GOmxCore *core, guint index)
+{
+    GOmxPort *port = get_port (core, index);
+
+    if (!port)
+    {
+        port = g_omx_port_new (core, index);
+        g_ptr_array_insert (core->ports, index, port);
+    }
+
+    return port;
 }
 
 void
@@ -504,12 +495,13 @@ g_omx_core_get_handle (GOmxCore *core)
  */
 
 GOmxPort *
-g_omx_port_new (GOmxCore *core)
+g_omx_port_new (GOmxCore *core, guint index)
 {
     GOmxPort *port;
     port = g_new0 (GOmxPort, 1);
 
     port->core = core;
+    port->port_index = index;
     port->num_buffers = 0;
     port->buffer_size = 0;
     port->buffers = NULL;
@@ -530,6 +522,25 @@ g_omx_port_free (GOmxPort *port)
     g_free (port->buffers);
     g_free (port);
 }
+
+void
+g_omx_port_get_config (GOmxPort *port, OMX_PARAM_PORTDEFINITIONTYPE *param)
+{
+    memset (param, 0, sizeof (*param));
+    param->nSize = sizeof (OMX_PARAM_PORTDEFINITIONTYPE);
+    param->nVersion.s.nVersionMajor = 1;
+    param->nVersion.s.nVersionMinor = 1;
+    param->nPortIndex = port->port_index;
+
+    OMX_GetParameter (g_omx_core_get_handle (port->core), OMX_IndexParamPortDefinition, param);
+}
+
+void
+g_omx_port_set_config (GOmxPort *port, OMX_PARAM_PORTDEFINITIONTYPE *param)
+{
+    OMX_SetParameter (g_omx_core_get_handle (port->core), OMX_IndexParamPortDefinition, param);
+}
+
 
 void
 g_omx_port_setup (GOmxPort *port,
@@ -957,7 +968,7 @@ EmptyBufferDone (OMX_HANDLETYPE omx_handle,
     GOmxPort *port;
 
     core = (GOmxCore*) app_data;
-    port = g_omx_core_get_port (core, omx_buffer->nInputPortIndex);
+    port = get_port (core, omx_buffer->nInputPortIndex);
 
     GST_CAT_LOG_OBJECT (gstomx_util_debug, core->object, "omx_buffer=%p", omx_buffer);
     got_buffer (core, port, omx_buffer);
@@ -974,7 +985,7 @@ FillBufferDone (OMX_HANDLETYPE omx_handle,
     GOmxPort *port;
 
     core = (GOmxCore *) app_data;
-    port = g_omx_core_get_port (core, omx_buffer->nOutputPortIndex);
+    port = get_port (core, omx_buffer->nOutputPortIndex);
 
     GST_CAT_LOG_OBJECT (gstomx_util_debug, core->object, "omx_buffer=%p", omx_buffer);
     got_buffer (core, port, omx_buffer);
