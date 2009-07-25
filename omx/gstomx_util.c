@@ -538,6 +538,7 @@ g_omx_port_get_config (GOmxPort *port, OMX_PARAM_PORTDEFINITIONTYPE *param)
 void
 g_omx_port_set_config (GOmxPort *port, OMX_PARAM_PORTDEFINITIONTYPE *param)
 {
+    g_return_if_fail (param->nPortIndex == port->port_index);
     OMX_SetParameter (g_omx_core_get_handle (port->core), OMX_IndexParamPortDefinition, param);
 }
 
