@@ -33,7 +33,6 @@ enum
     ARG_USE_TIMESTAMPS,
     ARG_NUM_INPUT_BUFFERS,
     ARG_NUM_OUTPUT_BUFFERS,
-    ARG_
 };
 
 static GstElementClass *parent_class;
@@ -326,6 +325,8 @@ push_buffer (GstOmxBaseFilter *self,
 {
     GstFlowReturn ret;
 
+    PRINT_BUFFER (self, buf);
+
     /** @todo check if tainted */
     GST_LOG_OBJECT (self, "begin");
     ret = gst_pad_push (self->srcpad, buf);
@@ -406,6 +407,8 @@ output_loop (gpointer data)
 
             /* buf is always null when the output buffer pointer isn't shared. */
             buf = omx_buffer->pAppPrivate;
+
+            PRINT_BUFFER (self, buf);
 
             /** @todo we need to move all the caps handling to one single
              * place, in the output loop probably. */
@@ -571,6 +574,8 @@ pad_chain (GstPad *pad,
 
     self = GST_OMX_BASE_FILTER (GST_OBJECT_PARENT (pad));
 
+    PRINT_BUFFER (self, buf);
+
     gomx = self->gomx;
 
     GST_LOG_OBJECT (self, "begin");
@@ -665,10 +670,6 @@ pad_chain (GstPad *pad,
 
             if (G_LIKELY (omx_buffer))
             {
-                GST_DEBUG_OBJECT (self, "omx_buffer: size=%lu, len=%lu, flags=%lu, offset=%lu, timestamp=%lld",
-                                  omx_buffer->nAllocLen, omx_buffer->nFilledLen, omx_buffer->nFlags,
-                                  omx_buffer->nOffset, omx_buffer->nTimeStamp);
-
                 if (omx_buffer->nOffset == 0 &&
                     self->share_input_buffer)
                 {
@@ -715,6 +716,10 @@ pad_chain (GstPad *pad,
                 }
 
                 buffer_offset += omx_buffer->nFilledLen;
+
+                GST_DEBUG_OBJECT (self, "omx_buffer: size=%lu, len=%lu, flags=%lu, offset=%lu, timestamp=%lld",
+                                  omx_buffer->nAllocLen, omx_buffer->nFilledLen, omx_buffer->nFlags,
+                                  omx_buffer->nOffset, omx_buffer->nTimeStamp);
 
                 GST_LOG_OBJECT (self, "release_buffer");
                 /** @todo untaint buffer */

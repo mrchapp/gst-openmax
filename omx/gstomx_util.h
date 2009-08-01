@@ -175,5 +175,13 @@ void g_omx_port_finish (GOmxPort *port);
   } G_STMT_END
 #endif
 
+#define PRINT_BUFFER(obj, buffer)    G_STMT_START {             \
+    if (buffer) {                                               \
+      GST_DEBUG_OBJECT (obj, #buffer "=0x%08x (time=%"GST_TIME_FORMAT", duration=%"GST_TIME_FORMAT", flags=%08x)", (buffer), GST_TIME_ARGS (GST_BUFFER_TIMESTAMP (buffer)), GST_TIME_ARGS (GST_BUFFER_DURATION(buffer)), GST_BUFFER_FLAGS (buffer)); \
+    } else {                                                    \
+      GST_DEBUG_OBJECT (obj, #buffer "=null");                  \
+    }                                                           \
+  } G_STMT_END
+
 
 #endif /* GSTOMX_UTIL_H */
