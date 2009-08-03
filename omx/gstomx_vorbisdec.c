@@ -20,12 +20,11 @@
  */
 
 #include "gstomx_vorbisdec.h"
-#include "gstomx_base_filter.h"
 #include "gstomx.h"
 
 #include <string.h> /* for memset */
 
-GSTOMX_BOILERPLATE (GstOmxVorbisDec, gst_omx_vorbisdec, GstOmxBaseFilter, GST_OMX_BASE_FILTER_TYPE);
+GSTOMX_BOILERPLATE (GstOmxVorbisDec, gst_omx_vorbisdec, GstOmxBaseAudioDec, GST_OMX_BASE_AUDIODEC_TYPE);
 
 static GstCaps *
 generate_src_template (void)
@@ -101,49 +100,6 @@ type_class_init (gpointer g_class,
 }
 
 static void
-settings_changed_cb (GOmxCore *core)
-{
-    GstOmxBaseFilter *omx_base;
-    guint rate;
-    guint channels;
-
-    omx_base = core->object;
-
-    GST_DEBUG_OBJECT (omx_base, "settings changed");
-
-    {
-        OMX_AUDIO_PARAM_PCMMODETYPE param;
-
-        memset (&param, 0, sizeof (param));
-        param.nSize = sizeof (OMX_AUDIO_PARAM_PCMMODETYPE);
-        param.nVersion.s.nVersionMajor = 1;
-        param.nVersion.s.nVersionMinor = 1;
-
-        param.nPortIndex = 1;
-        OMX_GetParameter (omx_base->gomx->omx_handle, OMX_IndexParamAudioPcm, &param);
-
-        rate = param.nSamplingRate;
-        channels = param.nChannels;
-    }
-
-    {
-        GstCaps *new_caps;
-
-        new_caps = gst_caps_new_simple ("audio/x-raw-int",
-                                        "rate", G_TYPE_INT, rate,
-                                        "signed", G_TYPE_BOOLEAN, TRUE,
-                                        "channels", G_TYPE_INT, channels,
-                                        "endianness", G_TYPE_INT, G_BYTE_ORDER,
-                                        "width", G_TYPE_INT, 16,
-                                        "depth", G_TYPE_INT, 16,
-                                        NULL);
-
-        GST_INFO_OBJECT (omx_base, "caps are: %" GST_PTR_FORMAT, new_caps);
-        gst_pad_set_caps (omx_base->srcpad, new_caps);
-    }
-}
-
-static void
 type_instance_init (GTypeInstance *instance,
                     gpointer g_class)
 {
@@ -154,6 +110,4 @@ type_instance_init (GTypeInstance *instance,
     GST_DEBUG_OBJECT (omx_base, "start");
 
     omx_base->use_timestamps = FALSE;
-
-    omx_base->gomx->settings_changed_cb = settings_changed_cb;
 }

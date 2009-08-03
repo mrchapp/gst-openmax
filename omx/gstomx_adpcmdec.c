@@ -25,6 +25,7 @@
 
 #include <string.h> /* for memset */
 
+/* should this class extend GstOmxBaseAudioDec? */
 GSTOMX_BOILERPLATE (GstOmxAdpcmDec, gst_omx_adpcmdec, GstOmxBaseFilter, GST_OMX_BASE_FILTER_TYPE);
 
 static GstCaps *
