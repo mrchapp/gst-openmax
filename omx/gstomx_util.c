@@ -708,6 +708,9 @@ g_omx_port_flush (GOmxPort *port)
 {
     if (port->type == GOMX_PORT_OUTPUT)
     {
+        /* This will get rid of any buffers that we have received, but not
+         * yet processed in the output_loop.
+         */
         OMX_BUFFERHEADERTYPE *omx_buffer;
         while ((omx_buffer = async_queue_pop_forced (port->queue)))
         {
@@ -715,11 +718,9 @@ g_omx_port_flush (GOmxPort *port)
             g_omx_port_release_buffer (port, omx_buffer);
         }
     }
-    else
-    {
-        OMX_SendCommand (port->core->omx_handle, OMX_CommandFlush, port->port_index, NULL);
-        g_sem_down (port->core->flush_sem);
-    }
+
+    OMX_SendCommand (port->core->omx_handle, OMX_CommandFlush, port->port_index, NULL);
+    g_sem_down (port->core->flush_sem);
 }
 
 void
