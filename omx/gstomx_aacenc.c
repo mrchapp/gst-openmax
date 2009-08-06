@@ -302,18 +302,12 @@ sink_setcaps (GstPad *pad,
     {
         OMX_AUDIO_PARAM_PCMMODETYPE param;
 
-        memset (&param, 0, sizeof (param));
-        param.nSize = sizeof (OMX_AUDIO_PARAM_PCMMODETYPE);
-        param.nVersion.s.nVersionMajor = 1;
-        param.nVersion.s.nVersionMinor = 1;
-
-        param.nPortIndex = 0;
-        OMX_GetParameter (gomx->omx_handle, OMX_IndexParamAudioPcm, &param);
+        G_OMX_PORT_GET_PARAM (omx_base->in_port, OMX_IndexParamAudioPcm, &param);
 
         param.nSamplingRate = rate;
         param.nChannels = channels;
 
-        OMX_SetParameter (gomx->omx_handle, OMX_IndexParamAudioPcm, &param);
+        G_OMX_PORT_SET_PARAM (omx_base->in_port, OMX_IndexParamAudioPcm, &param);
     }
 
     {

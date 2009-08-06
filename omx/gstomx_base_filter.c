@@ -39,6 +39,9 @@ static void init_interfaces (GType type);
 GSTOMX_BOILERPLATE_FULL (GstOmxBaseFilter, gst_omx_base_filter, GstElement, GST_TYPE_ELEMENT, init_interfaces);
 
 
+#define CODEC_DATA_FLAG 0x00000080 /* special nFlags field to use to indicated codec-data */
+
+
 static void
 setup_ports (GstOmxBaseFilter *self)
 {
@@ -46,14 +49,12 @@ setup_ports (GstOmxBaseFilter *self)
 
     /* Input port configuration. */
 
-    self->in_port = g_omx_core_get_port (self->gomx, 0);
     g_omx_port_get_config (self->in_port, &param);
     g_omx_port_setup (self->in_port, &param);
     gst_pad_set_element_private (self->sinkpad, self->in_port);
 
     /* Output port configuration. */
 
-    self->out_port = g_omx_core_get_port (self->gomx, 1);
     g_omx_port_get_config (self->out_port, &param);
     g_omx_port_setup (self->out_port, &param);
     gst_pad_set_element_private (self->srcpad, self->out_port);
@@ -416,7 +417,7 @@ output_loop (gpointer data)
 
             /** @todo we need to move all the caps handling to one single
              * place, in the output loop probably. */
-            if (G_UNLIKELY (omx_buffer->nFlags & 0x80))
+            if (G_UNLIKELY (omx_buffer->nFlags & CODEC_DATA_FLAG))
             {
                 GstCaps *caps = NULL;
                 GstStructure *structure;
@@ -640,7 +641,7 @@ pad_chain (GstPad *pad,
 
                 if (G_LIKELY (omx_buffer))
                 {
-                    omx_buffer->nFlags |= 0x00000080; /* codec data flag */
+                    omx_buffer->nFlags |= CODEC_DATA_FLAG;
 
                     omx_buffer->nFilledLen = GST_BUFFER_SIZE (self->codec_data);
                     memcpy (omx_buffer->pBuffer + omx_buffer->nOffset, GST_BUFFER_DATA (self->codec_data), omx_buffer->nFilledLen);
@@ -817,6 +818,7 @@ pad_event (GstPad *pad,
                     if (G_LIKELY (omx_buffer))
                     {
                         omx_buffer->nFlags |= OMX_BUFFERFLAG_EOS;
+                        omx_buffer->nFilledLen = 0;
 
                         GST_LOG_OBJECT (self, "release_buffer");
                         /* foo_buffer_untaint (omx_buffer); */
@@ -939,6 +941,8 @@ type_instance_init (GTypeInstance *instance,
 
     /* GOmx */
     self->gomx = g_omx_core_new (self);
+    self->in_port = g_omx_core_get_port (self->gomx, 0);
+    self->out_port = g_omx_core_get_port (self->gomx, 1);
 
     self->ready_lock = g_mutex_new ();
 

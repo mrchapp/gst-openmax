@@ -105,7 +105,7 @@ omx_setup (GstOmxBaseFilter *omx_base)
 {
     GOmxCore *gomx = omx_base->gomx;
 
-GST_DEBUG_OBJECT (omx_base, "setting frame-mode");
+    GST_DEBUG_OBJECT (omx_base, "setting frame-mode");
 
     /* This is specific for TI. */
     {

@@ -133,8 +133,31 @@ GOmxPort *g_omx_core_get_port (GOmxCore *core, guint index);
 
 GOmxPort *g_omx_port_new (GOmxCore *core, guint index);
 void g_omx_port_free (GOmxPort *port);
-void g_omx_port_get_config (GOmxPort *port, OMX_PARAM_PORTDEFINITIONTYPE *param);
-void g_omx_port_set_config (GOmxPort *port, OMX_PARAM_PORTDEFINITIONTYPE *param);
+
+#define G_OMX_PORT_GET_PARAM(port, idx, param) G_STMT_START {  \
+        memset ((param), 0, sizeof (*(param)));            \
+        (param)->nSize = sizeof (*(param));                \
+        (param)->nVersion.s.nVersionMajor = 1;             \
+        (param)->nVersion.s.nVersionMinor = 1;             \
+        (param)->nPortIndex = (port)->port_index;          \
+        OMX_GetParameter (g_omx_core_get_handle ((port)->core), idx, (param)); \
+    } G_STMT_END
+
+#define G_OMX_PORT_SET_PARAM(port, idx, param) G_STMT_START {       \
+        OMX_SetParameter (                                          \
+            g_omx_core_get_handle ((port)->core), idx, (param));    \
+    } G_STMT_END
+
+/* I think we can remove these two:
+ */
+#define g_omx_port_get_config(port, param) \
+        G_OMX_PORT_GET_PARAM (port, OMX_IndexParamPortDefinition, param)
+
+#define g_omx_port_set_config(port, param) \
+        G_OMX_PORT_SET_PARAM (port, OMX_IndexParamPortDefinition, param)
+
+
+
 void g_omx_port_setup (GOmxPort *port, OMX_PARAM_PORTDEFINITIONTYPE *omx_port);
 void g_omx_port_push_buffer (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer);
 OMX_BUFFERHEADERTYPE *g_omx_port_request_buffer (GOmxPort *port);
@@ -145,6 +168,12 @@ void g_omx_port_flush (GOmxPort *port);
 void g_omx_port_enable (GOmxPort *port);
 void g_omx_port_disable (GOmxPort *port);
 void g_omx_port_finish (GOmxPort *port);
+
+
+OMX_COLOR_FORMATTYPE g_omx_fourcc_to_colorformat (guint32 fourcc);
+guint32 g_omx_colorformat_to_fourcc (OMX_COLOR_FORMATTYPE eColorFormat);
+
+
 
 /**
  * Basically like GST_BOILERPLATE / GST_BOILERPLATE_FULL, but follows the
@@ -189,33 +218,8 @@ GType type_as_function ## _get_type (void)                                    \
       __GST_DO_NOTHING)
 
 
-/* note:  in case this is a build with TTIF logging, we can optimize slightly
- * and avoid the gst_caps_to_string() in case logging isn't enabled by using
- * the TTIF_TRACE_ARG_PROCESSOR feature of ttif_trace_fprintf():
+/* Debug Macros:
  */
-#ifdef GST_LOG_OVER_TTIF
-#  define LOG_CAPS(obj, caps)    G_STMT_START {                 \
-    if (caps) {                                                 \
-      static TTIF_TRACE_ARG_PROCESSOR proc = {                  \
-        .convert = (char (*)(void *))gst_caps_to_string,        \
-        .free    = (void (*)(char *))g_free                     \
-      };                                                        \
-      GST_DEBUG_OBJECT (obj, "%s: %qs", #caps, &proc, (caps));  \
-    } else {                                                    \
-      GST_DEBUG_OBJECT (obj, "null");                           \
-    }                                                           \
-  } G_STMT_END
-#else
-#  define LOG_CAPS(obj, caps)    G_STMT_START {                 \
-    if (caps) {                                                 \
-      gchar *capstr = gst_caps_to_string (caps);                \
-      GST_DEBUG_OBJECT (obj, "%s: %s", #caps, capstr);          \
-      g_free (capstr);                                          \
-    } else {                                                    \
-      GST_DEBUG_OBJECT (obj, "null");                           \
-    }                                                           \
-  } G_STMT_END
-#endif
 
 #define PRINT_BUFFER(obj, buffer)    G_STMT_START {             \
     if (buffer) {                                               \

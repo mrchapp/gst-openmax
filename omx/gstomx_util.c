@@ -339,8 +339,8 @@ g_omx_core_init (GOmxCore *core)
     g_free (component_name);
     g_free (library_name);
 
-    GST_DEBUG_OBJECT (core->object, "OMX_GetHandle(&%p) -> %d",
-        core->omx_handle, core->omx_error);
+    GST_DEBUG_OBJECT (core->object, "OMX_GetHandle(&%p) -> %s",
+        core->omx_handle, omx_error_to_str (core->omx_error));
 
     g_return_if_fail (core->omx_handle);
 
@@ -363,8 +363,8 @@ g_omx_core_deinit (GOmxCore *core)
         if (core->omx_handle)
         {
             core->omx_error = core->imp->sym_table.free_handle (core->omx_handle);
-            GST_DEBUG_OBJECT (core->object, "OMX_FreeHandle(%p) -> %d",
-                core->omx_handle, core->omx_error);
+            GST_DEBUG_OBJECT (core->object, "OMX_FreeHandle(%p) -> %s",
+                core->omx_handle, omx_error_to_str (core->omx_error));
             core->omx_handle = NULL;
         }
     }
@@ -525,26 +525,6 @@ g_omx_port_free (GOmxPort *port)
     g_free (port->buffers);
     g_free (port);
 }
-
-void
-g_omx_port_get_config (GOmxPort *port, OMX_PARAM_PORTDEFINITIONTYPE *param)
-{
-    memset (param, 0, sizeof (*param));
-    param->nSize = sizeof (OMX_PARAM_PORTDEFINITIONTYPE);
-    param->nVersion.s.nVersionMajor = 1;
-    param->nVersion.s.nVersionMinor = 1;
-    param->nPortIndex = port->port_index;
-
-    OMX_GetParameter (g_omx_core_get_handle (port->core), OMX_IndexParamPortDefinition, param);
-}
-
-void
-g_omx_port_set_config (GOmxPort *port, OMX_PARAM_PORTDEFINITIONTYPE *param)
-{
-    g_return_if_fail (param->nPortIndex == port->port_index);
-    OMX_SetParameter (g_omx_core_get_handle (port->core), OMX_IndexParamPortDefinition, param);
-}
-
 
 void
 g_omx_port_setup (GOmxPort *port,
@@ -1121,5 +1101,42 @@ omx_error_to_str (OMX_ERRORTYPE omx_error)
 
         default:
             return "Unknown error";
+    }
+}
+
+
+/*
+ * Some misc utilities..
+ */
+
+OMX_COLOR_FORMATTYPE g_omx_fourcc_to_colorformat (guint32 fourcc)
+{
+    switch (fourcc)
+    {
+        case GST_MAKE_FOURCC ('I', '4', '2', '0'):
+            return OMX_COLOR_FormatYUV420PackedPlanar;
+        case GST_MAKE_FOURCC ('Y', 'U', 'Y', '2'):
+            return OMX_COLOR_FormatYCbYCr;
+        case GST_MAKE_FOURCC ('U', 'Y', 'V', 'Y'):
+            return OMX_COLOR_FormatCbYCrY;
+        default:
+            /* TODO, add other needed color formats.. */
+            return OMX_COLOR_FormatUnused;
+    }
+}
+
+guint32 g_omx_colorformat_to_fourcc (OMX_COLOR_FORMATTYPE eColorFormat)
+{
+    switch (eColorFormat)
+    {
+        case OMX_COLOR_FormatYUV420PackedPlanar:
+            return GST_MAKE_FOURCC ('I', '4', '2', '0');
+        case OMX_COLOR_FormatYCbYCr:
+            return GST_MAKE_FOURCC ('Y', 'U', 'Y', '2');
+        case OMX_COLOR_FormatCbYCrY:
+            return GST_MAKE_FOURCC ('U', 'Y', 'V', 'Y');
+        default:
+            /* TODO, add other needed color formats.. */
+            return 0;
     }
 }

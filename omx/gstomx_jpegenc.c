@@ -271,15 +271,7 @@ sink_setcaps (GstPad *pad,
 
         if (gst_structure_get_fourcc (structure, "format", &fourcc))
         {
-            switch (fourcc)
-            {
-                case GST_MAKE_FOURCC ('I', '4', '2', '0'):
-                    color_format = OMX_COLOR_FormatYUV420PackedPlanar;
-                    break;
-                case GST_MAKE_FOURCC ('U', 'Y', 'V', 'Y'):
-                    color_format = OMX_COLOR_FormatCbYCrY;
-                    break;
-            }
+            color_format = g_omx_fourcc_to_colorformat (fourcc);
         }
     }
 

@@ -22,52 +22,19 @@
 #include "gstomx_base_videodec.h"
 #include "gstomx.h"
 
+#include <gst/video/video.h>
+
 #include <string.h> /* for memset */
 
 GSTOMX_BOILERPLATE (GstOmxBaseVideoDec, gst_omx_base_videodec, GstOmxBaseFilter, GST_OMX_BASE_FILTER_TYPE);
 
-static GstCaps *
-generate_src_template (void)
-{
-    GstCaps *caps;
-    GstStructure *struc;
 
-    caps = gst_caps_new_empty ();
-
-    struc = gst_structure_new ("video/x-raw-yuv",
-                               "width", GST_TYPE_INT_RANGE, 16, 4096,
-                               "height", GST_TYPE_INT_RANGE, 16, 4096,
-                               "framerate", GST_TYPE_FRACTION_RANGE, 0, 1, G_MAXINT, 1,
-                               NULL);
-
-    {
-        GValue list;
-        GValue val;
-
-        list.g_type = val.g_type = 0;
-
-        g_value_init (&list, GST_TYPE_LIST);
-        g_value_init (&val, GST_TYPE_FOURCC);
-
-        gst_value_set_fourcc (&val, GST_MAKE_FOURCC ('I', '4', '2', '0'));
-        gst_value_list_append_value (&list, &val);
-
-        gst_value_set_fourcc (&val, GST_MAKE_FOURCC ('Y', 'U', 'Y', '2'));
-        gst_value_list_append_value (&list, &val);
-
-        gst_value_set_fourcc (&val, GST_MAKE_FOURCC ('U', 'Y', 'V', 'Y'));
-        gst_value_list_append_value (&list, &val);
-
-        gst_structure_set_value (struc, "format", &list);
-
-        g_value_unset (&val);
-        g_value_unset (&list);
-    }
-
-    gst_caps_append_structure (caps, struc);
-
-    return caps;
-}
+static GstStaticPadTemplate src_template =
+GST_STATIC_PAD_TEMPLATE ("src",
+        GST_PAD_SRC,
+        GST_PAD_ALWAYS,
+        GST_STATIC_CAPS (GST_VIDEO_CAPS_YUV_STRIDED ("{ I420, YUY2, UYVY }", "[ 0, max ]"))
+    );
 
 static void
 type_base_init (gpointer g_class)
@@ -76,15 +43,8 @@ type_base_init (gpointer g_class)
 
     element_class = GST_ELEMENT_CLASS (g_class);
 
-    {
-        GstPadTemplate *template;
-
-        template = gst_pad_template_new ("src", GST_PAD_SRC,
-                                         GST_PAD_ALWAYS,
-                                         generate_src_template ());
-
-        gst_element_class_add_pad_template (element_class, template);
-    }
+    gst_element_class_add_pad_template (element_class,
+        gst_static_pad_template_get (&src_template));
 }
 
 static void
@@ -110,14 +70,7 @@ settings_changed_cb (GOmxCore *core)
     {
         OMX_PARAM_PORTDEFINITIONTYPE param;
 
-        memset (&param, 0, sizeof (param));
-
-        param.nSize = sizeof (OMX_PARAM_PORTDEFINITIONTYPE);
-        param.nVersion.s.nVersionMajor = 1;
-        param.nVersion.s.nVersionMinor = 1;
-
-        param.nPortIndex = 1;
-        OMX_GetParameter (omx_base->gomx->omx_handle, OMX_IndexParamPortDefinition, &param);
+        g_omx_port_get_config (omx_base->out_port, &param);
 
         width = param.format.video.nFrameWidth;
         height = param.format.video.nFrameHeight;
@@ -158,7 +111,7 @@ sink_setcaps (GstPad *pad,
     GstOmxBaseVideoDec *self;
     GstOmxBaseFilter *omx_base;
     GOmxCore *gomx;
-    OMX_PARAM_PORTDEFINITIONTYPE param;
+
     gint width = 0;
     gint height = 0;
 
@@ -186,11 +139,6 @@ sink_setcaps (GstPad *pad,
         }
     }
 
-    memset (&param, 0, sizeof (param));
-    param.nSize = sizeof (OMX_PARAM_PORTDEFINITIONTYPE);
-    param.nVersion.s.nVersionMajor = 1;
-    param.nVersion.s.nVersionMinor = 1;
-
     {
         const GValue *codec_data;
         GstBuffer *buffer;
@@ -206,13 +154,14 @@ sink_setcaps (GstPad *pad,
 
     /* Input port configuration. */
     {
-        param.nPortIndex = 0;
-        OMX_GetParameter (gomx->omx_handle, OMX_IndexParamPortDefinition, &param);
+        OMX_PARAM_PORTDEFINITIONTYPE param;
+
+        g_omx_port_get_config (omx_base->in_port, &param);
 
         param.format.video.nFrameWidth = width;
         param.format.video.nFrameHeight = height;
 
-        OMX_SetParameter (gomx->omx_handle, OMX_IndexParamPortDefinition, &param);
+        g_omx_port_set_config (omx_base->in_port, &param);
     }
 
     if (self->sink_setcaps)
@@ -235,19 +184,13 @@ omx_setup (GstOmxBaseFilter *omx_base)
     {
         OMX_PARAM_PORTDEFINITIONTYPE param;
 
-        memset (&param, 0, sizeof (param));
-        param.nSize = sizeof (OMX_PARAM_PORTDEFINITIONTYPE);
-        param.nVersion.s.nVersionMajor = 1;
-        param.nVersion.s.nVersionMinor = 1;
-
         /* Input port configuration. */
         {
-            param.nPortIndex = 0;
-            OMX_GetParameter (gomx->omx_handle, OMX_IndexParamPortDefinition, &param);
+            g_omx_port_get_config (omx_base->in_port, &param);
 
             param.format.video.eCompressionFormat = self->compression_format;
 
-            OMX_SetParameter (gomx->omx_handle, OMX_IndexParamPortDefinition, &param);
+            g_omx_port_set_config (omx_base->in_port, &param);
         }
 
         /* some workarounds required for TI components. */
@@ -256,8 +199,7 @@ omx_setup (GstOmxBaseFilter *omx_base)
             gint width, height;
 
             {
-                param.nPortIndex = 0;
-                OMX_GetParameter (gomx->omx_handle, OMX_IndexParamPortDefinition, &param);
+                g_omx_port_get_config (omx_base->in_port, &param);
 
                 width = param.format.video.nFrameWidth;
                 height = param.format.video.nFrameHeight;
@@ -265,13 +207,12 @@ omx_setup (GstOmxBaseFilter *omx_base)
                 /* this is against the standard; nBufferSize is read-only. */
                 param.nBufferSize = (width * height) / 2;
 
-                OMX_SetParameter (gomx->omx_handle, OMX_IndexParamPortDefinition, &param);
+                g_omx_port_set_config (omx_base->in_port, &param);
             }
 
             /* the component should do this instead */
             {
-                param.nPortIndex = 1;
-                OMX_GetParameter (gomx->omx_handle, OMX_IndexParamPortDefinition, &param);
+                g_omx_port_get_config (omx_base->out_port, &param);
 
                 param.format.video.nFrameWidth = width;
                 param.format.video.nFrameHeight = height;
@@ -295,7 +236,7 @@ omx_setup (GstOmxBaseFilter *omx_base)
                         break;
                 }
 
-                OMX_SetParameter (gomx->omx_handle, OMX_IndexParamPortDefinition, &param);
+                g_omx_port_set_config (omx_base->out_port, &param);
             }
         }
     }
@@ -315,5 +256,6 @@ type_instance_init (GTypeInstance *instance,
 
     omx_base->gomx->settings_changed_cb = settings_changed_cb;
 
-    gst_pad_set_setcaps_function (omx_base->sinkpad, sink_setcaps);
+    gst_pad_set_setcaps_function (omx_base->sinkpad,
+            GST_DEBUG_FUNCPTR (sink_setcaps));
 }
