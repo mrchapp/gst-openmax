@@ -33,7 +33,10 @@ static GstStaticPadTemplate src_template =
 GST_STATIC_PAD_TEMPLATE ("src",
         GST_PAD_SRC,
         GST_PAD_ALWAYS,
-        GST_STATIC_CAPS (GST_VIDEO_CAPS_YUV_STRIDED ("{ I420, YUY2, UYVY }", "[ 0, max ]"))
+//        GST_STATIC_CAPS (GST_VIDEO_CAPS_YUV_STRIDED ("{ I420, YUY2, UYVY }", "[ 0, max ]"))
+// for now, hard code this to match the hard-coded color format in omx_setup.. see
+// the comment in omx_setup..
+        GST_STATIC_CAPS (GST_VIDEO_CAPS_YUV_STRIDED ("{ UYVY }", "[ 0, max ]"))
     );
 
 static void
@@ -58,49 +61,29 @@ settings_changed_cb (GOmxCore *core)
 {
     GstOmxBaseFilter *omx_base;
     GstOmxBaseVideoDec *self;
-    guint width;
-    guint height;
-    guint32 format = 0;
+    GstCaps *new_caps;
 
     omx_base = core->object;
     self = GST_OMX_BASE_VIDEODEC (omx_base);
 
     GST_DEBUG_OBJECT (omx_base, "settings changed");
 
+    self->outport_configured = TRUE;
+
+    new_caps = gst_caps_intersect (gst_pad_get_caps (omx_base->srcpad),
+            gst_pad_peer_get_caps (omx_base->srcpad));
+
+    if (!gst_caps_is_fixed (new_caps))
     {
-        OMX_PARAM_PORTDEFINITIONTYPE param;
-
-        g_omx_port_get_config (omx_base->out_port, &param);
-
-        width = param.format.video.nFrameWidth;
-        height = param.format.video.nFrameHeight;
-        switch (param.format.video.eColorFormat)
-        {
-            case OMX_COLOR_FormatYUV420PackedPlanar:
-                format = GST_MAKE_FOURCC ('I', '4', '2', '0'); break;
-            case OMX_COLOR_FormatYCbYCr:
-                format = GST_MAKE_FOURCC ('Y', 'U', 'Y', '2'); break;
-            case OMX_COLOR_FormatCbYCrY:
-                format = GST_MAKE_FOURCC ('U', 'Y', 'V', 'Y'); break;
-            default:
-                break;
-        }
+        gst_caps_do_simplify (new_caps);
+        GST_INFO_OBJECT (omx_base, "pre-fixated caps: %" GST_PTR_FORMAT, new_caps);
+        gst_pad_fixate_caps (omx_base->srcpad, new_caps);
     }
 
-    {
-        GstCaps *new_caps;
+    GST_INFO_OBJECT (omx_base, "caps are: %" GST_PTR_FORMAT, new_caps);
+    GST_INFO_OBJECT (omx_base, "old caps are: %" GST_PTR_FORMAT, GST_PAD_CAPS (omx_base->srcpad));
 
-        new_caps = gst_caps_new_simple ("video/x-raw-yuv",
-                                        "width", G_TYPE_INT, width,
-                                        "height", G_TYPE_INT, height,
-                                        "framerate", GST_TYPE_FRACTION,
-                                        self->framerate_num, self->framerate_denom,
-                                        "format", GST_TYPE_FOURCC, format,
-                                        NULL);
-
-        GST_INFO_OBJECT (omx_base, "caps are: %" GST_PTR_FORMAT, new_caps);
-        gst_pad_set_caps (omx_base->srcpad, new_caps);
-    }
+    gst_pad_set_caps (omx_base->srcpad, new_caps);
 }
 
 static gboolean
@@ -122,9 +105,12 @@ sink_setcaps (GstPad *pad,
 
     GST_INFO_OBJECT (self, "setcaps (sink): %" GST_PTR_FORMAT, caps);
 
-    g_return_val_if_fail (gst_caps_get_size (caps) == 1, FALSE);
+    g_return_val_if_fail (caps, FALSE);
+    g_return_val_if_fail (gst_caps_is_fixed (caps), FALSE);
 
     structure = gst_caps_get_structure (caps, 0);
+
+    g_return_val_if_fail (structure, FALSE);
 
     gst_structure_get_int (structure, "width", &width);
     gst_structure_get_int (structure, "height", &height);
@@ -170,6 +156,95 @@ sink_setcaps (GstPad *pad,
     return gst_pad_set_caps (pad, caps);
 }
 
+
+static GstCaps*
+src_getcaps (GstPad *pad)
+{
+    GstCaps *caps;
+    GstOmxBaseVideoDec *self   = GST_OMX_BASE_VIDEODEC (GST_PAD_PARENT (pad));
+    GstOmxBaseFilter *omx_base = GST_OMX_BASE_FILTER (self);
+
+    if (self->outport_configured)
+    {
+        /* if we already have src-caps, we want to take the already configured
+         * width/height/etc.  But we can still support any option of rowstride,
+         * so we still don't want to return fixed caps
+         */
+        OMX_PARAM_PORTDEFINITIONTYPE param;
+        int i;
+
+        g_omx_port_get_config (omx_base->out_port, &param);
+
+        caps = gst_caps_new_empty ();
+
+        for (i=0; i<2; i++)
+        {
+            guint32 fourcc = g_omx_colorformat_to_fourcc (param.format.video.eColorFormat);
+            GstStructure *struc = gst_structure_new (
+                    (i ? "video/x-raw-yuv-strided" : "video/x-raw-yuv"),
+                    "framerate", GST_TYPE_FRACTION, self->framerate_num, self->framerate_denom,
+                    "width",  G_TYPE_INT, param.format.video.nFrameWidth,
+                    "height", G_TYPE_INT, param.format.video.nFrameHeight,
+                    "fourcc", GST_TYPE_FOURCC, fourcc,
+                    NULL);
+
+            if(i)
+            {
+                gst_structure_set (struc,
+                        "rowstride",  GST_TYPE_INT_RANGE, 1, G_MAXINT,
+                        NULL);
+            }
+
+            gst_caps_append_structure (caps, struc);
+        }
+    }
+    else
+    {
+        /* we don't have valid width/height/etc yet, so just use the template.. */
+        caps = gst_static_pad_template_get_caps (&src_template);
+    }
+
+    GST_DEBUG_OBJECT (self, "caps=%"GST_PTR_FORMAT, caps);
+
+    return caps;
+}
+
+
+static gboolean
+src_setcaps (GstPad *pad, GstCaps *caps)
+{
+    GstOmxBaseFilter *omx_base;
+
+    GstVideoFormat format;
+    gint width, height, rowstride;
+
+    omx_base = GST_OMX_BASE_FILTER (GST_PAD_PARENT (pad));
+
+    GST_INFO_OBJECT (omx_base, "setcaps (src): %" GST_PTR_FORMAT, caps);
+
+    g_return_val_if_fail (caps, FALSE);
+    g_return_val_if_fail (gst_caps_is_fixed (caps), FALSE);
+
+    if (gst_video_format_parse_caps_strided (caps,
+            &format, &width, &height, &rowstride))
+    {
+        /* Output port configuration: */
+        OMX_PARAM_PORTDEFINITIONTYPE param;
+
+        g_omx_port_get_config (omx_base->out_port, &param);
+
+        param.format.video.eColorFormat = g_omx_fourcc_to_colorformat (
+                gst_video_format_to_fourcc (format));
+        param.format.video.nFrameWidth  = width;
+        param.format.video.nFrameHeight = height;
+        param.format.video.nStride      = rowstride;
+
+        g_omx_port_set_config (omx_base->out_port, &param);
+    }
+
+    return TRUE;
+}
+
 static void
 omx_setup (GstOmxBaseFilter *omx_base)
 {
@@ -185,17 +260,14 @@ omx_setup (GstOmxBaseFilter *omx_base)
         OMX_PARAM_PORTDEFINITIONTYPE param;
 
         /* Input port configuration. */
-        {
-            g_omx_port_get_config (omx_base->in_port, &param);
+        g_omx_port_get_config (omx_base->in_port, &param);
 
-            param.format.video.eCompressionFormat = self->compression_format;
+        param.format.video.eCompressionFormat = self->compression_format;
 
-            g_omx_port_set_config (omx_base->in_port, &param);
-        }
+        g_omx_port_set_config (omx_base->in_port, &param);
 
         /* some workarounds required for TI components. */
         {
-            OMX_COLOR_FORMATTYPE color_format;
             gint width, height;
 
             {
@@ -203,9 +275,6 @@ omx_setup (GstOmxBaseFilter *omx_base)
 
                 width = param.format.video.nFrameWidth;
                 height = param.format.video.nFrameHeight;
-
-                /* this is against the standard; nBufferSize is read-only. */
-                param.nBufferSize = (width * height) / 2;
 
                 g_omx_port_set_config (omx_base->in_port, &param);
             }
@@ -218,23 +287,14 @@ omx_setup (GstOmxBaseFilter *omx_base)
                 param.format.video.nFrameHeight = height;
 
                 /** @todo get this from the srcpad. */
+#if 1
+/* for now, we can't get it from the srcpad, since the srcpad is not negotiated yet.
+ * We need to pad_alloc the first buffer before setting up the ports and putting
+ * the OMX component in the executing state, so that we can properly negotiate
+ * the srcpad caps.
+ */
                 param.format.video.eColorFormat = OMX_COLOR_FormatCbYCrY;
-
-                color_format = param.format.video.eColorFormat;
-
-                /* this is against the standard; nBufferSize is read-only. */
-                switch (color_format)
-                {
-                    case OMX_COLOR_FormatYCbYCr:
-                    case OMX_COLOR_FormatCbYCrY:
-                        param.nBufferSize = (width * height) * 2;
-                        break;
-                    case OMX_COLOR_FormatYUV420PackedPlanar:
-                        param.nBufferSize = (width * height) * 3 / 2;
-                        break;
-                    default:
-                        break;
-                }
+#endif
 
                 g_omx_port_set_config (omx_base->out_port, &param);
             }
@@ -258,4 +318,9 @@ type_instance_init (GTypeInstance *instance,
 
     gst_pad_set_setcaps_function (omx_base->sinkpad,
             GST_DEBUG_FUNCPTR (sink_setcaps));
+
+    gst_pad_set_getcaps_function (omx_base->srcpad,
+            GST_DEBUG_FUNCPTR (src_getcaps));
+    gst_pad_set_setcaps_function (omx_base->srcpad,
+            GST_DEBUG_FUNCPTR (src_setcaps));
 }

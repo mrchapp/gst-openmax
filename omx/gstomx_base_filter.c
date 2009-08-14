@@ -388,6 +388,9 @@ output_loop (gpointer data)
             GstBuffer *buf;
 
 #if 1
+/* NOTE:  this will need to be done before buffers are passed to OMX.. we need to
+ * pad_alloc before the first FillThisBuffer, so that we know the proper rowstride..
+ */
             /** @todo remove this check */
             if (G_LIKELY (self->in_port->enabled))
             {
