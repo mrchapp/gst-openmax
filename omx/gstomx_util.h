@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2007 Texas Instruments, Incorporated
+ * Copyright (C) 2006-2009 Texas Instruments, Incorporated
  * Copyright (C) 2007-2009 Nokia Corporation.
  *
  * Author: Felipe Contreras <felipe.contreras@nokia.com>
@@ -36,18 +36,11 @@ typedef struct GOmxCore GOmxCore;
 typedef struct GOmxPort GOmxPort;
 typedef struct GOmxImp GOmxImp;
 typedef struct GOmxSymbolTable GOmxSymbolTable;
-typedef enum GOmxPortType GOmxPortType;
 
-typedef void (*GOmxCb) (GOmxCore *core);
-typedef void (*GOmxPortCb) (GOmxPort *port);
 
-/* Enums. */
+#include "gstomx_core.h"
+#include "gstomx_port.h"
 
-enum GOmxPortType
-{
-    GOMX_PORT_INPUT,
-    GOMX_PORT_OUTPUT
-};
 
 /* Structures. */
 
@@ -70,106 +63,15 @@ struct GOmxImp
     GMutex *mutex;
 };
 
-struct GOmxCore
-{
-    gpointer object; /**< GStreamer element. */
-
-    OMX_HANDLETYPE omx_handle;
-    OMX_ERRORTYPE omx_error;
-
-    OMX_STATETYPE omx_state;
-    GCond *omx_state_condition;
-    GMutex *omx_state_mutex;
-
-    GPtrArray *ports;
-
-    GSem *done_sem;
-    GSem *flush_sem;
-    GSem *port_sem;
-
-    GOmxCb settings_changed_cb;
-    GOmxImp *imp;
-
-    gboolean done;
-};
-
-struct GOmxPort
-{
-    GOmxCore *core;
-    GOmxPortType type;
-
-    guint num_buffers;
-    gulong buffer_size;
-    guint port_index;
-    OMX_BUFFERHEADERTYPE **buffers;
-
-    GMutex *mutex;
-    gboolean enabled;
-    gboolean omx_allocate; /**< Setup with OMX_AllocateBuffer rather than OMX_UseBuffer */
-    AsyncQueue *queue;
-};
-
 /* Functions. */
 
 void g_omx_init (void);
 void g_omx_deinit (void);
 
-GOmxCore *g_omx_core_new (gpointer object);
-void g_omx_core_free (GOmxCore *core);
-void g_omx_core_init (GOmxCore *core);
-void g_omx_core_deinit (GOmxCore *core);
-void g_omx_core_prepare (GOmxCore *core);
-void g_omx_core_start (GOmxCore *core);
-void g_omx_core_pause (GOmxCore *core);
-void g_omx_core_stop (GOmxCore *core);
-void g_omx_core_unload (GOmxCore *core);
-void g_omx_core_set_done (GOmxCore *core);
-void g_omx_core_wait_for_done (GOmxCore *core);
-void g_omx_core_flush_start (GOmxCore *core);
-void g_omx_core_flush_stop (GOmxCore *core);
-OMX_HANDLETYPE g_omx_core_get_handle (GOmxCore *core);
-GOmxPort *g_omx_core_get_port (GOmxCore *core, guint index);
+GOmxImp * g_omx_request_imp (const gchar *name);
+void g_omx_release_imp (GOmxImp *imp);
 
-
-GOmxPort *g_omx_port_new (GOmxCore *core, guint index);
-void g_omx_port_free (GOmxPort *port);
-
-#define G_OMX_PORT_GET_PARAM(port, idx, param) G_STMT_START {  \
-        memset ((param), 0, sizeof (*(param)));            \
-        (param)->nSize = sizeof (*(param));                \
-        (param)->nVersion.s.nVersionMajor = 1;             \
-        (param)->nVersion.s.nVersionMinor = 1;             \
-        (param)->nPortIndex = (port)->port_index;          \
-        OMX_GetParameter (g_omx_core_get_handle ((port)->core), idx, (param)); \
-    } G_STMT_END
-
-#define G_OMX_PORT_SET_PARAM(port, idx, param) G_STMT_START {       \
-        OMX_SetParameter (                                          \
-            g_omx_core_get_handle ((port)->core), idx, (param));    \
-    } G_STMT_END
-
-/* I think we can remove these two:
- */
-#define g_omx_port_get_config(port, param) \
-        G_OMX_PORT_GET_PARAM (port, OMX_IndexParamPortDefinition, param)
-
-#define g_omx_port_set_config(port, param) \
-        G_OMX_PORT_SET_PARAM (port, OMX_IndexParamPortDefinition, param)
-
-
-
-void g_omx_port_setup (GOmxPort *port, OMX_PARAM_PORTDEFINITIONTYPE *omx_port);
-void g_omx_port_push_buffer (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer);
-OMX_BUFFERHEADERTYPE *g_omx_port_request_buffer (GOmxPort *port);
-void g_omx_port_release_buffer (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer);
-void g_omx_port_resume (GOmxPort *port);
-void g_omx_port_pause (GOmxPort *port);
-void g_omx_port_flush (GOmxPort *port);
-void g_omx_port_enable (GOmxPort *port);
-void g_omx_port_disable (GOmxPort *port);
-void g_omx_port_finish (GOmxPort *port);
-
-
+const char * g_omx_error_to_str (OMX_ERRORTYPE omx_error);
 OMX_COLOR_FORMATTYPE g_omx_fourcc_to_colorformat (guint32 fourcc);
 guint32 g_omx_colorformat_to_fourcc (OMX_COLOR_FORMATTYPE eColorFormat);
 
