@@ -126,7 +126,7 @@ core_for_each_port (GOmxCore *core,
  *    and "library-name" properties.
  */
 GOmxCore *
-g_omx_core_new (gpointer object)
+g_omx_core_new (gpointer object, gpointer klass)
 {
     GOmxCore *core;
 
@@ -144,6 +144,23 @@ g_omx_core_new (gpointer object)
     core->port_sem = g_sem_new ();
 
     core->omx_state = OMX_StateInvalid;
+
+    core->use_timestamps = TRUE;
+
+    {
+        gchar *library_name, *component_name;
+
+        library_name = g_type_get_qdata (G_OBJECT_CLASS_TYPE (klass),
+                g_quark_from_static_string ("library-name"));
+
+        component_name = g_type_get_qdata (G_OBJECT_CLASS_TYPE (klass),
+                g_quark_from_static_string ("component-name"));
+
+        g_object_set (core->object,
+            "component-name", component_name,
+            "library-name", library_name,
+            NULL);
+    }
 
     return core;
 }
@@ -567,7 +584,7 @@ EmptyBufferDone (OMX_HANDLETYPE omx_handle,
     core = (GOmxCore*) app_data;
     port = get_port (core, omx_buffer->nInputPortIndex);
 
-    GST_CAT_LOG_OBJECT (gstomx_util_debug, core->object, "omx_buffer=%p", omx_buffer);
+    GST_DEBUG_OBJECT (core->object, "EBD: omx_buffer=%p, pAppPrivate=%p", omx_buffer, omx_buffer ? omx_buffer->pAppPrivate : 0);
     g_omx_core_got_buffer (core, port, omx_buffer);
 
     return OMX_ErrorNone;
@@ -584,7 +601,7 @@ FillBufferDone (OMX_HANDLETYPE omx_handle,
     core = (GOmxCore *) app_data;
     port = get_port (core, omx_buffer->nOutputPortIndex);
 
-    GST_CAT_LOG_OBJECT (gstomx_util_debug, core->object, "omx_buffer=%p", omx_buffer);
+    GST_DEBUG_OBJECT (core->object, "FBD: omx_buffer=%p, pAppPrivate=%p", omx_buffer, omx_buffer ? omx_buffer->pAppPrivate : 0);
     g_omx_core_got_buffer (core, port, omx_buffer);
 
     return OMX_ErrorNone;

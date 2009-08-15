@@ -50,17 +50,12 @@ struct GstOmxBaseFilter
 
     char *omx_component;
     char *omx_library;
-    gboolean use_timestamps; /** @todo remove; timestamps should always be used */
     gboolean ready;
     GMutex *ready_lock;
 
     GstOmxBaseFilterCb omx_setup;
     GstFlowReturn last_pad_push_return;
     GstBuffer *codec_data;
-
-    /** @todo these are hacks, OpenMAX IL spec should be revised. */
-    gboolean share_input_buffer;
-    gboolean share_output_buffer;
 };
 
 struct GstOmxBaseFilterClass

@@ -109,5 +109,5 @@ type_instance_init (GTypeInstance *instance,
 
     GST_DEBUG_OBJECT (omx_base, "start");
 
-    omx_base->use_timestamps = FALSE;
+    omx_base->gomx->use_timestamps = FALSE;
 }

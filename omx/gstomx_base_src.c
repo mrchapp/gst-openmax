@@ -40,7 +40,6 @@ setup_ports (GstOmxBaseSrc *self)
 
     /* Input port configuration. */
 
-    self->out_port = g_omx_core_get_port (self->gomx, 0);
     g_omx_port_get_config (self->out_port, &param);
     g_omx_port_setup (self->out_port, &param);
 
@@ -133,168 +132,43 @@ create (GstBaseSrc *gst_base,
 
     out_port = self->out_port;
 
-    while (out_port->enabled)
+    if (out_port->enabled)
     {
-        switch (gomx->omx_state)
+        if (G_UNLIKELY (gomx->omx_state == OMX_StateIdle))
         {
-            case OMX_StateIdle:
-                {
-                    GST_INFO_OBJECT (self, "omx: play");
-                    g_omx_core_start (gomx);
-                }
-                break;
-            default:
-                break;
+            GST_INFO_OBJECT (self, "omx: play");
+            g_omx_core_start (gomx);
         }
 
-        switch (gomx->omx_state)
+        if (G_UNLIKELY (gomx->omx_state != OMX_StateExecuting))
         {
-            case OMX_StateExecuting:
-                /* OK */
-                break;
-            default:
-                GST_ERROR_OBJECT (self, "Whoa! very wrong");
-                break;
+            GST_ERROR_OBJECT (self, "Whoa! very wrong");
         }
 
+        while (out_port->enabled)
         {
-            OMX_BUFFERHEADERTYPE *omx_buffer;
+            gpointer obj = g_omx_port_recv (out_port);
 
-            GST_LOG_OBJECT (self, "request_buffer");
-            omx_buffer = g_omx_port_request_buffer (out_port);
-
-            if (omx_buffer)
+            if (G_UNLIKELY (!obj))
             {
-                GST_DEBUG_OBJECT (self, "omx_buffer: size=%lu, len=%lu, offset=%lu",
-                                  omx_buffer->nAllocLen, omx_buffer->nFilledLen, omx_buffer->nOffset);
+                /* ret = GST_FLOW_ERROR; */
+                break;
+            }
 
-                if (omx_buffer->nFlags & OMX_BUFFERFLAG_EOS)
+            if (G_LIKELY (GST_IS_BUFFER (obj)))
+            {
+                GstBuffer *buf = GST_BUFFER (obj);
+                if (G_LIKELY (GST_BUFFER_SIZE (buf) > 0))
                 {
-                    GST_INFO_OBJECT (self, "got eos");
-                    g_omx_core_set_done (gomx);
+                    PRINT_BUFFER (self, buf);
+                    *ret_buf = buf;
                     break;
-                }
-
-                if (omx_buffer->nFilledLen > 0)
-                {
-                    GstBuffer *buf;
-
-                    if (out_port->enabled)
-                    {
-                        GstCaps *caps = NULL;
-
-                        caps = gst_pad_get_negotiated_caps (gst_base->srcpad);
-
-                        if (!caps)
-                        {
-                            /** @todo We shouldn't be doing this. */
-                            GST_WARNING_OBJECT (self, "somebody didn't do his work");
-                            gomx->settings_changed_cb (gomx);
-                        }
-                        else
-                        {
-                            GST_LOG_OBJECT (self, "caps already fixed");
-                            gst_caps_unref (caps);
-                        }
-                    }
-
-                    buf = omx_buffer->pAppPrivate;
-
-                    if (buf && !(omx_buffer->nFlags & OMX_BUFFERFLAG_EOS))
-                    {
-                        GST_BUFFER_SIZE (buf) = omx_buffer->nFilledLen;
-#if 0
-                        if (self->use_timestamps)
-                        {
-                            GST_BUFFER_TIMESTAMP (buf) = omx_buffer->nTimeStamp * (GST_SECOND / OMX_TICKS_PER_SECOND);
-                        }
-#endif
-
-                        omx_buffer->pAppPrivate = NULL;
-                        omx_buffer->pBuffer = NULL;
-                        omx_buffer->nFilledLen = 0;
-
-                        *ret_buf = buf;
-
-                        gst_buffer_unref (buf);
-                    }
-                    else
-                    {
-                        /* This is only meant for the first OpenMAX buffers,
-                         * which need to be pre-allocated. */
-                        /* Also for the very last one. */
-                        gst_pad_alloc_buffer_and_set_caps (gst_base->srcpad,
-                                                           GST_BUFFER_OFFSET_NONE,
-                                                           omx_buffer->nFilledLen,
-                                                           GST_PAD_CAPS (gst_base->srcpad),
-                                                           &buf);
-
-                        if (buf)
-                        {
-                            GST_WARNING_OBJECT (self, "couldn't zero-copy");
-                            memcpy (GST_BUFFER_DATA (buf), omx_buffer->pBuffer + omx_buffer->nOffset, omx_buffer->nFilledLen);
-#if 0
-                            if (self->use_timestamps)
-                            {
-                                GST_BUFFER_TIMESTAMP (buf) = omx_buffer->nTimeStamp * (GST_SECOND / OMX_TICKS_PER_SECOND);
-                            }
-#endif
-
-                            omx_buffer->nFilledLen = 0;
-                            g_free (omx_buffer->pBuffer);
-                            omx_buffer->pBuffer = NULL;
-
-                            *ret_buf = buf;
-                        }
-                        else
-                        {
-                            GST_ERROR_OBJECT (self, "whoa!");
-                        }
-                    }
-
-                    if (!omx_buffer->pBuffer)
-                    {
-                        GstBuffer *new_buf;
-                        GstFlowReturn result;
-
-                        GST_LOG_OBJECT (self, "allocate buffer");
-                        result = gst_pad_alloc_buffer_and_set_caps (gst_base->srcpad,
-                                                                    GST_BUFFER_OFFSET_NONE,
-                                                                    omx_buffer->nAllocLen,
-                                                                    GST_PAD_CAPS (gst_base->srcpad),
-                                                                    &new_buf);
-
-                        if (result == GST_FLOW_OK)
-                        {
-                            gst_buffer_ref (new_buf);
-                            omx_buffer->pAppPrivate = new_buf;
-
-                            omx_buffer->pBuffer = GST_BUFFER_DATA (new_buf);
-                            omx_buffer->nAllocLen = GST_BUFFER_SIZE (new_buf);
-                        }
-                        else
-                        {
-                            GST_WARNING_OBJECT (self, "could not allocate buffer");
-                            omx_buffer->pBuffer = g_malloc (omx_buffer->nAllocLen);
-                        }
-                    }
-
-                    GST_LOG_OBJECT (self, "release_buffer");
-                    g_omx_port_release_buffer (out_port, omx_buffer);
-                    break;
-                }
-                else
-                {
-                    GST_WARNING_OBJECT (self, "empty buffer");
-                    GST_LOG_OBJECT (self, "release_buffer");
-                    g_omx_port_release_buffer (out_port, omx_buffer);
-                    continue;
                 }
             }
-            else
+            else if (GST_IS_EVENT (obj))
             {
-                GST_WARNING_OBJECT (self, "null buffer");
-                /* ret = GST_FLOW_ERROR; */
+                GST_INFO_OBJECT (self, "got eos");
+                g_omx_core_set_done (gomx);
                 break;
             }
         }
@@ -437,6 +311,53 @@ type_class_init (gpointer g_class,
     }
 }
 
+
+/**
+ * overrides the default buffer allocation for output port to allow
+ * pad_alloc'ing from the srcpad
+ */
+static GstBuffer *
+buffer_alloc (GOmxPort *port, gint len)
+{
+    GstOmxBaseSrc  *self = port->core->object;
+    GstBaseSrc *gst_base = GST_BASE_SRC (port->core->object);
+    GstBuffer *buf;
+    GstFlowReturn ret;
+
+#if 1
+    /** @todo remove this check */
+    if (G_LIKELY (self->out_port->enabled))
+    {
+        GstCaps *caps = NULL;
+
+        caps = gst_pad_get_negotiated_caps (gst_base->srcpad);
+
+        if (!caps)
+        {
+            /** @todo We shouldn't be doing this. */
+            GOmxCore *gomx = self->gomx;
+            GST_WARNING_OBJECT (self, "faking settings changed notification");
+            if (gomx->settings_changed_cb)
+                gomx->settings_changed_cb (gomx);
+        }
+        else
+        {
+            GST_LOG_OBJECT (self, "caps already fixed: %" GST_PTR_FORMAT, caps);
+            gst_caps_unref (caps);
+        }
+    }
+#endif
+
+    ret = gst_pad_alloc_buffer_and_set_caps (
+            gst_base->srcpad, GST_BUFFER_OFFSET_NONE,
+            len, GST_PAD_CAPS (gst_base->srcpad), &buf);
+
+    if (ret == GST_FLOW_OK) return buf;
+
+    return NULL;
+}
+
+
 static void
 type_instance_init (GTypeInstance *instance,
                     gpointer g_class)
@@ -448,18 +369,10 @@ type_instance_init (GTypeInstance *instance,
     GST_LOG_OBJECT (self, "begin");
 
     /* GOmx */
-    self->gomx = g_omx_core_new (self);
-
-    {
-        const char *tmp;
-        tmp = g_type_get_qdata (G_OBJECT_CLASS_TYPE (g_class),
-                                g_quark_from_static_string ("library-name"));
-        self->omx_library = g_strdup (tmp);
-        tmp = g_type_get_qdata (G_OBJECT_CLASS_TYPE (g_class),
-                                g_quark_from_static_string ("component-name"));
-        self->omx_component = g_strdup (tmp);
-    }
-
+    self->gomx = g_omx_core_new (self, g_class);
+    self->gomx->use_timestamps = FALSE;
+    self->out_port = g_omx_core_get_port (self->gomx, 0);
+    self->out_port->buffer_alloc = buffer_alloc;
 
     GST_LOG_OBJECT (self, "end");
 }

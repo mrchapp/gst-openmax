@@ -177,7 +177,9 @@ src_getcaps (GstPad *pad)
 
         caps = gst_caps_new_empty ();
 
-        for (i=0; i<2; i++)
+        /* note: we only support strided caps if outport buffer is shared:
+         */
+        for (i=0; i<(omx_base->out_port->share_buffer ? 2 : 1); i++)
         {
             guint32 fourcc = g_omx_colorformat_to_fourcc (param.format.video.eColorFormat);
             GstStructure *struc = gst_structure_new (

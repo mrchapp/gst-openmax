@@ -23,6 +23,9 @@
 #ifndef GSTOMX_PORT_H
 #define GSTOMX_PORT_H
 
+#include <string.h> /* for memset, memcpy */
+#include <gst/gst.h>
+
 #include "gstomx_util.h"
 
 /* Typedefs. */
@@ -36,7 +39,6 @@ enum GOmxPortType
     GOMX_PORT_INPUT,
     GOMX_PORT_OUTPUT
 };
-
 
 struct GOmxPort
 {
@@ -52,6 +54,11 @@ struct GOmxPort
     gboolean enabled;
     gboolean omx_allocate; /**< Setup with OMX_AllocateBuffer rather than OMX_UseBuffer */
     AsyncQueue *queue;
+
+    GstBuffer * (*buffer_alloc)(GOmxPort *port, gint len); /**< allows elements to override shared buffer allocation for output ports */
+
+    /** @todo this is a hack.. OpenMAX IL spec should be revised. */
+    gboolean share_buffer;
 };
 
 /* Functions. */
@@ -87,15 +94,15 @@ void g_omx_port_setup (GOmxPort *port, OMX_PARAM_PORTDEFINITIONTYPE *omx_port);
 void g_omx_port_allocate_buffers (GOmxPort *port);
 void g_omx_port_free_buffers (GOmxPort *port);
 void g_omx_port_start_buffers (GOmxPort *port);
-void g_omx_port_push_buffer (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer);
-OMX_BUFFERHEADERTYPE *g_omx_port_request_buffer (GOmxPort *port);
-void g_omx_port_release_buffer (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer);
 void g_omx_port_resume (GOmxPort *port);
 void g_omx_port_pause (GOmxPort *port);
 void g_omx_port_flush (GOmxPort *port);
 void g_omx_port_enable (GOmxPort *port);
 void g_omx_port_disable (GOmxPort *port);
 void g_omx_port_finish (GOmxPort *port);
+void g_omx_port_push_buffer (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer);
+gint g_omx_port_send (GOmxPort *port, gpointer obj);
+gpointer g_omx_port_recv (GOmxPort *port);
 
 
 #endif /* GSTOMX_PORT_H */

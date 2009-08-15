@@ -23,8 +23,6 @@
 #include "gstomx.h"
 #include "gstomx_interface.h"
 
-#include <string.h> /* for memset, memcpy */
-
 enum
 {
     ARG_0,
@@ -37,9 +35,6 @@ enum
 
 static void init_interfaces (GType type);
 GSTOMX_BOILERPLATE_FULL (GstOmxBaseFilter, gst_omx_base_filter, GstElement, GST_TYPE_ELEMENT, init_interfaces);
-
-
-#define CODEC_DATA_FLAG 0x00000080 /* special nFlags field to use to indicated codec-data */
 
 
 static void
@@ -64,30 +59,31 @@ setup_ports (GstOmxBaseFilter *self)
         GST_DEBUG_OBJECT (self, "OMX_ALLOCATE_ON");
         self->in_port->omx_allocate = TRUE;
         self->out_port->omx_allocate = TRUE;
-        self->share_input_buffer = FALSE;
-        self->share_output_buffer = FALSE;
+        self->in_port->share_buffer = FALSE;
+        self->out_port->share_buffer = FALSE;
     }
     else if (g_getenv ("OMX_SHARE_HACK_ON"))
     {
         GST_DEBUG_OBJECT (self, "OMX_SHARE_HACK_ON");
-        self->share_input_buffer = TRUE;
-        self->share_output_buffer = TRUE;
+        self->in_port->share_buffer = TRUE;
+        self->out_port->share_buffer = TRUE;
     }
     else if (g_getenv ("OMX_SHARE_HACK_OFF"))
     {
         GST_DEBUG_OBJECT (self, "OMX_SHARE_HACK_OFF");
-        self->share_input_buffer = FALSE;
-        self->share_output_buffer = FALSE;
+        self->in_port->share_buffer = FALSE;
+        self->out_port->share_buffer = FALSE;
     }
     else
     {
-        GST_DEBUG_OBJECT (self, "default sharing and allocation");
+        self->in_port->share_buffer = TRUE;
+        self->out_port->share_buffer = TRUE;
     }
 
     GST_DEBUG_OBJECT (self, "in_port->omx_allocate=%d, out_port->omx_allocate=%d",
             self->in_port->omx_allocate, self->out_port->omx_allocate);
-    GST_DEBUG_OBJECT (self, "share_input_buffer=%d, share_output_buffer=%d",
-            self->share_input_buffer, self->share_output_buffer);
+    GST_DEBUG_OBJECT (self, "in_port->share_buffer=%d, out_port->share_buffer=%d",
+            self->in_port->share_buffer, self->out_port->share_buffer);
 }
 
 static GstStateChangeReturn
@@ -208,7 +204,7 @@ set_property (GObject *obj,
             self->omx_library = g_value_dup_string (value);
             break;
         case ARG_USE_TIMESTAMPS:
-            self->use_timestamps = g_value_get_boolean (value);
+            self->gomx->use_timestamps = g_value_get_boolean (value);
             break;
         case ARG_NUM_INPUT_BUFFERS:
         case ARG_NUM_OUTPUT_BUFFERS:
@@ -251,7 +247,7 @@ get_property (GObject *obj,
             g_value_set_string (value, self->omx_library);
             break;
         case ARG_USE_TIMESTAMPS:
-            g_value_set_boolean (value, self->use_timestamps);
+            g_value_set_boolean (value, self->gomx->use_timestamps);
             break;
         case ARG_NUM_INPUT_BUFFERS:
         case ARG_NUM_OUTPUT_BUFFERS:
@@ -365,62 +361,18 @@ output_loop (gpointer data)
 
     if (G_LIKELY (out_port->enabled))
     {
-        OMX_BUFFERHEADERTYPE *omx_buffer = NULL;
+        gpointer obj = g_omx_port_recv (out_port);
 
-        GST_LOG_OBJECT (self, "request buffer");
-        omx_buffer = g_omx_port_request_buffer (out_port);
-
-        GST_LOG_OBJECT (self, "omx_buffer: %p", omx_buffer);
-
-        if (G_UNLIKELY (!omx_buffer))
+        if (G_UNLIKELY (!obj))
         {
             GST_WARNING_OBJECT (self, "null buffer: leaving");
             ret = GST_FLOW_WRONG_STATE;
             goto leave;
         }
 
-        GST_DEBUG_OBJECT (self, "omx_buffer: size=%lu, len=%lu, flags=%lu, offset=%lu, timestamp=%lld",
-                          omx_buffer->nAllocLen, omx_buffer->nFilledLen, omx_buffer->nFlags,
-                          omx_buffer->nOffset, omx_buffer->nTimeStamp);
-
-        if (G_LIKELY (omx_buffer->nFilledLen > 0))
+        if (G_LIKELY (GST_IS_BUFFER (obj)))
         {
-            GstBuffer *buf;
-
-#if 1
-/* NOTE:  this will need to be done before buffers are passed to OMX.. we need to
- * pad_alloc before the first FillThisBuffer, so that we know the proper rowstride..
- */
-            /** @todo remove this check */
-            if (G_LIKELY (self->in_port->enabled))
-            {
-                GstCaps *caps = NULL;
-
-                caps = gst_pad_get_negotiated_caps (self->srcpad);
-
-                if (!caps)
-                {
-                    /** @todo We shouldn't be doing this. */
-                    GST_WARNING_OBJECT (self, "faking settings changed notification");
-                    if (gomx->settings_changed_cb)
-                        gomx->settings_changed_cb (gomx);
-                }
-                else
-                {
-                    GST_LOG_OBJECT (self, "caps already fixed: %" GST_PTR_FORMAT, caps);
-                    gst_caps_unref (caps);
-                }
-            }
-#endif
-
-            /* buf is always null when the output buffer pointer isn't shared. */
-            buf = omx_buffer->pAppPrivate;
-
-            PRINT_BUFFER (self, buf);
-
-            /** @todo we need to move all the caps handling to one single
-             * place, in the output loop probably. */
-            if (G_UNLIKELY (omx_buffer->nFlags & CODEC_DATA_FLAG))
+            if (G_UNLIKELY (GST_BUFFER_FLAG_IS_SET (obj, GST_BUFFER_FLAG_IN_CAPS)))
             {
                 GstCaps *caps = NULL;
                 GstStructure *structure;
@@ -431,125 +383,28 @@ output_loop (gpointer data)
                 structure = gst_caps_get_structure (caps, 0);
 
                 g_value_init (&value, GST_TYPE_BUFFER);
-                buf = gst_buffer_new_and_alloc (omx_buffer->nFilledLen);
-                memcpy (GST_BUFFER_DATA (buf), omx_buffer->pBuffer + omx_buffer->nOffset, omx_buffer->nFilledLen);
-                gst_value_set_buffer (&value, buf);
-                gst_buffer_unref (buf);
+                gst_value_set_buffer (&value, obj);
+                gst_buffer_unref (obj);
                 gst_structure_set_value (structure, "codec_data", &value);
                 g_value_unset (&value);
 
                 gst_pad_set_caps (self->srcpad, caps);
             }
-            else if (buf && !(omx_buffer->nFlags & OMX_BUFFERFLAG_EOS))
-            {
-                GST_BUFFER_SIZE (buf) = omx_buffer->nFilledLen;
-                if (self->use_timestamps)
-                {
-                    GST_BUFFER_TIMESTAMP (buf) = gst_util_uint64_scale_int (omx_buffer->nTimeStamp,
-                                                                            GST_SECOND,
-                                                                            OMX_TICKS_PER_SECOND);
-                }
-
-                omx_buffer->pAppPrivate = NULL;
-                omx_buffer->pBuffer = NULL;
-
-                ret = push_buffer (self, buf);
-
-                gst_buffer_unref (buf);
-            }
             else
             {
-                /* This is only meant for the first OpenMAX buffers,
-                 * which need to be pre-allocated. */
-                /* Also for the very last one. */
-                ret = gst_pad_alloc_buffer_and_set_caps (self->srcpad,
-                                                         GST_BUFFER_OFFSET_NONE,
-                                                         omx_buffer->nFilledLen,
-                                                         GST_PAD_CAPS (self->srcpad),
-                                                         &buf);
-
-                if (G_LIKELY (buf))
-                {
-                    memcpy (GST_BUFFER_DATA (buf), omx_buffer->pBuffer + omx_buffer->nOffset, omx_buffer->nFilledLen);
-                    if (self->use_timestamps)
-                    {
-                        GST_BUFFER_TIMESTAMP (buf) = gst_util_uint64_scale_int (omx_buffer->nTimeStamp,
-                                                                                GST_SECOND,
-                                                                                OMX_TICKS_PER_SECOND);
-                    }
-
-                    if (self->share_output_buffer)
-                    {
-                        GST_WARNING_OBJECT (self, "couldn't zero-copy");
-                        /* If pAppPrivate is NULL, it means it was a dummy
-                         * allocation, free it. */
-                        if (!omx_buffer->pAppPrivate)
-                        {
-                            g_free (omx_buffer->pBuffer);
-                            omx_buffer->pBuffer = NULL;
-                        }
-                    }
-
-                    ret = push_buffer (self, buf);
-                }
-                else
-                {
-                    GST_WARNING_OBJECT (self, "couldn't allocate buffer of size %d",
-                                        omx_buffer->nFilledLen);
-                }
+                GstBuffer *buf = GST_BUFFER (obj);
+                ret = push_buffer (self, buf);
+                GST_DEBUG_OBJECT (self, "ret=%s", gst_flow_get_name (ret));
             }
         }
-        else
-        {
-            GST_WARNING_OBJECT (self, "empty buffer");
-        }
-
-        if (G_UNLIKELY (omx_buffer->nFlags & OMX_BUFFERFLAG_EOS))
+        else if (GST_IS_EVENT (obj))
         {
             GST_DEBUG_OBJECT (self, "got eos");
-            gst_pad_push_event (self->srcpad, gst_event_new_eos ());
+            gst_pad_push_event (self->srcpad, obj);
             ret = GST_FLOW_UNEXPECTED;
             goto leave;
         }
 
-        if (self->share_output_buffer &&
-            !omx_buffer->pBuffer &&
-            omx_buffer->nOffset == 0)
-        {
-            GstBuffer *buf;
-            GstFlowReturn result;
-
-            GST_LOG_OBJECT (self, "allocate buffer");
-            result = gst_pad_alloc_buffer_and_set_caps (self->srcpad,
-                                                        GST_BUFFER_OFFSET_NONE,
-                                                        omx_buffer->nAllocLen,
-                                                        GST_PAD_CAPS (self->srcpad),
-                                                        &buf);
-
-            if (G_LIKELY (result == GST_FLOW_OK))
-            {
-                gst_buffer_ref (buf);
-                omx_buffer->pAppPrivate = buf;
-
-                omx_buffer->pBuffer = GST_BUFFER_DATA (buf);
-                omx_buffer->nAllocLen = GST_BUFFER_SIZE (buf);
-            }
-            else
-            {
-                GST_WARNING_OBJECT (self, "could not pad allocate buffer, using malloc");
-                omx_buffer->pBuffer = g_malloc (omx_buffer->nAllocLen);
-            }
-        }
-
-        if (self->share_output_buffer &&
-            !omx_buffer->pBuffer)
-        {
-            GST_ERROR_OBJECT (self, "no input buffer to share");
-        }
-
-        omx_buffer->nFilledLen = 0;
-        GST_LOG_OBJECT (self, "release_buffer");
-        g_omx_port_release_buffer (out_port, omx_buffer);
     }
 
 leave:
@@ -557,7 +412,10 @@ leave:
     self->last_pad_push_return = ret;
 
     if (gomx->omx_error != OMX_ErrorNone)
+    {
+        GST_DEBUG_OBJECT (self, "omx_error=%s", g_omx_error_to_str (gomx->omx_error));
         ret = GST_FLOW_ERROR;
+    }
 
     if (ret != GST_FLOW_OK)
     {
@@ -623,8 +481,6 @@ pad_chain (GstPad *pad,
 
     if (G_LIKELY (in_port->enabled))
     {
-        guint buffer_offset = 0;
-
         if (G_UNLIKELY (gomx->omx_state == OMX_StateIdle))
         {
             GST_INFO_OBJECT (self, "omx: play");
@@ -634,24 +490,10 @@ pad_chain (GstPad *pad,
                 goto out_flushing;
 
             /* send buffer with codec data flag */
-            /** @todo move to util */
             if (self->codec_data)
             {
-                OMX_BUFFERHEADERTYPE *omx_buffer;
-
-                GST_LOG_OBJECT (self, "request buffer");
-                omx_buffer = g_omx_port_request_buffer (in_port);
-
-                if (G_LIKELY (omx_buffer))
-                {
-                    omx_buffer->nFlags |= CODEC_DATA_FLAG;
-
-                    omx_buffer->nFilledLen = GST_BUFFER_SIZE (self->codec_data);
-                    memcpy (omx_buffer->pBuffer + omx_buffer->nOffset, GST_BUFFER_DATA (self->codec_data), omx_buffer->nFilledLen);
-
-                    GST_LOG_OBJECT (self, "release_buffer");
-                    g_omx_port_release_buffer (in_port, omx_buffer);
-                }
+                GST_BUFFER_FLAG_SET (self->codec_data, GST_BUFFER_FLAG_IN_CAPS);  /* just in case */
+                g_omx_port_send (in_port, self->codec_data);
             }
         }
 
@@ -660,9 +502,9 @@ pad_chain (GstPad *pad,
             GST_ERROR_OBJECT (self, "Whoa! very wrong");
         }
 
-        while (G_LIKELY (buffer_offset < GST_BUFFER_SIZE (buf)))
+        while (TRUE)
         {
-            OMX_BUFFERHEADERTYPE *omx_buffer;
+            gint sent;
 
             if (self->last_pad_push_return != GST_FLOW_OK ||
                 !(gomx->omx_state == OMX_StateExecuting ||
@@ -671,73 +513,24 @@ pad_chain (GstPad *pad,
                 goto out_flushing;
             }
 
-            GST_LOG_OBJECT (self, "request buffer");
-            omx_buffer = g_omx_port_request_buffer (in_port);
+            sent = g_omx_port_send (in_port, buf);
 
-            GST_LOG_OBJECT (self, "omx_buffer: %p", omx_buffer);
-
-            if (G_LIKELY (omx_buffer))
+            if (G_UNLIKELY (sent < 0))
             {
-                if (omx_buffer->nOffset == 0 &&
-                    self->share_input_buffer)
-                {
-                    {
-                        GstBuffer *old_buf;
-                        old_buf = omx_buffer->pAppPrivate;
-
-                        if (old_buf)
-                        {
-                            gst_buffer_unref (old_buf);
-                        }
-                        else if (omx_buffer->pBuffer)
-                        {
-                            g_free (omx_buffer->pBuffer);
-                        }
-                    }
-
-                    omx_buffer->pBuffer = GST_BUFFER_DATA (buf);
-                    omx_buffer->nAllocLen = GST_BUFFER_SIZE (buf);
-                    omx_buffer->nFilledLen = GST_BUFFER_SIZE (buf);
-                    omx_buffer->pAppPrivate = buf;
-                }
-                else
-                {
-                    omx_buffer->nFilledLen = MIN (GST_BUFFER_SIZE (buf) - buffer_offset,
-                                                  omx_buffer->nAllocLen - omx_buffer->nOffset);
-                    memcpy (omx_buffer->pBuffer + omx_buffer->nOffset, GST_BUFFER_DATA (buf) + buffer_offset, omx_buffer->nFilledLen);
-                }
-
-                if (self->use_timestamps)
-                {
-                    GstClockTime timestamp_offset = 0;
-
-                    if (buffer_offset && GST_BUFFER_DURATION (buf) != GST_CLOCK_TIME_NONE)
-                    {
-                        timestamp_offset = gst_util_uint64_scale_int (buffer_offset,
-                                                                      GST_BUFFER_DURATION (buf),
-                                                                      GST_BUFFER_SIZE (buf));
-                    }
-
-                    omx_buffer->nTimeStamp = gst_util_uint64_scale_int (GST_BUFFER_TIMESTAMP (buf) + timestamp_offset,
-                                                                        OMX_TICKS_PER_SECOND,
-                                                                        GST_SECOND);
-                }
-
-                buffer_offset += omx_buffer->nFilledLen;
-
-                GST_DEBUG_OBJECT (self, "omx_buffer: size=%lu, len=%lu, flags=%lu, offset=%lu, timestamp=%lld",
-                                  omx_buffer->nAllocLen, omx_buffer->nFilledLen, omx_buffer->nFlags,
-                                  omx_buffer->nOffset, omx_buffer->nTimeStamp);
-
-                GST_LOG_OBJECT (self, "release_buffer");
-                /** @todo untaint buffer */
-                g_omx_port_release_buffer (in_port, omx_buffer);
+                ret = GST_FLOW_WRONG_STATE;
+                goto out_flushing;
+            }
+            else if (sent < GST_BUFFER_SIZE (buf))
+            {
+                GstBuffer *subbuf = gst_buffer_create_sub (buf, sent,
+                        GST_BUFFER_SIZE (buf) - sent);
+                gst_buffer_unref (buf);
+                buf = subbuf;
             }
             else
             {
-                GST_WARNING_OBJECT (self, "null buffer");
-                ret = GST_FLOW_WRONG_STATE;
-                goto out_flushing;
+                gst_buffer_unref (buf);
+                break;
             }
         }
     }
@@ -745,11 +538,6 @@ pad_chain (GstPad *pad,
     {
         GST_WARNING_OBJECT (self, "done");
         ret = GST_FLOW_UNEXPECTED;
-    }
-
-    if (!self->share_input_buffer)
-    {
-        gst_buffer_unref (buf);
     }
 
 leave:
@@ -791,12 +579,10 @@ pad_event (GstPad *pad,
 {
     GstOmxBaseFilter *self;
     GOmxCore *gomx;
-    GOmxPort *in_port;
     gboolean ret = TRUE;
 
     self = GST_OMX_BASE_FILTER (GST_OBJECT_PARENT (pad));
     gomx = self->gomx;
-    in_port = self->in_port;
 
     GST_LOG_OBJECT (self, "begin");
 
@@ -810,26 +596,10 @@ pad_event (GstPad *pad,
              * in any other case, we send EOS */
             if (self->ready && self->last_pad_push_return == GST_FLOW_OK)
             {
-                /* send buffer with eos flag */
-                /** @todo move to util */
+                if (g_omx_port_send (self->in_port, event) >= 0)
                 {
-                    OMX_BUFFERHEADERTYPE *omx_buffer;
-
-                    GST_LOG_OBJECT (self, "request buffer");
-                    omx_buffer = g_omx_port_request_buffer (in_port);
-
-                    if (G_LIKELY (omx_buffer))
-                    {
-                        omx_buffer->nFlags |= OMX_BUFFERFLAG_EOS;
-                        omx_buffer->nFilledLen = 0;
-
-                        GST_LOG_OBJECT (self, "release_buffer");
-                        /* foo_buffer_untaint (omx_buffer); */
-                        g_omx_port_release_buffer (in_port, omx_buffer);
-                        /* loop handles EOS, eat it here */
-                        gst_event_unref (event);
-                        break;
-                    }
+                    gst_event_unref (event);
+                    break;
                 }
             }
 
@@ -927,6 +697,50 @@ activate_push (GstPad *pad,
     return result;
 }
 
+/**
+ * overrides the default buffer allocation for output port to allow
+ * pad_alloc'ing from the srcpad
+ */
+static GstBuffer *
+buffer_alloc (GOmxPort *port, gint len)
+{
+    GstOmxBaseFilter *self = port->core->object;
+    GstBuffer *buf;
+    GstFlowReturn ret;
+
+#if 1
+    /** @todo remove this check */
+    if (G_LIKELY (self->in_port->enabled))
+    {
+        GstCaps *caps = NULL;
+
+        caps = gst_pad_get_negotiated_caps (self->srcpad);
+
+        if (!caps)
+        {
+            /** @todo We shouldn't be doing this. */
+            GOmxCore *gomx = self->gomx;
+            GST_WARNING_OBJECT (self, "faking settings changed notification");
+            if (gomx->settings_changed_cb)
+                gomx->settings_changed_cb (gomx);
+        }
+        else
+        {
+            GST_LOG_OBJECT (self, "caps already fixed: %" GST_PTR_FORMAT, caps);
+            gst_caps_unref (caps);
+        }
+    }
+#endif
+
+    ret = gst_pad_alloc_buffer_and_set_caps (
+            self->srcpad, GST_BUFFER_OFFSET_NONE,
+            len, GST_PAD_CAPS (self->srcpad), &buf);
+
+    if (ret == GST_FLOW_OK) return buf;
+
+    return NULL;
+}
+
 static void
 type_instance_init (GTypeInstance *instance,
                     gpointer g_class)
@@ -940,12 +754,12 @@ type_instance_init (GTypeInstance *instance,
 
     GST_LOG_OBJECT (self, "begin");
 
-    self->use_timestamps = TRUE;
-
     /* GOmx */
-    self->gomx = g_omx_core_new (self);
+    self->gomx = g_omx_core_new (self, g_class);
     self->in_port = g_omx_core_get_port (self->gomx, 0);
     self->out_port = g_omx_core_get_port (self->gomx, 1);
+
+    self->out_port->buffer_alloc = buffer_alloc;
 
     self->ready_lock = g_mutex_new ();
 
@@ -964,16 +778,6 @@ type_instance_init (GTypeInstance *instance,
 
     gst_element_add_pad (GST_ELEMENT (self), self->sinkpad);
     gst_element_add_pad (GST_ELEMENT (self), self->srcpad);
-
-    {
-        const char *tmp;
-        tmp = g_type_get_qdata (G_OBJECT_CLASS_TYPE (g_class),
-                                g_quark_from_static_string ("library-name"));
-        self->omx_library = g_strdup (tmp);
-        tmp = g_type_get_qdata (G_OBJECT_CLASS_TYPE (g_class),
-                                g_quark_from_static_string ("component-name"));
-        self->omx_component = g_strdup (tmp);
-    }
 
     GST_LOG_OBJECT (self, "end");
 }

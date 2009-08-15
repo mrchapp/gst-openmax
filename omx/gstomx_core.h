@@ -52,11 +52,13 @@ struct GOmxCore
     GOmxImp *imp;
 
     gboolean done;
+
+    gboolean use_timestamps; /** @todo remove; timestamps should always be used */
 };
 
 /* Functions. */
 
-GOmxCore *g_omx_core_new (gpointer object);
+GOmxCore *g_omx_core_new (gpointer object, gpointer klass);
 void g_omx_core_free (GOmxCore *core);
 void g_omx_core_init (GOmxCore *core);
 void g_omx_core_deinit (GOmxCore *core);
