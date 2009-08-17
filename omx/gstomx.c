@@ -46,6 +46,7 @@
 #include "gstomx_ilbcdec.h"
 #include "gstomx_ilbcenc.h"
 #include "gstomx_jpegenc.h"
+#include "gstomx_jpegdec.h"
 #include "gstomx_audiosink.h"
 #include "gstomx_videosink.h"
 #include "gstomx_filereadersrc.h"
@@ -92,6 +93,7 @@ static TableItem element_table[] =
     { "omx_ilbcdec", "libomxil-bellagio.so.0", "OMX.st.audio_decoder.ilbc", GST_RANK_PRIMARY, gst_omx_ilbcdec_get_type },
     { "omx_ilbcenc", "libomxil-bellagio.so.0", "OMX.st.audio_encoder.ilbc", GST_RANK_PRIMARY, gst_omx_ilbcenc_get_type },
     { "omx_jpegenc", "libOMX_Core.so", "OMX.TI.JPEG.encoder", GST_RANK_PRIMARY, gst_omx_jpegenc_get_type },
+    { "omx_jpegdec", "libOMX_Core.so", "OMX.TI.JPEG.decode", GST_RANK_PRIMARY, gst_omx_jpegdec_get_type },
     { "omx_audiosink", "libomxil-bellagio.so.0", "OMX.st.alsa.alsasink", GST_RANK_NONE, gst_omx_audiosink_get_type },
     { "omx_videosink", "libomxil-bellagio.so.0", "OMX.st.videosink", GST_RANK_NONE, gst_omx_videosink_get_type },
     { "omx_filereadersrc", "libomxil-bellagio.so.0", "OMX.st.audio_filereader", GST_RANK_NONE, gst_omx_filereadersrc_get_type },
