@@ -97,9 +97,7 @@ change_state (GstElement *element,
     self = GST_OMX_BASE_FILTER (element);
     core = self->gomx;
 
-    GST_LOG_OBJECT (self, "begin");
-
-    GST_INFO_OBJECT (self, "changing state %s - %s",
+    GST_INFO_OBJECT (self, "begin: changing state %s -> %s",
                      gst_element_state_get_name (GST_STATE_TRANSITION_CURRENT (transition)),
                      gst_element_state_get_name (GST_STATE_TRANSITION_NEXT (transition)));
 
@@ -444,10 +442,7 @@ pad_chain (GstPad *pad,
 
     gomx = self->gomx;
 
-    GST_LOG_OBJECT (self, "begin");
-    GST_LOG_OBJECT (self, "gst_buffer: size=%u", GST_BUFFER_SIZE (buf));
-
-    GST_LOG_OBJECT (self, "state: %d", gomx->omx_state);
+    GST_LOG_OBJECT (self, "begin: size=%u, state=%d", GST_BUFFER_SIZE (buf), gomx->omx_state);
 
     if (G_UNLIKELY (gomx->omx_state == OMX_StateLoaded))
     {
@@ -510,6 +505,7 @@ pad_chain (GstPad *pad,
                 !(gomx->omx_state == OMX_StateExecuting ||
                   gomx->omx_state == OMX_StatePause))
             {
+                GST_DEBUG_OBJECT (self, "last_pad_push_return=%d", self->last_pad_push_return);
                 goto out_flushing;
             }
 
@@ -584,9 +580,7 @@ pad_event (GstPad *pad,
     self = GST_OMX_BASE_FILTER (GST_OBJECT_PARENT (pad));
     gomx = self->gomx;
 
-    GST_LOG_OBJECT (self, "begin");
-
-    GST_INFO_OBJECT (self, "event: %s", GST_EVENT_TYPE_NAME (event));
+    GST_INFO_OBJECT (self, "begin: event=%s", GST_EVENT_TYPE_NAME (event));
 
     switch (GST_EVENT_TYPE (event))
     {

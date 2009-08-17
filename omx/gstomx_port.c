@@ -348,7 +348,10 @@ g_omx_port_send (GOmxPort *port, gpointer obj)
         OMX_BUFFERHEADERTYPE *omx_buffer = request_buffer (port);
 
         if (!omx_buffer)
+        {
+            GST_DEBUG_OBJECT (port->core->object, "null buffer");
             return -1;
+        }
 
         /* if buffer sharing is enabled, pAppPrivate might hold the ref to
          * a buffer that is no longer required and should be unref'd.  We
@@ -386,14 +389,23 @@ gpointer
 g_omx_port_recv (GOmxPort *port)
 {
     gpointer ret = NULL;
-    OMX_BUFFERHEADERTYPE *omx_buffer;
 
     g_return_val_if_fail (port->type == GOMX_PORT_OUTPUT, NULL);
 
-    omx_buffer = request_buffer (port);
-
-    if (G_LIKELY (omx_buffer))
+    while (!ret && port->enabled)
     {
+        OMX_BUFFERHEADERTYPE *omx_buffer = request_buffer (port);
+
+        if (G_UNLIKELY (!omx_buffer))
+        {
+            return NULL;
+        }
+
+        GST_DEBUG_OBJECT (port->core->object,
+                "omx_buffer: size=%lu, len=%lu, flags=%lu, offset=%lu, timestamp=%lld",
+                omx_buffer->nAllocLen, omx_buffer->nFilledLen, omx_buffer->nFlags,
+                omx_buffer->nOffset, omx_buffer->nTimeStamp);
+
         if (G_UNLIKELY (omx_buffer->nFlags & OMX_BUFFERFLAG_EOS))
         {
             GST_DEBUG_OBJECT (port->core->object, "got eos");
@@ -403,16 +415,15 @@ g_omx_port_recv (GOmxPort *port)
         {
             GstBuffer *buf = omx_buffer->pAppPrivate;
 
-            if (buf && !(omx_buffer->nFlags & CODEC_DATA_FLAG))
+            /* I'm not really sure if it was intentional to block zero-copy of
+             * the codec-data buffer.. this is how the original code worked,
+             * so I kept the behavior
+             */
+            if (!buf || (omx_buffer->nFlags & CODEC_DATA_FLAG))
             {
-                /* make sure no one accidentally tries to re-use
-                 * the buffer we are returning:
-                 */
-                omx_buffer->pAppPrivate = NULL;
-                omx_buffer->pBuffer = NULL;
-            }
-            else
-            {
+                if (buf)
+                    gst_buffer_unref (buf);
+
                 buf = buffer_alloc (port, omx_buffer->nFilledLen);
                 memcpy (GST_BUFFER_DATA (buf),
                         omx_buffer->pBuffer + omx_buffer->nOffset,
@@ -430,20 +441,22 @@ g_omx_port_recv (GOmxPort *port)
             {
                 GST_BUFFER_FLAG_SET (buf, GST_BUFFER_FLAG_IN_CAPS);
             }
-            else
-            {
-                GST_DEBUG_OBJECT (port->core->object,
-                        "omx_buffer: size=%lu, len=%lu, flags=%lu, offset=%lu, timestamp=%lld",
-                        omx_buffer->nAllocLen, omx_buffer->nFilledLen, omx_buffer->nFlags,
-                        omx_buffer->nOffset, omx_buffer->nTimeStamp);
-            }
 
             ret = buf;
+        }
+        else
+        {
+            GstBuffer *buf = omx_buffer->pAppPrivate;
+
+            if (buf)
+                gst_buffer_unref (buf);
+
+            GST_DEBUG_OBJECT (port->core->object, "empty buffer"); /* keep looping */
         }
 
         if (port->share_buffer)
         {
-            GstBuffer *new_buf = buffer_alloc (port, omx_buffer->nFilledLen);  /* XXX or should that be nAllocLen? */
+            GstBuffer *new_buf = buffer_alloc (port, omx_buffer->nAllocLen);
             omx_buffer->pAppPrivate = new_buf;
             omx_buffer->pBuffer     = GST_BUFFER_DATA (new_buf);
             omx_buffer->nAllocLen   = GST_BUFFER_SIZE (new_buf);
@@ -451,7 +464,7 @@ g_omx_port_recv (GOmxPort *port)
         }
         else
         {
-            g_assert (omx_buffer->pBuffer);
+            g_assert (omx_buffer->pBuffer && !omx_buffer->pAppPrivate);
         }
 
         release_buffer (port, omx_buffer);
