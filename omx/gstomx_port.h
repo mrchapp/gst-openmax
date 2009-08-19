@@ -46,7 +46,6 @@ struct GOmxPort
     GOmxPortType type;
 
     guint num_buffers;
-    gulong buffer_size;
     guint port_index;
     OMX_BUFFERHEADERTYPE **buffers;
 
@@ -75,10 +74,9 @@ void g_omx_port_free (GOmxPort *port);
         OMX_GetParameter (g_omx_core_get_handle ((port)->core), idx, (param)); \
     } G_STMT_END
 
-#define G_OMX_PORT_SET_PARAM(port, idx, param) G_STMT_START {       \
+#define G_OMX_PORT_SET_PARAM(port, idx, param)                      \
         OMX_SetParameter (                                          \
-            g_omx_core_get_handle ((port)->core), idx, (param));    \
-    } G_STMT_END
+            g_omx_core_get_handle ((port)->core), idx, (param))
 
 /* I think we can remove these two:
  */

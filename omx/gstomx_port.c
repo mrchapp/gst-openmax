@@ -46,7 +46,6 @@ g_omx_port_new (GOmxCore *core, guint index)
     port->core = core;
     port->port_index = index;
     port->num_buffers = 0;
-    port->buffer_size = 0;
     port->buffers = NULL;
 
     port->enabled = TRUE;
@@ -87,26 +86,27 @@ g_omx_port_setup (GOmxPort *port,
     port->type = type;
     /** @todo should it be nBufferCountMin? */
     port->num_buffers = omx_port->nBufferCountActual;
-    port->buffer_size = omx_port->nBufferSize;
     port->port_index = omx_port->nPortIndex;
 
     GST_DEBUG_OBJECT (port->core->object,
-        "type=%d, num_buffers=%d, buffer_size=%d, port_index=%d",
-        port->type, port->num_buffers, port->buffer_size, port->port_index);
+        "type=%d, num_buffers=%d, port_index=%d",
+        port->type, port->num_buffers, port->port_index);
 
     g_free (port->buffers);
     port->buffers = g_new0 (OMX_BUFFERHEADERTYPE *, port->num_buffers);
 }
 
-
 static GstBuffer *
 buffer_alloc (GOmxPort *port, gint len)
 {
     GstBuffer *buf = NULL;
+
     if (port->buffer_alloc)
         buf = port->buffer_alloc (port, len);
+
     if (!buf)
         buf = gst_buffer_new_and_alloc (len);
+
     return buf;
 }
 
@@ -114,10 +114,12 @@ buffer_alloc (GOmxPort *port, gint len)
 void
 g_omx_port_allocate_buffers (GOmxPort *port)
 {
+    OMX_PARAM_PORTDEFINITIONTYPE param;
     guint i;
     guint size;
 
-    size = port->buffer_size;
+    g_omx_port_get_config (port, &param);
+    size = param.nBufferSize;
 
     for (i = 0; i < port->num_buffers; i++)
     {
@@ -139,6 +141,23 @@ g_omx_port_allocate_buffers (GOmxPort *port)
             {
                 buf = buffer_alloc (port, size);
                 buffer_data = GST_BUFFER_DATA (buf);
+
+                if (i == 0)
+                {
+                    /* note: first buffer allocation may have triggered caps
+                     * to be renegotiated to use row-stride.. which in turn
+                     * changes the size of the requested buffer.  So let's
+                     * check that, and if necessary start-over:
+                     */
+                    g_omx_port_get_config (port, &param);
+
+                    if (size != param.nBufferSize)
+                    {
+                        gst_buffer_unref (buf);
+                        g_omx_port_allocate_buffers (port);
+                        return;
+                    }
+                }
             }
             else
             {
