@@ -562,3 +562,68 @@ g_omx_port_finish (GOmxPort *port)
     port->enabled = FALSE;
     async_queue_disable (port->queue);
 }
+
+
+/*
+ * Some domain specific port related utility functions:
+ */
+
+/* keep this list in sync GSTOMX_ALL_FORMATS */
+static gint32 all_fourcc[] = {
+        GST_MAKE_FOURCC ('I','4','2','0'),
+        GST_MAKE_FOURCC ('Y','U','Y','2'),
+        GST_MAKE_FOURCC ('U','Y','V','Y')
+};
+
+#ifndef DIM  /* XXX is there a better alternative available? */
+#  define DIM(x) (sizeof(x)/sizeof((x)[0]))
+#endif
+
+/**
+ * A utility function to query the port for supported color formats, and
+ * add the appropriate list of formats to @caps.  The @port can either
+ * be an input port for a video encoder, or an output port for a decoder
+ */
+GstCaps *
+g_omx_port_set_video_formats (GOmxPort *port, GstCaps *caps)
+{
+    OMX_VIDEO_PARAM_PORTFORMATTYPE param;
+    int i,j;
+
+    G_OMX_PORT_GET_PARAM (port, OMX_IndexParamVideoPortFormat, &param);
+
+    caps = gst_caps_make_writable (caps);
+
+    for (i=0; i<gst_caps_get_size (caps); i++)
+    {
+        GstStructure *struc = gst_caps_get_structure (caps, i);
+        GValue formats = {0};
+
+        g_value_init (&formats, GST_TYPE_LIST);
+
+        for (j=0; j<DIM(all_fourcc); j++)
+        {
+            /* check and see if OMX supports the format:
+             */
+            param.eColorFormat = g_omx_fourcc_to_colorformat (all_fourcc[j]);
+            if (OMX_ErrorNone ==
+                    G_OMX_PORT_SET_PARAM (port, OMX_IndexParamVideoPortFormat, &param))
+            {
+                GValue fourccval = {0};
+
+                g_value_init (&fourccval, GST_TYPE_FOURCC);
+
+                gst_value_set_fourcc (&fourccval, all_fourcc[j]);
+
+                gst_value_list_append_value (&formats, &fourccval);
+            }
+        }
+
+        gst_structure_set_value (struc, "format", &formats);
+    }
+
+    return caps;
+}
+
+/* TODO.. add others here, such as g_omx_port_set_image_formats, or whatever else */
+

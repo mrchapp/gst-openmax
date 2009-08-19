@@ -33,11 +33,9 @@ static GstStaticPadTemplate src_template =
 GST_STATIC_PAD_TEMPLATE ("src",
         GST_PAD_SRC,
         GST_PAD_ALWAYS,
-//        GST_STATIC_CAPS (GST_VIDEO_CAPS_YUV_STRIDED ("{ I420, YUY2, UYVY }", "[ 0, max ]"))
-// for now, hard code this to match the hard-coded color format in omx_setup.. see
-// the comment in omx_setup..
-        GST_STATIC_CAPS (GST_VIDEO_CAPS_YUV_STRIDED ("{ UYVY }", "[ 0, max ]"))
+        GST_STATIC_CAPS (GST_VIDEO_CAPS_YUV_STRIDED (GSTOMX_ALL_FORMATS, "[ 0, max ]"))
     );
+
 
 static void
 type_base_init (gpointer g_class)
@@ -68,10 +66,8 @@ settings_changed_cb (GOmxCore *core)
 
     GST_DEBUG_OBJECT (omx_base, "settings changed");
 
-    self->outport_configured = TRUE;
-
     new_caps = gst_caps_intersect (gst_pad_get_caps (omx_base->srcpad),
-            gst_pad_peer_get_caps (omx_base->srcpad));
+           gst_pad_peer_get_caps (omx_base->srcpad));
 
     if (!gst_caps_is_fixed (new_caps))
     {
@@ -157,7 +153,7 @@ sink_setcaps (GstPad *pad,
 }
 
 
-static GstCaps*
+static GstCaps *
 src_getcaps (GstPad *pad)
 {
     GstCaps *caps;
@@ -181,13 +177,11 @@ src_getcaps (GstPad *pad)
          */
         for (i=0; i<(omx_base->out_port->share_buffer ? 2 : 1); i++)
         {
-            guint32 fourcc = g_omx_colorformat_to_fourcc (param.format.video.eColorFormat);
             GstStructure *struc = gst_structure_new (
                     (i ? "video/x-raw-yuv-strided" : "video/x-raw-yuv"),
                     "framerate", GST_TYPE_FRACTION, self->framerate_num, self->framerate_denom,
                     "width",  G_TYPE_INT, param.format.video.nFrameWidth,
                     "height", G_TYPE_INT, param.format.video.nFrameHeight,
-                    "fourcc", GST_TYPE_FOURCC, fourcc,
                     NULL);
 
             if(i)
@@ -205,6 +199,8 @@ src_getcaps (GstPad *pad)
         /* we don't have valid width/height/etc yet, so just use the template.. */
         caps = gst_static_pad_template_get_caps (&src_template);
     }
+
+    caps = g_omx_port_set_video_formats (omx_base->out_port, caps);
 
     GST_DEBUG_OBJECT (self, "caps=%"GST_PTR_FORMAT, caps);
 
@@ -288,20 +284,12 @@ omx_setup (GstOmxBaseFilter *omx_base)
                 param.format.video.nFrameWidth = width;
                 param.format.video.nFrameHeight = height;
 
-                /** @todo get this from the srcpad. */
-#if 1
-/* for now, we can't get it from the srcpad, since the srcpad is not negotiated yet.
- * We need to pad_alloc the first buffer before setting up the ports and putting
- * the OMX component in the executing state, so that we can properly negotiate
- * the srcpad caps.
- */
-                param.format.video.eColorFormat = OMX_COLOR_FormatCbYCrY;
-#endif
-
                 g_omx_port_set_config (omx_base->out_port, &param);
             }
         }
     }
+
+    self->outport_configured = TRUE;
 
     GST_INFO_OBJECT (omx_base, "end");
 }

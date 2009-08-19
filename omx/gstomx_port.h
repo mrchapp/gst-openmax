@@ -102,5 +102,13 @@ void g_omx_port_push_buffer (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer);
 gint g_omx_port_send (GOmxPort *port, gpointer obj);
 gpointer g_omx_port_recv (GOmxPort *port);
 
+/*
+ * Some domain specific port related utility functions:
+ */
+
+#define GSTOMX_ALL_FORMATS  "{ I420, YUY2, UYVY }"
+
+GstCaps * g_omx_port_set_video_formats (GOmxPort *port, GstCaps *caps);
+
 
 #endif /* GSTOMX_PORT_H */
