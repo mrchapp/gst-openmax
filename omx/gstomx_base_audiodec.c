@@ -53,16 +53,11 @@ settings_changed_cb (GOmxCore *core)
     {
         OMX_AUDIO_PARAM_PCMMODETYPE param;
 
-        memset (&param, 0, sizeof (param));
-        param.nSize = sizeof (OMX_AUDIO_PARAM_PCMMODETYPE);
-        param.nVersion.s.nVersionMajor = 1;
-        param.nVersion.s.nVersionMinor = 1;
-
-        param.nPortIndex = 1;
-        OMX_GetParameter (omx_base->gomx->omx_handle, OMX_IndexParamAudioPcm, &param);
+        G_OMX_PORT_GET_PARAM (omx_base->out_port, OMX_IndexParamAudioPcm, &param);
 
         rate = param.nSamplingRate;
         channels = param.nChannels;
+
         if (rate == 0)
         {
             /** @todo: this shouldn't happen. */

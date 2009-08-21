@@ -24,7 +24,10 @@
 
 #include <string.h> /* for memset */
 
-#include <omx/TIDspOmx.h>
+#ifdef USE_OMXTIAUDIODEC
+#  include <TIDspOmx.h>
+#endif
+#include <OMX_Core.h>
 
 GSTOMX_BOILERPLATE (GstOmxMp3Dec, gst_omx_mp3dec, GstOmxBaseAudioDec, GST_OMX_BASE_AUDIODEC_TYPE);
 
@@ -103,11 +106,9 @@ type_base_init (gpointer g_class)
 static void
 omx_setup (GstOmxBaseFilter *omx_base)
 {
-    GOmxCore *gomx = omx_base->gomx;
-
-    GST_DEBUG_OBJECT (omx_base, "setting frame-mode");
-
     /* This is specific for TI. */
+#ifdef USE_OMXTIAUDIODEC
+    GOmxCore *gomx = omx_base->gomx;
     {
         OMX_INDEXTYPE index;
         TI_OMX_DSP_DEFINITION audioinfo;
@@ -116,12 +117,15 @@ omx_setup (GstOmxBaseFilter *omx_base)
 
         audioinfo.framemode = TRUE; /* TRUE = frame mode */
 
-        OMX_GetExtensionIndex (gomx->omx_handle, "OMX.TI.index.config.mp3headerinfo", &index);
+        g_assert( OMX_GetExtensionIndex (gomx->omx_handle, "OMX.TI.index.config.mp3headerinfo",
+                &index) == OMX_ErrorNone);
 
-        OMX_SetConfig (gomx->omx_handle, index, &audioinfo);
+        g_assert( OMX_SetConfig (gomx->omx_handle, index, &audioinfo)== OMX_ErrorNone);
 
         GST_DEBUG_OBJECT (omx_base, "OMX_SetConfig OMX.TI.index.config.mp3headerinfo");
+        GST_DEBUG_OBJECT (omx_base, "setting frame-mode");
     }
+#endif
 }
 static void
 type_class_init (gpointer g_class,
