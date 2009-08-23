@@ -51,6 +51,15 @@ AG_GST_CHECK_GST($GST_MAJORMINOR, [$GST_REQUIRED])
 AG_GST_CHECK_GST_BASE($GST_MAJORMINOR, [$GST_REQUIRED])
 AG_GST_CHECK_GST_CHECK($GST_MAJORMINOR, [$GST_REQUIRED], [no])
 
+dnl *** checks for OpenMAX ***
+dnl Check for OMX Core:
+PKG_CHECK_MODULES([OMXCORE], [libOMX_Core], [
+	echo "OMX Headers found.. using them!"
+], [
+	echo "OMX Headers not found.. using my own OMX headers!"
+	OMXCORE_CFLAGS="-I\$(srcdir)/headers"
+])
+
 dnl ** finalize ***
 
 dnl set license and copyright notice
