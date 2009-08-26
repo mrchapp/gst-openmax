@@ -324,11 +324,11 @@ type_class_init (gpointer g_class,
         g_object_class_install_property (gobject_class, ARG_NUM_INPUT_BUFFERS,
                                          g_param_spec_uint ("input-buffers", "Input buffers",
                                                             "The number of OMX input buffers",
-                                                            1, 10, 4, G_PARAM_READWRITE|G_PARAM_CONSTRUCT));
+                                                            1, 10, 4, G_PARAM_READWRITE));
         g_object_class_install_property (gobject_class, ARG_NUM_OUTPUT_BUFFERS,
                                          g_param_spec_uint ("output-buffers", "Output buffers",
                                                             "The number of OMX output buffers",
-                                                            1, 10, 4, G_PARAM_READWRITE|G_PARAM_CONSTRUCT));
+                                                            1, 10, 4, G_PARAM_READWRITE));
     }
 }
 
