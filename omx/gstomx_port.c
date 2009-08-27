@@ -290,6 +290,12 @@ send_prep_codec_data (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer, GstBuffe
     omx_buffer->nFlags |= CODEC_DATA_FLAG;
     omx_buffer->nFilledLen = GST_BUFFER_SIZE (buf);
 
+    if (port->share_buffer)
+    {
+        omx_buffer->nOffset = 0;
+        omx_buffer->pBuffer = malloc (omx_buffer->nFilledLen);
+    }
+
     memcpy (omx_buffer->pBuffer + omx_buffer->nOffset,
             GST_BUFFER_DATA (buf), omx_buffer->nFilledLen);
 }
@@ -383,6 +389,7 @@ g_omx_port_send (GOmxPort *port, gpointer obj)
             GstBuffer *old_buf = omx_buffer->pAppPrivate;
             gst_buffer_unref (old_buf);
             omx_buffer->pAppPrivate = NULL;
+            omx_buffer->pBuffer = NULL;     /* just to ease debugging */
         }
 
         send_prep (port, omx_buffer, obj);
