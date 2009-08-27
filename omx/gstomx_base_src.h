@@ -44,6 +44,7 @@ struct GstOmxBaseSrc
     GOmxCore *gomx;
     GOmxPort *out_port;
 
+    char *omx_role;
     char *omx_component;
     char *omx_library;
     GstOmxBaseSrcCb setup_ports;

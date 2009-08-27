@@ -122,8 +122,8 @@ core_for_each_port (GOmxCore *core,
  * Construct new core
  *
  * @object: the GstOmx object (ie. GstOmxBaseFilter, GstOmxBaseSrc, or
- *    GstOmxBaseSink).  The GstOmx object should have "component-name"
- *    and "library-name" properties.
+ *    GstOmxBaseSink).  The GstOmx object should have "component-role",
+ *    "component-name", and "library-name" properties.
  */
 GOmxCore *
 g_omx_core_new (gpointer object, gpointer klass)
@@ -148,7 +148,7 @@ g_omx_core_new (gpointer object, gpointer klass)
     core->use_timestamps = TRUE;
 
     {
-        gchar *library_name, *component_name;
+        gchar *library_name, *component_name, *component_role;
 
         library_name = g_type_get_qdata (G_OBJECT_CLASS_TYPE (klass),
                 g_quark_from_static_string ("library-name"));
@@ -156,7 +156,11 @@ g_omx_core_new (gpointer object, gpointer klass)
         component_name = g_type_get_qdata (G_OBJECT_CLASS_TYPE (klass),
                 g_quark_from_static_string ("component-name"));
 
+        component_role = g_type_get_qdata (G_OBJECT_CLASS_TYPE (klass),
+                g_quark_from_static_string ("component-role"));
+
         g_object_set (core->object,
+            "component-role", component_role,
             "component-name", component_name,
             "library-name", library_name,
             NULL);
@@ -185,17 +189,19 @@ g_omx_core_free (GOmxCore *core)
 void
 g_omx_core_init (GOmxCore *core)
 {
-    gchar *library_name=NULL, *component_name=NULL;
+    gchar *library_name=NULL, *component_name=NULL, *component_role=NULL;
 
     if (core->omx_handle)
       return;
 
-    GST_DEBUG_OBJECT (core->object, "loading: %s (%s)", component_name, library_name);
-
     g_object_get (core->object,
+        "component-role", &component_role,
         "component-name", &component_name,
         "library-name", &library_name,
         NULL);
+
+    GST_DEBUG_OBJECT (core->object, "loading: %s %s (%s)", component_name,
+            component_role ? component_role : "", library_name);
 
     g_return_if_fail (component_name);
     g_return_if_fail (library_name);
@@ -210,11 +216,33 @@ g_omx_core_init (GOmxCore *core)
                                                        core,
                                                        &callbacks);
 
-    g_free (component_name);
-    g_free (library_name);
-
     GST_DEBUG_OBJECT (core->object, "OMX_GetHandle(&%p) -> %s",
         core->omx_handle, g_omx_error_to_str (core->omx_error));
+
+    if (component_role)
+    {
+        OMX_PARAM_COMPONENTROLETYPE param;
+        memset(&param, 0, sizeof(param));
+        param.nSize = sizeof (OMX_PARAM_COMPONENTROLETYPE);
+        param.nVersion.s.nVersionMajor = 1;
+        param.nVersion.s.nVersionMinor = 1;
+
+        GST_DEBUG_OBJECT (core->object, "setting component role: %s",
+                component_role);
+
+        OMX_GetParameter (core->omx_handle,
+                OMX_IndexParamStandardComponentRole, &param);
+
+        strcpy((char*)param.cRole, "audio_decode.dsp.mp3");
+
+        OMX_SetParameter ( core->omx_handle,
+                OMX_IndexParamStandardComponentRole, &param);
+
+        g_free (component_role);
+    }
+
+    g_free (component_name);
+    g_free (library_name);
 
     g_return_if_fail (core->omx_handle);
 

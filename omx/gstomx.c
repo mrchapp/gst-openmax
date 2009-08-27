@@ -61,44 +61,45 @@ typedef struct TableItem
     const gchar *name;
     const gchar *library_name;
     const gchar *component_name;
+    const gchar *component_role;
     guint rank;
     GType (*get_type) (void);
 } TableItem;
 
 static TableItem element_table[] =
 {
-    { "omx_dummy", "libomxil-bellagio.so.0", "OMX.st.dummy", GST_RANK_NONE, gst_omx_dummy_get_type },
-    { "omx_mpeg4dec", "libOMX_Core.so", "OMX.TI.Video.Decoder", GST_RANK_PRIMARY, gst_omx_mpeg4dec_get_type },
-    { "omx_h264dec", "libOMX_Core.so", "OMX.TI.Video.Decoder", GST_RANK_PRIMARY, gst_omx_h264dec_get_type },
-    { "omx_h263dec", "libOMX_Core.so", "OMX.TI.Video.Decoder", GST_RANK_PRIMARY, gst_omx_h263dec_get_type },
-    { "omx_wmvdec", "libOMX_Core.so", "OMX.TI.Video.Decoder", GST_RANK_PRIMARY, gst_omx_wmvdec_get_type },
-    { "omx_mpeg4enc", "libOMX_Core.so", "OMX.TI.Video.encoder", GST_RANK_PRIMARY, gst_omx_mpeg4enc_get_type },
-    { "omx_h264enc", "libOMX_Core.so", "OMX.TI.Video.encoder", GST_RANK_PRIMARY, gst_omx_h264enc_get_type },
-    { "omx_h263enc", "libOMX_Core.so", "OMX.TI.Video.encoder", GST_RANK_PRIMARY, gst_omx_h263enc_get_type },
-    { "omx_vorbisdec", "libomxil-bellagio.so.0", "OMX.st.audio_decoder.ogg.single", GST_RANK_PRIMARY, gst_omx_vorbisdec_get_type },
-    { "omx_mp3dec", "libOMX_Core.so", "OMX.TI.AUDIO.DECODE", GST_RANK_PRIMARY, gst_omx_mp3dec_get_type },
-    { "omx_mp2dec", "libomxil-bellagio.so.0", "OMX.st.audio_decoder.mp3.mad", GST_RANK_PRIMARY, gst_omx_mp2dec_get_type },
-    { "omx_amrnbdec", "libomxil-bellagio.so.0", "OMX.st.audio_decoder.amrnb", GST_RANK_PRIMARY, gst_omx_amrnbdec_get_type },
-    { "omx_amrnbenc", "libomxil-bellagio.so.0", "OMX.st.audio_encoder.amrnb", GST_RANK_PRIMARY, gst_omx_amrnbenc_get_type },
-    { "omx_amrwbdec", "libomxil-bellagio.so.0", "OMX.st.audio_decoder.amrwb", GST_RANK_PRIMARY, gst_omx_amrwbdec_get_type },
-    { "omx_amrwbenc", "libomxil-bellagio.so.0", "OMX.st.audio_encoder.amrwb", GST_RANK_PRIMARY, gst_omx_amrwbenc_get_type },
-    { "omx_aacdec", "libOMX_Core.so", "OMX.TI.AAC.decode", GST_RANK_PRIMARY, gst_omx_aacdec_get_type },
-    { "omx_aacenc", "libOMX_Core.so", "OMX.TI.AAC.encode", GST_RANK_PRIMARY, gst_omx_aacenc_get_type },
-    { "omx_adpcmdec", "libomxil-bellagio.so.0", "OMX.st.audio_decoder.adpcm", GST_RANK_PRIMARY, gst_omx_adpcmdec_get_type },
-    { "omx_adpcmenc", "libomxil-bellagio.so.0", "OMX.st.audio_encoder.adpcm", GST_RANK_PRIMARY, gst_omx_adpcmenc_get_type },
-    { "omx_g711dec", "libomxil-bellagio.so.0", "OMX.st.audio_decoder.g711", GST_RANK_PRIMARY, gst_omx_g711dec_get_type },
-    { "omx_g711enc", "libomxil-bellagio.so.0", "OMX.st.audio_encoder.g711", GST_RANK_PRIMARY, gst_omx_g711enc_get_type },
-    { "omx_g729dec", "libomxil-bellagio.so.0", "OMX.st.audio_decoder.g729", GST_RANK_PRIMARY, gst_omx_g729dec_get_type },
-    { "omx_g729enc", "libomxil-bellagio.so.0", "OMX.st.audio_encoder.g729", GST_RANK_PRIMARY, gst_omx_g729enc_get_type },
-    { "omx_ilbcdec", "libomxil-bellagio.so.0", "OMX.st.audio_decoder.ilbc", GST_RANK_PRIMARY, gst_omx_ilbcdec_get_type },
-    { "omx_ilbcenc", "libomxil-bellagio.so.0", "OMX.st.audio_encoder.ilbc", GST_RANK_PRIMARY, gst_omx_ilbcenc_get_type },
-    { "omx_jpegenc", "libOMX_Core.so", "OMX.TI.JPEG.encoder", GST_RANK_PRIMARY, gst_omx_jpegenc_get_type },
-    { "omx_jpegdec", "libOMX_Core.so", "OMX.TI.JPEG.decode", GST_RANK_PRIMARY, gst_omx_jpegdec_get_type },
-    { "omx_audiosink", "libomxil-bellagio.so.0", "OMX.st.alsa.alsasink", GST_RANK_NONE, gst_omx_audiosink_get_type },
-    { "omx_videosink", "libomxil-bellagio.so.0", "OMX.st.videosink", GST_RANK_NONE, gst_omx_videosink_get_type },
-    { "omx_filereadersrc", "libomxil-bellagio.so.0", "OMX.st.audio_filereader", GST_RANK_NONE, gst_omx_filereadersrc_get_type },
-    { "omx_volume", "libomxil-bellagio.so.0", "OMX.st.volume.component", GST_RANK_NONE, gst_omx_volume_get_type },
-    { NULL, NULL, NULL, 0, NULL },
+    { "omx_dummy",          "libomxil-bellagio.so.0",   "OMX.st.dummy",                 NULL,                   GST_RANK_NONE,      gst_omx_dummy_get_type },
+    { "omx_mpeg4dec",       "libOMX_Core.so",           "OMX.TI.Video.Decoder",         NULL,                   GST_RANK_PRIMARY,   gst_omx_mpeg4dec_get_type },
+    { "omx_h264dec",        "libOMX_Core.so",           "OMX.TI.Video.Decoder",         NULL,                   GST_RANK_PRIMARY,   gst_omx_h264dec_get_type },
+    { "omx_h263dec",        "libOMX_Core.so",           "OMX.TI.Video.Decoder",         NULL,                   GST_RANK_PRIMARY,   gst_omx_h263dec_get_type },
+    { "omx_wmvdec",         "libOMX_Core.so",           "OMX.TI.Video.Decoder",         NULL,                   GST_RANK_PRIMARY,   gst_omx_wmvdec_get_type },
+    { "omx_mpeg4enc",       "libOMX_Core.so",           "OMX.TI.Video.encoder",         NULL,                   GST_RANK_PRIMARY,   gst_omx_mpeg4enc_get_type },
+    { "omx_h264enc",        "libOMX_Core.so",           "OMX.TI.Video.encoder",         NULL,                   GST_RANK_PRIMARY,   gst_omx_h264enc_get_type },
+    { "omx_h263enc",        "libOMX_Core.so",           "OMX.TI.Video.encoder",         NULL,                   GST_RANK_PRIMARY,   gst_omx_h263enc_get_type },
+    { "omx_vorbisdec",      "libomxil-bellagio.so.0",   "OMX.st.audio_decoder.ogg.single", NULL,                GST_RANK_PRIMARY,   gst_omx_vorbisdec_get_type },
+    { "omx_mp3dec",         "libOMX_Core.so",           "OMX.TI.AUDIO.DECODE",          "audio_decode.dsp.mp3", GST_RANK_PRIMARY,   gst_omx_mp3dec_get_type },
+    { "omx_mp2dec",         "libomxil-bellagio.so.0",   "OMX.st.audio_decoder.mp3.mad", NULL,                   GST_RANK_PRIMARY,   gst_omx_mp2dec_get_type },
+    { "omx_amrnbdec",       "libomxil-bellagio.so.0",   "OMX.st.audio_decoder.amrnb",   NULL,                   GST_RANK_PRIMARY,   gst_omx_amrnbdec_get_type },
+    { "omx_amrnbenc",       "libomxil-bellagio.so.0",   "OMX.st.audio_encoder.amrnb",   NULL,                   GST_RANK_PRIMARY,   gst_omx_amrnbenc_get_type },
+    { "omx_amrwbdec",       "libomxil-bellagio.so.0",   "OMX.st.audio_decoder.amrwb",   NULL,                   GST_RANK_PRIMARY,   gst_omx_amrwbdec_get_type },
+    { "omx_amrwbenc",       "libomxil-bellagio.so.0",   "OMX.st.audio_encoder.amrwb",   NULL,                   GST_RANK_PRIMARY,   gst_omx_amrwbenc_get_type },
+    { "omx_aacdec",         "libOMX_Core.so",           "OMX.TI.AUDIO.DECODE",          "audio_decode.dsp.aac", GST_RANK_PRIMARY,   gst_omx_aacdec_get_type },
+    { "omx_aacenc",         "libOMX_Core.so",           "OMX.TI.AAC.encode",            NULL,                   GST_RANK_PRIMARY,   gst_omx_aacenc_get_type },
+    { "omx_adpcmdec",       "libomxil-bellagio.so.0",   "OMX.st.audio_decoder.adpcm",   NULL,                   GST_RANK_PRIMARY,   gst_omx_adpcmdec_get_type },
+    { "omx_adpcmenc",       "libomxil-bellagio.so.0",   "OMX.st.audio_encoder.adpcm",   NULL,                   GST_RANK_PRIMARY,   gst_omx_adpcmenc_get_type },
+    { "omx_g711dec",        "libomxil-bellagio.so.0",   "OMX.st.audio_decoder.g711",    NULL,                   GST_RANK_PRIMARY,   gst_omx_g711dec_get_type },
+    { "omx_g711enc",        "libomxil-bellagio.so.0",   "OMX.st.audio_encoder.g711",    NULL,                   GST_RANK_PRIMARY,   gst_omx_g711enc_get_type },
+    { "omx_g729dec",        "libomxil-bellagio.so.0",   "OMX.st.audio_decoder.g729",    NULL,                   GST_RANK_PRIMARY,   gst_omx_g729dec_get_type },
+    { "omx_g729enc",        "libomxil-bellagio.so.0",   "OMX.st.audio_encoder.g729",    NULL,                   GST_RANK_PRIMARY,   gst_omx_g729enc_get_type },
+    { "omx_ilbcdec",        "libomxil-bellagio.so.0",   "OMX.st.audio_decoder.ilbc",    NULL,                   GST_RANK_PRIMARY,   gst_omx_ilbcdec_get_type },
+    { "omx_ilbcenc",        "libomxil-bellagio.so.0",   "OMX.st.audio_encoder.ilbc",    NULL,                   GST_RANK_PRIMARY,   gst_omx_ilbcenc_get_type },
+    { "omx_jpegenc",        "libOMX_Core.so",           "OMX.TI.JPEG.encoder",          NULL,                   GST_RANK_PRIMARY,   gst_omx_jpegenc_get_type },
+    { "omx_jpegdec",        "libOMX_Core.so",           "OMX.TI.JPEG.decode",           NULL,                   GST_RANK_PRIMARY,   gst_omx_jpegdec_get_type },
+    { "omx_audiosink",      "libomxil-bellagio.so.0",   "OMX.st.alsa.alsasink",         NULL,                   GST_RANK_NONE,      gst_omx_audiosink_get_type },
+    { "omx_videosink",      "libomxil-bellagio.so.0",   "OMX.st.videosink",             NULL,                   GST_RANK_NONE,      gst_omx_videosink_get_type },
+    { "omx_filereadersrc",  "libomxil-bellagio.so.0",   "OMX.st.audio_filereader",      NULL,                   GST_RANK_NONE,      gst_omx_filereadersrc_get_type },
+    { "omx_volume",         "libomxil-bellagio.so.0",   "OMX.st.volume.component",      NULL,                   GST_RANK_NONE,      gst_omx_volume_get_type },
+    { NULL, NULL, NULL, NULL, 0, NULL },
 };
 
 static gboolean
@@ -106,11 +107,13 @@ plugin_init (GstPlugin *plugin)
 {
     GQuark library_name_quark;
     GQuark component_name_quark;
+    GQuark component_role_quark;
     GST_DEBUG_CATEGORY_INIT (gstomx_debug, "omx", 0, "gst-openmax");
     GST_DEBUG_CATEGORY_INIT (gstomx_util_debug, "omx_util", 0, "gst-openmax utility");
 
     library_name_quark = g_quark_from_static_string ("library-name");
     component_name_quark = g_quark_from_static_string ("component-name");
+    component_role_quark = g_quark_from_static_string ("component-role");
 
     g_omx_init ();
 
@@ -125,6 +128,7 @@ plugin_init (GstPlugin *plugin)
             type = element->get_type ();
             g_type_set_qdata (type, library_name_quark, (gpointer) element->library_name);
             g_type_set_qdata (type, component_name_quark, (gpointer) element->component_name);
+            g_type_set_qdata (type, component_role_quark, (gpointer) element->component_role);
 
             if (!gst_element_register (plugin, element->name, element->rank, type))
             {

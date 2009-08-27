@@ -27,6 +27,7 @@
 enum
 {
     ARG_0,
+    ARG_COMPONENT_ROLE,
     ARG_COMPONENT_NAME,
     ARG_LIBRARY_NAME,
 };
@@ -97,6 +98,7 @@ finalize (GObject *obj)
 
     g_omx_core_free (self->gomx);
 
+    g_free (self->omx_role);
     g_free (self->omx_component);
     g_free (self->omx_library);
 
@@ -228,18 +230,16 @@ set_property (GObject *obj,
 
     switch (prop_id)
     {
+        case ARG_COMPONENT_ROLE:
+            g_free (self->omx_role);
+            self->omx_role = g_value_dup_string (value);
+            break;
         case ARG_COMPONENT_NAME:
-            if (self->omx_component)
-            {
-                g_free (self->omx_component);
-            }
+            g_free (self->omx_component);
             self->omx_component = g_value_dup_string (value);
             break;
         case ARG_LIBRARY_NAME:
-            if (self->omx_library)
-            {
-                g_free (self->omx_library);
-            }
+            g_free (self->omx_library);
             self->omx_library = g_value_dup_string (value);
             break;
         default:
@@ -260,6 +260,9 @@ get_property (GObject *obj,
 
     switch (prop_id)
     {
+        case ARG_COMPONENT_ROLE:
+            g_value_set_string (value, self->omx_role);
+            break;
         case ARG_COMPONENT_NAME:
             g_value_set_string (value, self->omx_component);
             break;
@@ -298,6 +301,11 @@ type_class_init (gpointer g_class,
     {
         gobject_class->set_property = set_property;
         gobject_class->get_property = get_property;
+
+        g_object_class_install_property (gobject_class, ARG_COMPONENT_ROLE,
+                                         g_param_spec_string ("component-role", "Component role",
+                                                              "Role of the OpenMAX IL component",
+                                                              NULL, G_PARAM_READWRITE));
 
         g_object_class_install_property (gobject_class, ARG_COMPONENT_NAME,
                                          g_param_spec_string ("component-name", "Component name",

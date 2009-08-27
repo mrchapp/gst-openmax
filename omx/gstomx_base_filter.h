@@ -48,6 +48,7 @@ struct GstOmxBaseFilter
     GOmxPort *in_port;
     GOmxPort *out_port;
 
+    char *omx_role;
     char *omx_component;
     char *omx_library;
     gboolean ready;
