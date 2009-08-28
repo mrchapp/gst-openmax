@@ -233,7 +233,7 @@ g_omx_core_init (GOmxCore *core)
         OMX_GetParameter (core->omx_handle,
                 OMX_IndexParamStandardComponentRole, &param);
 
-        strcpy((char*)param.cRole, "audio_decode.dsp.mp3");
+        strcpy((char*)param.cRole, component_role);
 
         OMX_SetParameter ( core->omx_handle,
                 OMX_IndexParamStandardComponentRole, &param);
