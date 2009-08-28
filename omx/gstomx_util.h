@@ -125,7 +125,9 @@ GType type_as_function ## _get_type (void)                                    \
 
 #define PRINT_BUFFER(obj, buffer)    G_STMT_START {             \
     if (buffer) {                                               \
-      GST_DEBUG_OBJECT (obj, #buffer "=0x%08x (time=%"GST_TIME_FORMAT", duration=%"GST_TIME_FORMAT", flags=%08x)", (buffer), GST_TIME_ARGS (GST_BUFFER_TIMESTAMP (buffer)), GST_TIME_ARGS (GST_BUFFER_DURATION(buffer)), GST_BUFFER_FLAGS (buffer)); \
+      GST_DEBUG_OBJECT (obj, #buffer "=0x%08x (time=%"GST_TIME_FORMAT", duration=%"GST_TIME_FORMAT", flags=%08x, size=%d)", \
+              (buffer), GST_TIME_ARGS (GST_BUFFER_TIMESTAMP (buffer)), GST_TIME_ARGS (GST_BUFFER_DURATION(buffer)), \
+              GST_BUFFER_FLAGS (buffer), GST_BUFFER_SIZE (buffer)); \
     } else {                                                    \
       GST_DEBUG_OBJECT (obj, #buffer "=null");                  \
     }                                                           \

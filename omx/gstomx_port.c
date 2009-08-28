@@ -251,11 +251,13 @@ release_buffer (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer)
     switch (port->type)
     {
         case GOMX_PORT_INPUT:
-            GST_DEBUG_OBJECT (port->core->object, "ETB: omx_buffer=%p, pAppPrivate=%p", omx_buffer, omx_buffer ? omx_buffer->pAppPrivate : 0);
+            GST_DEBUG_OBJECT (port->core->object, "ETB: omx_buffer=%p, pAppPrivate=%p, pBuffer=%p",
+                    omx_buffer, omx_buffer ? omx_buffer->pAppPrivate : 0, omx_buffer ? omx_buffer->pBuffer : 0);
             OMX_EmptyThisBuffer (port->core->omx_handle, omx_buffer);
             break;
         case GOMX_PORT_OUTPUT:
-            GST_DEBUG_OBJECT (port->core->object, "FTB: omx_buffer=%p, pAppPrivate=%p", omx_buffer, omx_buffer ? omx_buffer->pAppPrivate : 0);
+            GST_DEBUG_OBJECT (port->core->object, "FTB: omx_buffer=%p, pAppPrivate=%p, pBuffer=%p",
+                    omx_buffer, omx_buffer ? omx_buffer->pAppPrivate : 0, omx_buffer ? omx_buffer->pBuffer : 0);
             OMX_FillThisBuffer (port->core->omx_handle, omx_buffer);
             break;
         default:
@@ -337,6 +339,13 @@ send_prep_eos_event (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer, GstEvent 
 {
     omx_buffer->nFlags |= OMX_BUFFERFLAG_EOS;
     omx_buffer->nFilledLen = 0;
+    omx_buffer->nAllocLen  = 0;
+    /* OMX should not try to read from the buffer, since it is empty.. but yet
+     * it complains if pBuffer is NULL.  This will get us past that check, and
+     * ensure that OMX segfaults in a debuggible way if they do something
+     * stupid like read from the empty buffer:
+     */
+    omx_buffer->pBuffer    = (OMX_U8 *)1;
 }
 
 /**
@@ -454,6 +463,13 @@ g_omx_port_recv (GOmxPort *port)
                 memcpy (GST_BUFFER_DATA (buf),
                         omx_buffer->pBuffer + omx_buffer->nOffset,
                         omx_buffer->nFilledLen);
+            }
+            else if (buf)
+            {
+                /* don't rely on OMX having told us the correct buffer size
+                 * when we allocated the buffer.
+                 */
+                GST_BUFFER_SIZE (buf) = omx_buffer->nFilledLen;
             }
 
             if (port->core->use_timestamps)

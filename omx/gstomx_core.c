@@ -612,7 +612,8 @@ EmptyBufferDone (OMX_HANDLETYPE omx_handle,
     core = (GOmxCore*) app_data;
     port = get_port (core, omx_buffer->nInputPortIndex);
 
-    GST_DEBUG_OBJECT (core->object, "EBD: omx_buffer=%p, pAppPrivate=%p", omx_buffer, omx_buffer ? omx_buffer->pAppPrivate : 0);
+    GST_DEBUG_OBJECT (core->object, "EBD: omx_buffer=%p, pAppPrivate=%p, pBuffer=%p",
+            omx_buffer, omx_buffer ? omx_buffer->pAppPrivate : 0, omx_buffer ? omx_buffer->pBuffer : 0);
     g_omx_core_got_buffer (core, port, omx_buffer);
 
     return OMX_ErrorNone;
@@ -629,7 +630,8 @@ FillBufferDone (OMX_HANDLETYPE omx_handle,
     core = (GOmxCore *) app_data;
     port = get_port (core, omx_buffer->nOutputPortIndex);
 
-    GST_DEBUG_OBJECT (core->object, "FBD: omx_buffer=%p, pAppPrivate=%p", omx_buffer, omx_buffer ? omx_buffer->pAppPrivate : 0);
+    GST_DEBUG_OBJECT (core->object, "FBD: omx_buffer=%p, pAppPrivate=%p, pBuffer=%p",
+            omx_buffer, omx_buffer ? omx_buffer->pAppPrivate : 0, omx_buffer ? omx_buffer->pBuffer : 0);
     g_omx_core_got_buffer (core, port, omx_buffer);
 
     return OMX_ErrorNone;
