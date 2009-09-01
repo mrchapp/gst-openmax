@@ -595,6 +595,7 @@ EventHandler (OMX_HANDLETYPE omx_handle,
                 break;
             }
         default:
+            GST_WARNING_OBJECT (core->object, "unhandled event: %d", event);
             break;
     }
 

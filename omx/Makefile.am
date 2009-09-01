@@ -41,6 +41,7 @@ libgstomx_la_SOURCES = gstomx.c gstomx.h \
 		       gstomx_audiosink.c gstomx_audiosink.h \
 		       gstomx_videosink.c gstomx_videosink.h \
 		       gstomx_base_src.c gstomx_base_src.h \
+		       gstomx_camera.c gstomx_camera.h \
 		       gstomx_filereadersrc.c gstomx_filereadersrc.h
 
 libgstomx_la_CFLAGS = $(OMXCORE_CFLAGS) $(OMXTIAUDIODEC_CFLAGS) $(USE_OMXTIAUDIODEC) $(GST_CFLAGS) $(GST_BASE_CFLAGS) -I$(top_srcdir)/util

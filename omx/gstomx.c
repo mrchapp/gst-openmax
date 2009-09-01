@@ -51,6 +51,7 @@
 #include "gstomx_videosink.h"
 #include "gstomx_filereadersrc.h"
 #include "gstomx_volume.h"
+#include "gstomx_camera.h"
 
 #include "config.h"
 
@@ -99,6 +100,7 @@ static TableItem element_table[] =
     { "omx_videosink",      "libomxil-bellagio.so.0",   "OMX.st.videosink",             NULL,                   GST_RANK_NONE,      gst_omx_videosink_get_type },
     { "omx_filereadersrc",  "libomxil-bellagio.so.0",   "OMX.st.audio_filereader",      NULL,                   GST_RANK_NONE,      gst_omx_filereadersrc_get_type },
     { "omx_volume",         "libomxil-bellagio.so.0",   "OMX.st.volume.component",      NULL,                   GST_RANK_NONE,      gst_omx_volume_get_type },
+    { "omx_camera",         "libOMX_Core.so",           "OMX.TI.CAMERA",                NULL,                   GST_RANK_PRIMARY,   gst_omx_camera_get_type },
     { NULL, NULL, NULL, NULL, 0, NULL },
 };
 

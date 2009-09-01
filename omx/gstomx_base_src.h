@@ -53,6 +53,7 @@ struct GstOmxBaseSrc
 struct GstOmxBaseSrcClass
 {
     GstBaseSrcClass parent_class;
+    gint out_port_index;
 };
 
 GType gst_omx_base_src_get_type (void);

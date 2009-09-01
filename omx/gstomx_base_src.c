@@ -39,8 +39,7 @@ setup_ports (GstOmxBaseSrc *self)
 {
     OMX_PARAM_PORTDEFINITIONTYPE param;
 
-    /* Input port configuration. */
-
+    /* Output port configuration. */
     g_omx_port_get_config (self->out_port, &param);
     g_omx_port_setup (self->out_port, &param);
 
@@ -286,9 +285,11 @@ type_class_init (gpointer g_class,
 {
     GObjectClass *gobject_class;
     GstBaseSrcClass *gst_base_src_class;
+    GstOmxBaseSrcClass *omx_base_class;
 
     gobject_class = G_OBJECT_CLASS (g_class);
     gst_base_src_class = GST_BASE_SRC_CLASS (g_class);
+    omx_base_class = GST_OMX_BASE_SRC_CLASS (g_class);
 
     gobject_class->finalize = finalize;
 
@@ -317,6 +318,8 @@ type_class_init (gpointer g_class,
                                                               "Name of the OpenMAX IL implementation library to use",
                                                               NULL, G_PARAM_READWRITE));
     }
+
+    omx_base_class->out_port_index = 0;
 }
 
 
@@ -371,15 +374,17 @@ type_instance_init (GTypeInstance *instance,
                     gpointer g_class)
 {
     GstOmxBaseSrc *self;
+    GstOmxBaseSrcClass *klass;
 
     self = GST_OMX_BASE_SRC (instance);
+    klass = GST_OMX_BASE_SRC_CLASS (g_class);
 
     GST_LOG_OBJECT (self, "begin");
 
     /* GOmx */
     self->gomx = g_omx_core_new (self, g_class);
     self->gomx->use_timestamps = FALSE;
-    self->out_port = g_omx_core_get_port (self->gomx, 0);
+    self->out_port = g_omx_core_get_port (self->gomx, klass->out_port_index);
     self->out_port->buffer_alloc = buffer_alloc;
 
     GST_LOG_OBJECT (self, "end");
