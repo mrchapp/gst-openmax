@@ -39,6 +39,8 @@ typedef struct GstOmxBaseAudioDecClass GstOmxBaseAudioDecClass;
 struct GstOmxBaseAudioDec
 {
     GstOmxBaseFilter omx_base;
+    gint rate;
+    gint channels;
 };
 
 struct GstOmxBaseAudioDecClass

@@ -25,6 +25,8 @@
 #include "gstomx.h"
 
 #include <string.h> /* for memset */
+#define CHANNELS_DEFAULT 2
+#define SAMPLERATE_DEFAULT 44100
 
 GSTOMX_BOILERPLATE (GstOmxBaseAudioDec, gst_omx_base_audiodec, GstOmxBaseFilter, GST_OMX_BASE_FILTER_TYPE);
 
@@ -37,6 +39,36 @@ static void
 type_class_init (gpointer g_class,
                  gpointer class_data)
 {
+}
+
+static gboolean
+sink_setcaps (GstPad *pad,
+              GstCaps *caps)
+{
+    GstStructure *structure;
+    GstOmxBaseFilter *omx_base;
+    GstOmxBaseAudioDec *self;
+    GOmxCore *gomx;
+
+    omx_base = GST_OMX_BASE_FILTER (GST_PAD_PARENT (pad));
+    self = GST_OMX_BASE_AUDIODEC (omx_base);
+    gomx = (GOmxCore *) omx_base->gomx;
+    GST_INFO_OBJECT (omx_base, "getcaps (sink): %" GST_PTR_FORMAT, caps);
+
+    self->rate = SAMPLERATE_DEFAULT;
+    self->channels = CHANNELS_DEFAULT;
+
+    {
+        g_return_val_if_fail (caps, FALSE);
+        g_return_val_if_fail (gst_caps_get_size (caps) == 1, FALSE);
+
+        structure = gst_caps_get_structure (caps, 0);
+
+        gst_structure_get_int (structure, "rate", &self->rate);
+        gst_structure_get_int (structure, "channels", &self->channels);
+    }
+
+    return gst_pad_set_caps (pad, caps);
 }
 
 static void
@@ -94,4 +126,7 @@ type_instance_init (GTypeInstance *instance,
     GST_DEBUG_OBJECT (omx_base, "start");
 
     omx_base->gomx->settings_changed_cb = settings_changed_cb;
+
+    gst_pad_set_setcaps_function (omx_base->sinkpad,
+                                  (sink_setcaps));
 }
