@@ -126,7 +126,22 @@ omx_setup (GstOmxBaseFilter *omx_base)
         GST_DEBUG_OBJECT (omx_base, "setting frame-mode");
     }
 #endif
+
+    /* Output parameter configuration. */
+    {
+        OMX_AUDIO_PARAM_PCMMODETYPE param;
+        GstOmxBaseAudioDec *base_audiodec;
+        base_audiodec = GST_OMX_BASE_AUDIODEC (omx_base);
+
+        G_OMX_PORT_GET_PARAM (omx_base->out_port, OMX_IndexParamAudioPcm, &param);
+
+        param.nSamplingRate = base_audiodec->rate;
+        param.nChannels = base_audiodec->channels;
+
+        G_OMX_PORT_SET_PARAM (omx_base->out_port, OMX_IndexParamAudioPcm, &param);
+    }
 }
+
 static void
 type_class_init (gpointer g_class,
                  gpointer class_data)
