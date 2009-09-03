@@ -37,6 +37,8 @@ typedef struct GstOmxAacDecClass GstOmxAacDecClass;
 struct GstOmxAacDec
 {
     GstOmxBaseAudioDec omx_base;
+    gint aacversion;
+    gboolean framed;
 };
 
 struct GstOmxAacDecClass
