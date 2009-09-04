@@ -40,6 +40,8 @@ struct GstOmxAacEnc
     guint bitrate;
     gint profile;
     gint output_format;
+    gint rate;
+    gint channels;
 };
 
 struct GstOmxAacEncClass

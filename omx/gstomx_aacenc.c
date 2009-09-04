@@ -33,9 +33,11 @@ enum
     ARG_OUTPUT_FORMAT,
 };
 
-#define DEFAULT_BITRATE 64000
+#define DEFAULT_BITRATE 128000
 #define DEFAULT_PROFILE OMX_AUDIO_AACObjectLC
 #define DEFAULT_OUTPUT_FORMAT OMX_AUDIO_AACStreamFormatRAW
+#define DEFAULT_RATE 44100
+#define DEFAULT_CHANNELS 2
 
 GSTOMX_BOILERPLATE (GstOmxAacEnc, gst_omx_aacenc, GstOmxBaseFilter, GST_OMX_BASE_FILTER_TYPE);
 
@@ -67,6 +69,8 @@ gst_omx_aacenc_profile_get_type (void)
 }
 
 #define GST_TYPE_OMX_AACENC_OUTPUT_FORMAT (gst_omx_aacenc_output_format_get_type ())
+
+/*
 static GType
 gst_omx_aacenc_output_format_get_type (void)
 {
@@ -90,6 +94,7 @@ gst_omx_aacenc_output_format_get_type (void)
 
     return gst_omx_aacenc_output_format_type;
 }
+*/
 
 static GstCaps *
 generate_src_template (void)
@@ -206,9 +211,9 @@ set_property (GObject *obj,
         case ARG_PROFILE:
             self->profile = g_value_get_enum (value);
             break;
-        case ARG_OUTPUT_FORMAT:
+       /* case ARG_OUTPUT_FORMAT:
             self->output_format = g_value_get_enum (value);
-            break;
+            break;*/
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
             break;
@@ -234,9 +239,9 @@ get_property (GObject *obj,
         case ARG_PROFILE:
             g_value_set_enum (value, self->profile);
             break;
-        case ARG_OUTPUT_FORMAT:
+       /* case ARG_OUTPUT_FORMAT:
             g_value_set_enum (value, self->output_format);
-            break;
+            break;*/
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
             break;
@@ -267,12 +272,13 @@ type_class_init (gpointer g_class,
                                                             DEFAULT_PROFILE,
                                                             G_PARAM_READWRITE));
 
-        g_object_class_install_property (gobject_class, ARG_OUTPUT_FORMAT,
+        /*g_object_class_install_property (gobject_class, ARG_OUTPUT_FORMAT,
                                          g_param_spec_enum ("output-format", "Output format",
                                                             "OMX_AUDIO_AACSTREAMFORMATTYPE of output",
                                                             GST_TYPE_OMX_AACENC_OUTPUT_FORMAT,
                                                             DEFAULT_OUTPUT_FORMAT,
-                                                            G_PARAM_READWRITE));
+                                                           G_PARAM_READWRITE));
+        */
     }
 }
 
@@ -282,12 +288,13 @@ sink_setcaps (GstPad *pad,
 {
     GstStructure *structure;
     GstOmxBaseFilter *omx_base;
+    GstOmxAacEnc *self;
     GOmxCore *gomx;
-    gint rate = 0;
-    gint channels = 0;
 
     omx_base = GST_OMX_BASE_FILTER (GST_PAD_PARENT (pad));
     gomx = (GOmxCore *) omx_base->gomx;
+
+    self = GST_OMX_AACENC (omx_base);
 
     GST_INFO_OBJECT (omx_base, "setcaps (sink): %" GST_PTR_FORMAT, caps);
 
@@ -295,28 +302,16 @@ sink_setcaps (GstPad *pad,
 
     structure = gst_caps_get_structure (caps, 0);
 
-    gst_structure_get_int (structure, "rate", &rate);
-    gst_structure_get_int (structure, "channels", &channels);
-
-    /* Input port configuration. */
-    {
-        OMX_AUDIO_PARAM_PCMMODETYPE param;
-
-        G_OMX_PORT_GET_PARAM (omx_base->in_port, OMX_IndexParamAudioPcm, &param);
-
-        param.nSamplingRate = rate;
-        param.nChannels = channels;
-
-        G_OMX_PORT_SET_PARAM (omx_base->in_port, OMX_IndexParamAudioPcm, &param);
-    }
+    gst_structure_get_int (structure, "rate", &self->rate);
+    gst_structure_get_int (structure, "channels", &self->channels);
 
     {
         GstCaps *src_caps;
 
         src_caps = gst_caps_new_simple ("audio/mpeg",
                                         "mpegversion", G_TYPE_INT, 4,
-                                        "rate", G_TYPE_INT, rate,
-                                        "channels", G_TYPE_INT, channels,
+                                        "rate", G_TYPE_INT, self->rate,
+                                        "channels", G_TYPE_INT, self->channels,
                                         NULL);
         GST_INFO_OBJECT (omx_base, "src caps are: %" GST_PTR_FORMAT, src_caps);
 
@@ -339,67 +334,39 @@ omx_setup (GstOmxBaseFilter *omx_base)
 
     GST_INFO_OBJECT (omx_base, "begin");
 
-    {
-        OMX_AUDIO_PARAM_AACPROFILETYPE param;
-
-        memset (&param, 0, sizeof (param));
-        param.nSize = sizeof (OMX_AUDIO_PARAM_AACPROFILETYPE);
-        param.nVersion.s.nVersionMajor = 1;
-        param.nVersion.s.nVersionMinor = 1;
-
-        /* Output port configuration. */
-        {
-            param.nPortIndex = 1;
-            OMX_GetParameter (gomx->omx_handle, OMX_IndexParamAudioAac, &param);
-
-            GST_DEBUG_OBJECT (omx_base, "setting bitrate: %i", self->bitrate);
-            param.nBitRate = self->bitrate;
-
-            GST_DEBUG_OBJECT (omx_base, "setting profile: %i", self->profile);
-            param.eAACProfile = self->profile;
-
-            GST_DEBUG_OBJECT (omx_base, "setting output format: %i",
-                              self->output_format);
-            param.eAACStreamFormat = self->output_format;
-
-            OMX_SetParameter (gomx->omx_handle, OMX_IndexParamAudioAac, &param);
-        }
-    }
-
-    /* some workarounds. */
-#if 0
+    /* Input port configuration. */
     {
         OMX_AUDIO_PARAM_PCMMODETYPE param;
 
-        memset (&param, 0, sizeof (param));
-        param.nSize = sizeof (OMX_AUDIO_PARAM_PCMMODETYPE);
-        param.nVersion.s.nVersionMajor = 1;
-        param.nVersion.s.nVersionMinor = 1;
+        G_OMX_PORT_GET_PARAM (omx_base->in_port, OMX_IndexParamAudioPcm, &param);
 
-        param.nPortIndex = 0;
-        OMX_GetParameter (omx_base->gomx->omx_handle, OMX_IndexParamAudioPcm, &param);
+        param.nSamplingRate = self->rate;
+        param.nChannels = self->channels;
 
-        rate = param.nSamplingRate;
-        channels = param.nChannels;
+        G_OMX_PORT_SET_PARAM (omx_base->in_port, OMX_IndexParamAudioPcm, &param);
     }
 
+     /* output port configuration. */
     {
         OMX_AUDIO_PARAM_AACPROFILETYPE param;
 
-        memset (&param, 0, sizeof (param));
-        param.nSize = sizeof (OMX_AUDIO_PARAM_AACPROFILETYPE);
-        param.nVersion.s.nVersionMajor = 1;
-        param.nVersion.s.nVersionMinor = 1;
+        G_OMX_PORT_GET_PARAM (omx_base->out_port, OMX_IndexParamAudioAac, &param);
 
-        param.nPortIndex = 1;
-        OMX_GetParameter (omx_base->gomx->omx_handle, OMX_IndexParamAudioAac, &param);
+        param.nSampleRate = self->rate;
+        param.nChannels = self->channels;
 
-        param.nSampleRate = rate;
-        param.nChannels = channels;
+        GST_DEBUG_OBJECT (omx_base, "setting bitrate: %i", self->bitrate);
+        param.nBitRate = self->bitrate;
 
-        OMX_SetParameter (omx_base->gomx->omx_handle, OMX_IndexParamAudioAac, &param);
+        GST_DEBUG_OBJECT (omx_base, "setting profile: %i", self->profile);
+        param.eAACProfile =  self->profile;/*OMX_AUDIO_AACObjectLC;*/
+
+        /*This is harcoded by the moment because oms doesn't support the others formats */
+        /*param.eAACStreamFormat = self->output_format;*/
+        param.eAACStreamFormat = OMX_AUDIO_AACStreamFormatMax;
+
+        G_OMX_PORT_SET_PARAM (omx_base->out_port, OMX_IndexParamAudioAac, &param);
     }
-#endif
 
     GST_INFO_OBJECT (omx_base, "end");
 }
@@ -421,4 +388,7 @@ type_instance_init (GTypeInstance *instance,
     self->bitrate = DEFAULT_BITRATE;
     self->profile = DEFAULT_PROFILE;
     self->output_format = DEFAULT_OUTPUT_FORMAT;
+    self->rate = DEFAULT_RATE;
+    self->channels = DEFAULT_CHANNELS;
+
 }
