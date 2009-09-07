@@ -194,24 +194,25 @@ omx_setup (GstOmxBaseFilter *omx_base)
     switch (self->aacversion)
     {
     case AAC_PROFILE_LC_SBR_PS:
-        streamFormat = OMX_AUDIO_AACObjectHE_PS;
+        profile = OMX_AUDIO_AACObjectHE_PS;
         rate = base_audiodec->rate/2;
         break;
     case AAC_PROFILE_LC_SBR:
-        streamFormat = OMX_AUDIO_AACObjectHE;
+        profile = OMX_AUDIO_AACObjectHE;
         rate = base_audiodec->rate;
         break;
     case AAC_PROFILE_LC:
     default:
-        streamFormat = OMX_AUDIO_AACObjectLC;
+        profile = OMX_AUDIO_AACObjectLC;
         rate = base_audiodec->rate;
         break;
     }
 
+    // Does it come from a demuxer?
     if(omx_base->codec_data != NULL)
-        profile = OMX_AUDIO_AACStreamFormatRAW;
+        streamFormat = OMX_AUDIO_AACStreamFormatRAW;
     else
-        profile = OMX_AUDIO_AACStreamFormatMax;
+        streamFormat = OMX_AUDIO_AACStreamFormatMax;
 
     {
         OMX_AUDIO_PARAM_AACPROFILETYPE param;
@@ -228,8 +229,9 @@ omx_setup (GstOmxBaseFilter *omx_base)
         G_OMX_PORT_SET_PARAM (omx_base->out_port, OMX_IndexParamAudioPcm, &param);
     }
 
+
 #ifdef USE_OMXTIAUDIODEC
-    /* This is specific for TI. */
+    // This is specific for TI.
     if (self->framed == TRUE)
     {
         OMX_INDEXTYPE index;
@@ -246,9 +248,12 @@ omx_setup (GstOmxBaseFilter *omx_base)
                 gomx->omx_handle, "OMX.TI.index.config.aacdecHeaderInfo",
                     &index) == OMX_ErrorNone);
 
-        g_assert( OMX_SetConfig (gomx->omx_handle, index, &audioinfo)== OMX_ErrorNone);
+        g_assert(
+            OMX_SetConfig (
+                gomx->omx_handle, index,
+                    &audioinfo) == OMX_ErrorNone);
 
-        GST_DEBUG_OBJECT (omx_base, "setting frame-mode");
+        GST_DEBUG_OBJECT (omx_base, "Setting frame-mode");
     }
 #endif
 }
@@ -264,4 +269,9 @@ type_instance_init (GTypeInstance *instance,
     omx_base->omx_setup = omx_setup;
 
     gst_pad_set_setcaps_function (omx_base->sinkpad, sink_setcaps);
+
+    g_object_set (instance,
+        "input-buffers", 3,
+        "output-buffers", 3,
+        NULL);
 }
