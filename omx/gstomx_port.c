@@ -626,18 +626,33 @@ g_omx_port_set_video_formats (GOmxPort *port, GstCaps *caps)
 
         for (j=0; j<DIM(all_fourcc); j++)
         {
+            OMX_ERRORTYPE err;
+            GValue fourccval = {0};
+
+            g_value_init (&fourccval, GST_TYPE_FOURCC);
+
             /* check and see if OMX supports the format:
              */
             param.eColorFormat = g_omx_fourcc_to_colorformat (all_fourcc[j]);
-            if (OMX_ErrorNone ==
-                    G_OMX_PORT_SET_PARAM (port, OMX_IndexParamVideoPortFormat, &param))
+            err = G_OMX_PORT_SET_PARAM (port, OMX_IndexParamVideoPortFormat, &param);
+
+            if( err == OMX_ErrorIncorrectStateOperation )
             {
-                GValue fourccval = {0};
+                GST_DEBUG_OBJECT (port->core->object, "already executing?");
 
-                g_value_init (&fourccval, GST_TYPE_FOURCC);
-
+                /* if we are already executing, such as might be the case if
+                 * we get a OMX_EventPortSettingsChanged event, just take the
+                 * current format and bail:
+                 */
+                G_OMX_PORT_GET_PARAM (port, OMX_IndexParamVideoPortFormat, &param);
+                gst_value_set_fourcc (&fourccval,
+                        g_omx_colorformat_to_fourcc (param.eColorFormat));
+                gst_value_list_append_value (&formats, &fourccval);
+                break;
+            }
+            else if( err == OMX_ErrorNone )
+            {
                 gst_value_set_fourcc (&fourccval, all_fourcc[j]);
-
                 gst_value_list_append_value (&formats, &fourccval);
             }
         }
