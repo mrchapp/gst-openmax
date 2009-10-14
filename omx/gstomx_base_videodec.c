@@ -30,11 +30,12 @@ GSTOMX_BOILERPLATE (GstOmxBaseVideoDec, gst_omx_base_videodec, GstOmxBaseFilter,
 
 
 static GstStaticPadTemplate src_template =
-GST_STATIC_PAD_TEMPLATE ("src",
-        GST_PAD_SRC,
-        GST_PAD_ALWAYS,
-        GST_STATIC_CAPS (GST_VIDEO_CAPS_YUV_STRIDED (GSTOMX_ALL_FORMATS, "[ 0, max ]"))
-    );
+        GST_STATIC_PAD_TEMPLATE ("src",
+                GST_PAD_SRC,
+                GST_PAD_ALWAYS,
+                GST_STATIC_CAPS (GST_VIDEO_CAPS_YUV_STRIDED (
+                        GSTOMX_ALL_FORMATS, "[ 0, max ]"))
+        );
 
 
 static void
@@ -179,7 +180,6 @@ src_getcaps (GstPad *pad)
         {
             GstStructure *struc = gst_structure_new (
                     (i ? "video/x-raw-yuv-strided" : "video/x-raw-yuv"),
-                    "framerate", GST_TYPE_FRACTION, self->framerate_num, self->framerate_denom,
                     "width",  G_TYPE_INT, param.format.video.nFrameWidth,
                     "height", G_TYPE_INT, param.format.video.nFrameHeight,
                     NULL);
@@ -187,7 +187,14 @@ src_getcaps (GstPad *pad)
             if(i)
             {
                 gst_structure_set (struc,
-                        "rowstride",  GST_TYPE_INT_RANGE, 1, G_MAXINT,
+                        "rowstride", GST_TYPE_INT_RANGE, 1, G_MAXINT,
+                        NULL);
+            }
+
+            if (self->framerate_denom)
+            {
+                gst_structure_set (struc,
+                        "framerate", GST_TYPE_FRACTION, self->framerate_num, self->framerate_denom,
                         NULL);
             }
 
