@@ -23,6 +23,7 @@
 #include "gstomx_base_filter.h"
 #include "gstomx.h"
 
+#include <gst/video/video.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -36,57 +37,22 @@ enum
 
 GSTOMX_BOILERPLATE (GstOmxJpegEnc, gst_omx_jpegenc, GstOmxBaseFilter, GST_OMX_BASE_FILTER_TYPE);
 
-static GstCaps *
-generate_src_template (void)
-{
-    GstCaps *caps;
+static GstStaticPadTemplate src_template =
+        GST_STATIC_PAD_TEMPLATE ("src",
+                GST_PAD_SRC, GST_PAD_ALWAYS,
+                GST_STATIC_CAPS ("image/jpeg, "
+                        "width = (int)[16,4096], "
+                        "height = (int)[16,4096], "
+                        "framerate = (fraction)[0/1,max];")
+        );
 
-    caps = gst_caps_new_simple ("image/jpeg",
-                                "width", GST_TYPE_INT_RANGE, 16, 4096,
-                                "height", GST_TYPE_INT_RANGE, 16, 4096,
-                                "framerate", GST_TYPE_FRACTION_RANGE, 0, 1, G_MAXINT, 1,
-                                NULL);
 
-    return caps;
-}
-
-static GstCaps *
-generate_sink_template (void)
-{
-    GstCaps *caps;
-    GstStructure *struc;
-
-    caps = gst_caps_new_empty ();
-
-    struc = gst_structure_new ("video/x-raw-yuv",
-                               "width", GST_TYPE_INT_RANGE, 16, 4096,
-                               "height", GST_TYPE_INT_RANGE, 16, 4096,
-                               "framerate", GST_TYPE_FRACTION_RANGE, 0, 1, G_MAXINT, 1,
-                               NULL);
-
-    {
-        GValue list = { 0 };
-        GValue val = { 0 };
-
-        g_value_init (&list, GST_TYPE_LIST);
-        g_value_init (&val, GST_TYPE_FOURCC);
-
-        gst_value_set_fourcc (&val, GST_MAKE_FOURCC ('I', '4', '2', '0'));
-        gst_value_list_append_value (&list, &val);
-
-        gst_value_set_fourcc (&val, GST_MAKE_FOURCC ('U', 'Y', 'V', 'Y'));
-        gst_value_list_append_value (&list, &val);
-
-        gst_structure_set_value (struc, "format", &list);
-
-        g_value_unset (&val);
-        g_value_unset (&list);
-    }
-
-    gst_caps_append_structure (caps, struc);
-
-    return caps;
-}
+static GstStaticPadTemplate sink_template =
+        GST_STATIC_PAD_TEMPLATE ("sink",
+                GST_PAD_SINK, GST_PAD_ALWAYS,
+                GST_STATIC_CAPS (GST_VIDEO_CAPS_YUV (
+                        GSTOMX_ALL_FORMATS))
+        );
 
 static void
 type_base_init (gpointer g_class)
@@ -106,25 +72,11 @@ type_base_init (gpointer g_class)
         gst_element_class_set_details (element_class, &details);
     }
 
-    {
-        GstPadTemplate *template;
+    gst_element_class_add_pad_template (element_class,
+        gst_static_pad_template_get (&src_template));
 
-        template = gst_pad_template_new ("src", GST_PAD_SRC,
-                                         GST_PAD_ALWAYS,
-                                         generate_src_template ());
-
-        gst_element_class_add_pad_template (element_class, template);
-    }
-
-    {
-        GstPadTemplate *template;
-
-        template = gst_pad_template_new ("sink", GST_PAD_SINK,
-                                         GST_PAD_ALWAYS,
-                                         generate_sink_template ());
-
-        gst_element_class_add_pad_template (element_class, template);
-    }
+    gst_element_class_add_pad_template (element_class,
+        gst_static_pad_template_get (&sink_template));
 }
 
 static void
@@ -205,13 +157,7 @@ settings_changed_cb (GOmxCore *core)
     {
         OMX_PARAM_PORTDEFINITIONTYPE param;
 
-        memset (&param, 0, sizeof (param));
-        param.nSize = sizeof (OMX_PARAM_PORTDEFINITIONTYPE);
-        param.nVersion.s.nVersionMajor = 1;
-        param.nVersion.s.nVersionMinor = 1;
-
-        param.nPortIndex = 1;
-        OMX_GetParameter (omx_base->gomx->omx_handle, OMX_IndexParamPortDefinition, &param);
+        g_omx_port_get_config (omx_base->out_port, &param);
 
         width = param.format.image.nFrameWidth;
         height = param.format.image.nFrameHeight;
@@ -278,22 +224,14 @@ sink_setcaps (GstPad *pad,
     {
         OMX_PARAM_PORTDEFINITIONTYPE param;
 
-        memset (&param, 0, sizeof (param));
-        param.nSize = sizeof (OMX_PARAM_PORTDEFINITIONTYPE);
-        param.nVersion.s.nVersionMajor = 1;
-        param.nVersion.s.nVersionMinor = 1;
-
         /* Input port configuration. */
-        {
-            param.nPortIndex = 0;
-            OMX_GetParameter (gomx->omx_handle, OMX_IndexParamPortDefinition, &param);
+        g_omx_port_get_config (omx_base->in_port, &param);
 
-            param.format.image.nFrameWidth = width;
-            param.format.image.nFrameHeight = height;
-            param.format.image.eColorFormat = color_format;
+        param.format.image.nFrameWidth = width;
+        param.format.image.nFrameHeight = height;
+        param.format.image.eColorFormat = color_format;
 
-            OMX_SetParameter (gomx->omx_handle, OMX_IndexParamPortDefinition, &param);
-        }
+        g_omx_port_set_config (omx_base->in_port, &param);
     }
 
     return gst_pad_set_caps (pad, caps);
@@ -313,78 +251,45 @@ omx_setup (GstOmxBaseFilter *omx_base)
     {
         OMX_PARAM_PORTDEFINITIONTYPE param;
 
-        memset (&param, 0, sizeof (param));
-        param.nSize = sizeof (OMX_PARAM_PORTDEFINITIONTYPE);
-        param.nVersion.s.nVersionMajor = 1;
-        param.nVersion.s.nVersionMinor = 1;
-
         /* Output port configuration. */
-        {
-            param.nPortIndex = 1;
-            OMX_GetParameter (gomx->omx_handle, OMX_IndexParamPortDefinition, &param);
+        g_omx_port_get_config (omx_base->out_port, &param);
 
-            param.format.image.eCompressionFormat = OMX_IMAGE_CodingJPEG;
+        param.format.image.eCompressionFormat = OMX_IMAGE_CodingJPEG;
 
-            OMX_SetParameter (gomx->omx_handle, OMX_IndexParamPortDefinition, &param);
-        }
+        g_omx_port_set_config (omx_base->out_port, &param);
 
         /* some workarounds required for TI components. */
         {
-            OMX_COLOR_FORMATTYPE color_format;
+            guint32 fourcc;
             gint width, height;
 
             /* the component should do this instead */
             {
-                param.nPortIndex = 0;
-                OMX_GetParameter (gomx->omx_handle, OMX_IndexParamPortDefinition, &param);
+                g_omx_port_get_config (omx_base->in_port, &param);
 
                 width = param.format.image.nFrameWidth;
                 height = param.format.image.nFrameHeight;
-                color_format = param.format.image.eColorFormat;
+                fourcc = g_omx_colorformat_to_fourcc (
+                        param.format.image.eColorFormat);
 
                 /* this is against the standard; nBufferSize is read-only. */
-                switch (color_format)
-                {
-                    case OMX_COLOR_FormatYCbYCr:
-                    case OMX_COLOR_FormatCbYCrY:
-                        param.nBufferSize = (GST_ROUND_UP_16 (width) * GST_ROUND_UP_16 (height)) * 2;
-#if 0
-                        if (param.nBufferSize >= 400)
-                            param.nBufferSize = 400;
-#endif
-                        break;
-                    case OMX_COLOR_FormatYUV420PackedPlanar:
-                        param.nBufferSize = (GST_ROUND_UP_16 (width) * GST_ROUND_UP_16 (height)) * 3 / 2;
-#if 0
-                        if (param.nBufferSize >= 1600)
-                            param.nBufferSize = 1600;
-#endif
-                        break;
-                    default:
-                        break;
-                }
+                param.nBufferSize = gst_video_format_get_size (
+                        gst_video_format_from_fourcc (fourcc),
+                        GST_ROUND_UP_16 (width), GST_ROUND_UP_16 (height));
 
-                OMX_SetParameter (gomx->omx_handle, OMX_IndexParamPortDefinition, &param);
+                g_omx_port_set_config (omx_base->in_port, &param);
             }
 
             /* the component should do this instead */
             {
-                param.nPortIndex = 1;
-                OMX_GetParameter (gomx->omx_handle, OMX_IndexParamPortDefinition, &param);
+                g_omx_port_get_config (omx_base->out_port, &param);
 
                 param.nBufferSize = width * height;
-
-#if 0
-                if (qualityfactor < 10)
-                    param.nBufferSize /= 10;
-                else if (qualityfactor < 100)
-                    param.nBufferSize /= (100 / qualityfactor);
-#endif
 
                 param.format.image.nFrameWidth = width;
                 param.format.image.nFrameHeight = height;
 
-                OMX_SetParameter (gomx->omx_handle, OMX_IndexParamPortDefinition, &param);
+                g_omx_port_set_config (omx_base->out_port, &param);
             }
         }
     }
@@ -392,15 +297,11 @@ omx_setup (GstOmxBaseFilter *omx_base)
     {
         OMX_IMAGE_PARAM_QFACTORTYPE param;
 
-        memset (&param, 0, sizeof (param));
-        param.nSize = sizeof (OMX_IMAGE_PARAM_QFACTORTYPE);
-        param.nVersion.s.nVersionMajor = 1;
-        param.nVersion.s.nVersionMinor = 1;
+        G_OMX_PORT_GET_PARAM (omx_base->out_port, OMX_IndexParamQFactor, &param);
 
         param.nQFactor = self->quality;
-        param.nPortIndex = 1;
 
-        OMX_SetParameter (gomx->omx_handle, OMX_IndexParamQFactor, &param);
+        G_OMX_PORT_SET_PARAM (omx_base->out_port, OMX_IndexParamQFactor, &param);
     }
 
     GST_INFO_OBJECT (omx_base, "end");

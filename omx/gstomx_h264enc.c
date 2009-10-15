@@ -153,25 +153,17 @@ omx_setup (GstOmxBaseFilter *omx_base)
 
     GST_INFO_OBJECT (omx_base, "begin");
 
+    /* some workarounds required for TI components. */
+    /* the component should do this instead */
     {
         OMX_PARAM_PORTDEFINITIONTYPE param;
 
-        memset (&param, 0, sizeof (param));
-        param.nSize = sizeof (OMX_PARAM_PORTDEFINITIONTYPE);
-        param.nVersion.s.nVersionMajor = 1;
-        param.nVersion.s.nVersionMinor = 1;
+        g_omx_port_get_config (omx_base->out_port, &param);
 
-        /* some workarounds required for TI components. */
-        /* the component should do this instead */
-        {
-            param.nPortIndex = 1;
-            OMX_GetParameter (gomx->omx_handle, OMX_IndexParamPortDefinition, &param);
+        /* this is against the standard; nBufferSize is read-only. */
+        param.nBufferSize = 300000;
 
-            /* this is against the standard; nBufferSize is read-only. */
-            param.nBufferSize = 300000;
-
-            OMX_SetParameter (gomx->omx_handle, OMX_IndexParamPortDefinition, &param);
-        }
+        g_omx_port_set_config (omx_base->out_port, &param);
     }
 
     {
@@ -189,7 +181,9 @@ omx_setup (GstOmxBaseFilter *omx_base)
             OMX_SetParameter (gomx->omx_handle, index, &nal_format);
         }
         else
+        {
             GST_WARNING_OBJECT (omx_base, "'OMX.TI.VideoEncode.Config.NALFormat' unsupported");
+        }
     }
 
     GST_INFO_OBJECT (omx_base, "end");

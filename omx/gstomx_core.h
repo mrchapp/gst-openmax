@@ -56,6 +56,34 @@ struct GOmxCore
     gboolean use_timestamps; /** @todo remove; timestamps should always be used */
 };
 
+/* Utility Macros */
+
+#define _G_OMX_INIT_PARAM(param) G_STMT_START {  /* util for other macros */  \
+        memset ((param), 0, sizeof (*(param)));                               \
+        (param)->nSize = sizeof (*(param));                                   \
+        (param)->nVersion.s.nVersionMajor = 1;                                \
+        (param)->nVersion.s.nVersionMinor = 1;                                \
+    } G_STMT_END
+
+#define G_OMX_CORE_GET_PARAM(core, idx, param) G_STMT_START {                 \
+        _G_OMX_INIT_PARAM (param);                                            \
+        OMX_GetParameter (g_omx_core_get_handle (core), (idx), (param));      \
+    } G_STMT_END
+
+#define G_OMX_CORE_SET_PARAM(core, idx, param)                                \
+        OMX_SetParameter (                                                    \
+            g_omx_core_get_handle (core), (idx), (param))
+
+#define G_OMX_CORE_GET_CONFIG(core, idx, param) G_STMT_START {                \
+        _G_OMX_INIT_PARAM (param);                                            \
+        OMX_GetConfig (g_omx_core_get_handle (core), (idx), (param));         \
+    } G_STMT_END
+
+#define G_OMX_CORE_SET_CONFIG(core, idx, param)                               \
+        OMX_SetConfig (                                                       \
+            g_omx_core_get_handle (core), (idx), (param))
+
+
 /* Functions. */
 
 GOmxCore *g_omx_core_new (gpointer object, gpointer klass);

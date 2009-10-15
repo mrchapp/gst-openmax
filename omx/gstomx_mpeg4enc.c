@@ -93,13 +93,7 @@ settings_changed_cb (GOmxCore *core)
     {
         OMX_PARAM_PORTDEFINITIONTYPE param;
 
-        memset (&param, 0, sizeof (param));
-        param.nSize = sizeof (OMX_PARAM_PORTDEFINITIONTYPE);
-        param.nVersion.s.nVersionMajor = 1;
-        param.nVersion.s.nVersionMinor = 1;
-
-        param.nPortIndex = 1;
-        OMX_GetParameter (core->omx_handle, OMX_IndexParamPortDefinition, &param);
+        g_omx_port_get_config (omx_base_filter->out_port, &param);
 
         width = param.format.video.nFrameWidth;
         height = param.format.video.nFrameHeight;

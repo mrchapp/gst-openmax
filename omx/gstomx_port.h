@@ -66,10 +66,7 @@ GOmxPort *g_omx_port_new (GOmxCore *core, guint index);
 void g_omx_port_free (GOmxPort *port);
 
 #define G_OMX_PORT_GET_PARAM(port, idx, param) G_STMT_START {  \
-        memset ((param), 0, sizeof (*(param)));            \
-        (param)->nSize = sizeof (*(param));                \
-        (param)->nVersion.s.nVersionMajor = 1;             \
-        (param)->nVersion.s.nVersionMinor = 1;             \
+		_G_OMX_INIT_PARAM (param);                         \
         (param)->nPortIndex = (port)->port_index;          \
         OMX_GetParameter (g_omx_core_get_handle ((port)->core), idx, (param)); \
     } G_STMT_END

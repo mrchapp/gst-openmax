@@ -222,20 +222,16 @@ g_omx_core_init (GOmxCore *core)
     if (component_role)
     {
         OMX_PARAM_COMPONENTROLETYPE param;
-        memset(&param, 0, sizeof(param));
-        param.nSize = sizeof (OMX_PARAM_COMPONENTROLETYPE);
-        param.nVersion.s.nVersionMajor = 1;
-        param.nVersion.s.nVersionMinor = 1;
 
         GST_DEBUG_OBJECT (core->object, "setting component role: %s",
                 component_role);
 
-        OMX_GetParameter (core->omx_handle,
+        G_OMX_CORE_GET_PARAM (core->omx_handle,
                 OMX_IndexParamStandardComponentRole, &param);
 
         strcpy((char*)param.cRole, component_role);
 
-        OMX_SetParameter ( core->omx_handle,
+        G_OMX_CORE_SET_PARAM (core->omx_handle,
                 OMX_IndexParamStandardComponentRole, &param);
 
         g_free (component_role);

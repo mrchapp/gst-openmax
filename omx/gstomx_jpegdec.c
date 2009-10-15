@@ -40,19 +40,14 @@ GST_STATIC_PAD_TEMPLATE ("src",
     GST_STATIC_CAPS ( GST_VIDEO_CAPS_YUV ("{ UYVY }") )
 );
 
-static GstCaps *
-generate_sink_template (void)
-{
-    GstCaps *caps;
-
-    caps = gst_caps_new_simple ("image/jpeg",
-                               "width", GST_TYPE_INT_RANGE, 16, 4096,
-                               "height", GST_TYPE_INT_RANGE, 16, 4096,
-                               "framerate", GST_TYPE_FRACTION_RANGE, 0, 1, G_MAXINT, 1,
-                               NULL);
-
-    return caps;
-}
+static GstStaticPadTemplate sink_template =
+        GST_STATIC_PAD_TEMPLATE ("sink",
+                GST_PAD_SINK, GST_PAD_ALWAYS,
+                GST_STATIC_CAPS ("image/jpeg, "
+                        "width = (int)[16,4096], "
+                        "height = (int)[16,4096], "
+                        "framerate = (fraction)[0/1,max];")
+        );
 
 static void
 type_base_init (gpointer g_class)
@@ -72,21 +67,13 @@ type_base_init (gpointer g_class)
         gst_element_class_set_details (element_class, &details);
     }
 
-    {
-        gst_element_class_add_pad_template (element_class,
-                        gst_static_pad_template_get (&src_template));
-    }
+    gst_element_class_add_pad_template (element_class,
+            gst_static_pad_template_get (&src_template));
 
-    {
-        GstPadTemplate *template;
-
-        template = gst_pad_template_new ("sink", GST_PAD_SINK,
-                                         GST_PAD_ALWAYS,
-                                         generate_sink_template ());
-
-        gst_element_class_add_pad_template (element_class, template);
-    }
+    gst_element_class_add_pad_template (element_class,
+            gst_static_pad_template_get (&sink_template));
 }
+
 /*The properties have not been implemented yet*/
 /***
 static void
@@ -162,13 +149,8 @@ settings_changed_cb (GOmxCore *core)
         width = param.format.image.nFrameWidth;
         height = param.format.image.nFrameHeight;
 
-        switch (param.format.image.eColorFormat)
-        {
-            case OMX_COLOR_FormatCbYCrY:
-                format = GST_MAKE_FOURCC ('U', 'Y', 'V', 'Y'); break;
-            default:
-                break;
-        }
+        format = g_omx_colorformat_to_fourcc (
+                param.format.image.eColorFormat);
     }
 
     {
@@ -278,7 +260,7 @@ omx_setup (GstOmxBaseFilter *omx_base)
 
             param.format.image.eCompressionFormat = OMX_IMAGE_CodingJPEG;
 
-            param.format.image.nFrameWidth =GST_ROUND_UP_16 (param.format.image.nFrameWidth);
+            param.format.image.nFrameWidth = GST_ROUND_UP_16 (param.format.image.nFrameWidth);
             param.format.image.nFrameHeight = GST_ROUND_UP_16 (param.format.image.nFrameHeight);
 
             width = param.format.image.nFrameWidth;
@@ -298,7 +280,7 @@ omx_setup (GstOmxBaseFilter *omx_base)
 
         /* the component should do this instead */
         {
-
+            guint32 fourcc;
             G_OMX_PORT_GET_PARAM (omx_base->out_port, OMX_IndexParamPortDefinition, &param);
 
             param.format.image.eCompressionFormat = OMX_IMAGE_CodingUnused;
@@ -310,20 +292,11 @@ omx_setup (GstOmxBaseFilter *omx_base)
             /** @todo get this from the srcpad */
             param.format.image.eColorFormat = OMX_COLOR_FormatCbYCrY;
             color_format = param.format.image.eColorFormat;
+            fourcc = g_omx_colorformat_to_fourcc (color_format);
 
             /* this is against the standard; nBufferSize is read-only. */
-            switch (color_format)
-            {
-
-                case OMX_COLOR_FormatCbYCrY:
-                    param.nBufferSize = (width * height) * 2;
-                    break;
-                case OMX_COLOR_FormatYUV420PackedPlanar:
-                    param.nBufferSize = (width * height) * 3 / 2;
-                    break;
-                default:
-                    break;
-            }
+            param.nBufferSize = gst_video_format_get_size (
+                    gst_video_format_from_fourcc (fourcc), width, height);
 
             G_OMX_PORT_SET_PARAM (omx_base->out_port, OMX_IndexParamPortDefinition, &param);
         }

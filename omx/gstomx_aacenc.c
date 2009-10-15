@@ -269,7 +269,7 @@ type_class_init (gpointer g_class,
                                                             "Encoding bit-rate",
                                                             0, G_MAXUINT, DEFAULT_BITRATE, G_PARAM_READWRITE));
         g_object_class_install_property (gobject_class, ARG_PROFILE,
-                                         g_param_spec_enum ("profile", "Enocding profile",
+                                         g_param_spec_enum ("profile", "Encoding profile",
                                                             "OMX_AUDIO_AACPROFILETYPE of output",
                                                             GST_TYPE_OMX_AACENC_PROFILE,
                                                             DEFAULT_PROFILE,
