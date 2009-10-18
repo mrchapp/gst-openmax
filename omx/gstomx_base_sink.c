@@ -48,7 +48,7 @@ setup_ports (GstOmxBaseSink *self)
 
     /* Input port configuration. */
 
-    self->in_port = g_omx_core_get_port (self->gomx, 0);
+    self->in_port = g_omx_core_get_port (self->gomx, "in", 0);
     g_omx_port_get_config (self->in_port, &param);
     g_omx_port_setup (self->in_port, &param);
     gst_pad_set_element_private (self->sinkpad, self->in_port);

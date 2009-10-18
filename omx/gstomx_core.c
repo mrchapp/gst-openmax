@@ -274,45 +274,54 @@ g_omx_core_deinit (GOmxCore *core)
 void
 g_omx_core_prepare (GOmxCore *core)
 {
+    GST_DEBUG_OBJECT (core->object, "begin");
     change_state (core, OMX_StateIdle);
 
     /* Allocate buffers. */
     core_for_each_port (core, g_omx_port_allocate_buffers);
 
     wait_for_state (core, OMX_StateIdle);
+    GST_DEBUG_OBJECT (core->object, "end");
 }
 
 void
 g_omx_core_start (GOmxCore *core)
 {
+    GST_DEBUG_OBJECT (core->object, "begin");
     change_state (core, OMX_StateExecuting);
     wait_for_state (core, OMX_StateExecuting);
 
     if (core->omx_state == OMX_StateExecuting)
         core_for_each_port (core, g_omx_port_start_buffers);
+    GST_DEBUG_OBJECT (core->object, "end");
 }
 
 void
 g_omx_core_stop (GOmxCore *core)
 {
+    GST_DEBUG_OBJECT (core->object, "begin");
     if (core->omx_state == OMX_StateExecuting ||
         core->omx_state == OMX_StatePause)
     {
         change_state (core, OMX_StateIdle);
         wait_for_state (core, OMX_StateIdle);
     }
+    GST_DEBUG_OBJECT (core->object, "end");
 }
 
 void
 g_omx_core_pause (GOmxCore *core)
 {
+    GST_DEBUG_OBJECT (core->object, "begin");
     change_state (core, OMX_StatePause);
     wait_for_state (core, OMX_StatePause);
+    GST_DEBUG_OBJECT (core->object, "end");
 }
 
 void
 g_omx_core_unload (GOmxCore *core)
 {
+    GST_DEBUG_OBJECT (core->object, "begin");
     if (core->omx_state == OMX_StateIdle ||
         core->omx_state == OMX_StateWaitForResources ||
         core->omx_state == OMX_StateInvalid)
@@ -325,6 +334,7 @@ g_omx_core_unload (GOmxCore *core)
         if (core->omx_state != OMX_StateInvalid)
             wait_for_state (core, OMX_StateLoaded);
     }
+    GST_DEBUG_OBJECT (core->object, "end");
 }
 
 static inline GOmxPort *
@@ -339,13 +349,13 @@ get_port (GOmxCore *core, guint index)
 }
 
 GOmxPort *
-g_omx_core_get_port (GOmxCore *core, guint index)
+g_omx_core_get_port (GOmxCore *core, const gchar *name, guint index)
 {
     GOmxPort *port = get_port (core, index);
 
     if (!port)
     {
-        port = g_omx_port_new (core, index);
+        port = g_omx_port_new (core, name, index);
         g_ptr_array_insert (core->ports, index, port);
     }
 
@@ -355,26 +365,34 @@ g_omx_core_get_port (GOmxCore *core, guint index)
 void
 g_omx_core_set_done (GOmxCore *core)
 {
+    GST_DEBUG_OBJECT (core->object, "begin");
     g_sem_up (core->done_sem);
+    GST_DEBUG_OBJECT (core->object, "end");
 }
 
 void
 g_omx_core_wait_for_done (GOmxCore *core)
 {
+    GST_DEBUG_OBJECT (core->object, "begin");
     g_sem_down (core->done_sem);
+    GST_DEBUG_OBJECT (core->object, "end");
 }
 
 void
 g_omx_core_flush_start (GOmxCore *core)
 {
+    GST_DEBUG_OBJECT (core->object, "begin");
     core_for_each_port (core, g_omx_port_pause);
+    GST_DEBUG_OBJECT (core->object, "end");
 }
 
 void
 g_omx_core_flush_stop (GOmxCore *core)
 {
+    GST_DEBUG_OBJECT (core->object, "begin");
     core_for_each_port (core, g_omx_port_flush);
     core_for_each_port (core, g_omx_port_resume);
+    GST_DEBUG_OBJECT (core->object, "end");
 }
 
 /**

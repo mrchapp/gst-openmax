@@ -30,6 +30,8 @@
 #include <async_queue.h>
 #include <sem.h>
 
+G_BEGIN_DECLS
+
 /* Typedefs. */
 
 typedef struct GOmxCore GOmxCore;
@@ -133,5 +135,6 @@ GType type_as_function ## _get_type (void)                                    \
     }                                                           \
   } G_STMT_END
 
+G_END_DECLS
 
 #endif /* GSTOMX_UTIL_H */

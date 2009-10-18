@@ -28,6 +28,8 @@
 
 #include "gstomx_util.h"
 
+G_BEGIN_DECLS
+
 /* Typedefs. */
 
 typedef enum GOmxPortType GOmxPortType;
@@ -43,6 +45,7 @@ enum GOmxPortType
 struct GOmxPort
 {
     GOmxCore *core;
+    gchar *name;
     GOmxPortType type;
 
     guint num_buffers;
@@ -62,7 +65,7 @@ struct GOmxPort
 
 /* Functions. */
 
-GOmxPort *g_omx_port_new (GOmxCore *core, guint index);
+GOmxPort *g_omx_port_new (GOmxCore *core, const gchar *name, guint index);
 void g_omx_port_free (GOmxPort *port);
 
 #define G_OMX_PORT_GET_PARAM(port, idx, param) G_STMT_START {  \
@@ -107,5 +110,6 @@ gpointer g_omx_port_recv (GOmxPort *port);
 
 GstCaps * g_omx_port_set_video_formats (GOmxPort *port, GstCaps *caps);
 
+G_END_DECLS
 
 #endif /* GSTOMX_PORT_H */

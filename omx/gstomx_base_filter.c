@@ -215,8 +215,8 @@ set_property (GObject *obj,
             {
                 OMX_PARAM_PORTDEFINITIONTYPE param;
                 OMX_U32 nBufferCountActual = g_value_get_uint (value);
-                guint nPortIndex = (prop_id == ARG_NUM_INPUT_BUFFERS) ? 0 : 1;
-                GOmxPort *port = g_omx_core_get_port (self->gomx, nPortIndex);
+                GOmxPort *port = (prop_id == ARG_NUM_INPUT_BUFFERS) ?
+                        self->in_port : self->out_port;
 
                 g_omx_port_get_config (port, &param);
 
@@ -260,8 +260,8 @@ get_property (GObject *obj,
         case ARG_NUM_OUTPUT_BUFFERS:
             {
                 OMX_PARAM_PORTDEFINITIONTYPE param;
-                guint nPortIndex = (prop_id == ARG_NUM_INPUT_BUFFERS) ? 0 : 1;
-                GOmxPort *port = g_omx_core_get_port (self->gomx, nPortIndex);
+                GOmxPort *port = (prop_id == ARG_NUM_INPUT_BUFFERS) ?
+                        self->in_port : self->out_port;
 
                 g_omx_port_get_config (port, &param);
 
@@ -764,8 +764,8 @@ type_instance_init (GTypeInstance *instance,
 
     /* GOmx */
     self->gomx = g_omx_core_new (self, g_class);
-    self->in_port = g_omx_core_get_port (self->gomx, 0);
-    self->out_port = g_omx_core_get_port (self->gomx, 1);
+    self->in_port = g_omx_core_get_port (self->gomx, "in", 0);
+    self->out_port = g_omx_core_get_port (self->gomx, "out", 1);
 
     self->out_port->buffer_alloc = buffer_alloc;
 

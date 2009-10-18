@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "gstomx_util.h"
+#include "gstomx_port.h"
 #include "gstomx.h"
 
 GST_DEBUG_CATEGORY_EXTERN (gstomx_util_debug);
@@ -32,18 +33,24 @@ GST_DEBUG_CATEGORY_EXTERN (gstomx_util_debug);
 static OMX_BUFFERHEADERTYPE * request_buffer (GOmxPort *port);
 static void release_buffer (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer);
 
+#define DEBUG(port, fmt, args...) \
+    GST_DEBUG ("<%s:%s> "fmt, GST_OBJECT_NAME ((port)->core->object), (port)->name, ##args)
+#define LOG(port, fmt, args...) \
+    GST_LOG ("<%s:%s> "fmt, GST_OBJECT_NAME ((port)->core->object), (port)->name, ##args)
+#define WARNING(port, fmt, args...) \
+    GST_WARNING ("<%s:%s> "fmt, GST_OBJECT_NAME ((port)->core->object), (port)->name, ##args)
 
 /*
  * Port
  */
 
 GOmxPort *
-g_omx_port_new (GOmxCore *core, guint index)
+g_omx_port_new (GOmxCore *core, const gchar *name, guint index)
 {
-    GOmxPort *port;
-    port = g_new0 (GOmxPort, 1);
+    GOmxPort *port = g_new0 (GOmxPort, 1);
 
     port->core = core;
+    port->name = g_strdup_printf ("%s:%d", name, index);
     port->port_index = index;
     port->num_buffers = 0;
     port->buffers = NULL;
@@ -58,11 +65,17 @@ g_omx_port_new (GOmxCore *core, guint index)
 void
 g_omx_port_free (GOmxPort *port)
 {
+    DEBUG (port, "begin");
+
     g_mutex_free (port->mutex);
     async_queue_free (port->queue);
 
+    g_free (port->name);
+
     g_free (port->buffers);
     g_free (port);
+
+    DEBUG (port, "end");
 }
 
 void
@@ -88,12 +101,14 @@ g_omx_port_setup (GOmxPort *port,
     port->num_buffers = omx_port->nBufferCountActual;
     port->port_index = omx_port->nPortIndex;
 
-    GST_DEBUG_OBJECT (port->core->object,
-        "type=%d, num_buffers=%d, port_index=%d",
+    DEBUG (port, "type=%d, num_buffers=%d, port_index=%d",
         port->type, port->num_buffers, port->port_index);
 
-    g_free (port->buffers);
-    port->buffers = g_new0 (OMX_BUFFERHEADERTYPE *, port->num_buffers);
+    /* I don't think it is valid for buffers to be allocated at this point..
+     * if there is a case where it is, then call g_omx_port_free_buffers()
+     * here instead:
+     */
+    g_return_if_fail (!port->buffers);
 }
 
 static GstBuffer *
@@ -118,20 +133,32 @@ g_omx_port_allocate_buffers (GOmxPort *port)
     guint i;
     guint size;
 
+    if (port->buffers)
+        return;
+
+    if (!port->enabled)
+        return;
+
+    DEBUG (port, "begin");
+
     g_omx_port_get_config (port, &param);
     size = param.nBufferSize;
+
+    port->buffers = g_new0 (OMX_BUFFERHEADERTYPE *, port->num_buffers);
 
     for (i = 0; i < port->num_buffers; i++)
     {
 
         if (port->omx_allocate)
         {
-            GST_DEBUG_OBJECT (port->core->object, "%d: OMX_AllocateBuffer(), size=%d", i, size);
+            DEBUG (port, "%d: OMX_AllocateBuffer(), size=%d", i, size);
             OMX_AllocateBuffer (port->core->omx_handle,
                                 &port->buffers[i],
                                 port->port_index,
                                 NULL,
                                 size);
+
+            g_return_if_fail (port->buffers[i]);
         }
         else
         {
@@ -164,13 +191,15 @@ g_omx_port_allocate_buffers (GOmxPort *port)
                 buffer_data = g_malloc (size);
             }
 
-            GST_DEBUG_OBJECT (port->core->object, "%d: OMX_UseBuffer(), size=%d, share_buffer=%d", i, size, port->share_buffer);
+            DEBUG (port, "%d: OMX_UseBuffer(), size=%d, share_buffer=%d", i, size, port->share_buffer);
             OMX_UseBuffer (port->core->omx_handle,
                            &port->buffers[i],
                            port->port_index,
                            NULL,
                            size,
                            buffer_data);
+
+            g_return_if_fail (port->buffers[i]);
 
             if (port->share_buffer)
             {
@@ -181,12 +210,19 @@ g_omx_port_allocate_buffers (GOmxPort *port)
             }
         }
     }
+
+    DEBUG (port, "end");
 }
 
 void
 g_omx_port_free_buffers (GOmxPort *port)
 {
     guint i;
+
+    if (!port->buffers)
+        return;
+
+    DEBUG (port, "begin");
 
     for (i = 0; i < port->num_buffers; i++)
     {
@@ -209,12 +245,24 @@ g_omx_port_free_buffers (GOmxPort *port)
             port->buffers[i] = NULL;
         }
     }
+
+    g_free (port->buffers);
+    port->buffers = NULL;
+
+    DEBUG (port, "end");
 }
 
 void
 g_omx_port_start_buffers (GOmxPort *port)
 {
     guint i;
+
+    if (!port->enabled)
+        return;
+
+    g_return_if_fail (port->buffers);
+
+    DEBUG (port, "begin");
 
     for (i = 0; i < port->num_buffers; i++)
     {
@@ -229,6 +277,8 @@ g_omx_port_start_buffers (GOmxPort *port)
         else
             release_buffer (port, omx_buffer);
     }
+
+    DEBUG (port, "end");
 }
 
 void
@@ -241,7 +291,7 @@ g_omx_port_push_buffer (GOmxPort *port,
 static OMX_BUFFERHEADERTYPE *
 request_buffer (GOmxPort *port)
 {
-    GST_LOG_OBJECT (port->core->object, "request buffer");
+    LOG (port, "request buffer");
     return async_queue_pop (port->queue);
 }
 
@@ -251,12 +301,12 @@ release_buffer (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer)
     switch (port->type)
     {
         case GOMX_PORT_INPUT:
-            GST_DEBUG_OBJECT (port->core->object, "ETB: omx_buffer=%p, pAppPrivate=%p, pBuffer=%p",
+            DEBUG (port, "ETB: omx_buffer=%p, pAppPrivate=%p, pBuffer=%p",
                     omx_buffer, omx_buffer ? omx_buffer->pAppPrivate : 0, omx_buffer ? omx_buffer->pBuffer : 0);
             OMX_EmptyThisBuffer (port->core->omx_handle, omx_buffer);
             break;
         case GOMX_PORT_OUTPUT:
-            GST_DEBUG_OBJECT (port->core->object, "FTB: omx_buffer=%p, pAppPrivate=%p, pBuffer=%p",
+            DEBUG (port, "FTB: omx_buffer=%p, pAppPrivate=%p, pBuffer=%p",
                     omx_buffer, omx_buffer ? omx_buffer->pAppPrivate : 0, omx_buffer ? omx_buffer->pBuffer : 0);
             OMX_FillThisBuffer (port->core->omx_handle, omx_buffer);
             break;
@@ -328,8 +378,7 @@ send_prep_buffer_data (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer, GstBuff
                 OMX_TICKS_PER_SECOND, GST_SECOND);
     }
 
-    GST_DEBUG_OBJECT (port->core->object,
-            "omx_buffer: size=%lu, len=%lu, flags=%lu, offset=%lu, timestamp=%lld",
+    DEBUG (port, "omx_buffer: size=%lu, len=%lu, flags=%lu, offset=%lu, timestamp=%lld",
             omx_buffer->nAllocLen, omx_buffer->nFilledLen, omx_buffer->nFlags,
             omx_buffer->nOffset, omx_buffer->nTimeStamp);
 }
@@ -383,7 +432,7 @@ g_omx_port_send (GOmxPort *port, gpointer obj)
 
         if (!omx_buffer)
         {
-            GST_DEBUG_OBJECT (port->core->object, "null buffer");
+            DEBUG (port, "null buffer");
             return -1;
         }
 
@@ -410,7 +459,7 @@ g_omx_port_send (GOmxPort *port, gpointer obj)
         return ret;
     }
 
-    GST_WARNING_OBJECT (port->core->object, "unknown obj type");
+    WARNING (port, "unknown obj type");
     return -1;
 }
 
@@ -436,14 +485,13 @@ g_omx_port_recv (GOmxPort *port)
             return NULL;
         }
 
-        GST_DEBUG_OBJECT (port->core->object,
-                "omx_buffer: size=%lu, len=%lu, flags=%lu, offset=%lu, timestamp=%lld",
+        DEBUG (port, "omx_buffer: size=%lu, len=%lu, flags=%lu, offset=%lu, timestamp=%lld",
                 omx_buffer->nAllocLen, omx_buffer->nFilledLen, omx_buffer->nFlags,
                 omx_buffer->nOffset, omx_buffer->nTimeStamp);
 
         if (G_UNLIKELY (omx_buffer->nFlags & OMX_BUFFERFLAG_EOS))
         {
-            GST_DEBUG_OBJECT (port->core->object, "got eos");
+            DEBUG (port, "got eos");
             ret = gst_event_new_eos ();
         }
         else if (G_LIKELY (omx_buffer->nFilledLen > 0))
@@ -493,7 +541,7 @@ g_omx_port_recv (GOmxPort *port)
             if (buf)
                 gst_buffer_unref (buf);
 
-            GST_DEBUG_OBJECT (port->core->object, "empty buffer"); /* keep looping */
+            DEBUG (port, "empty buffer"); /* keep looping */
         }
 
         if (port->share_buffer)
@@ -519,18 +567,22 @@ g_omx_port_recv (GOmxPort *port)
 void
 g_omx_port_resume (GOmxPort *port)
 {
+    DEBUG (port, "resume");
     async_queue_enable (port->queue);
 }
 
 void
 g_omx_port_pause (GOmxPort *port)
 {
+    DEBUG (port, "pause");
     async_queue_disable (port->queue);
 }
 
 void
 g_omx_port_flush (GOmxPort *port)
 {
+    DEBUG (port, "begin");
+
     if (port->type == GOMX_PORT_OUTPUT)
     {
         /* This will get rid of any buffers that we have received, but not
@@ -546,42 +598,43 @@ g_omx_port_flush (GOmxPort *port)
 
     OMX_SendCommand (port->core->omx_handle, OMX_CommandFlush, port->port_index, NULL);
     g_sem_down (port->core->flush_sem);
+    DEBUG (port, "end");
 }
 
 void
 g_omx_port_enable (GOmxPort *port)
 {
-    GOmxCore *core;
+    DEBUG (port, "begin");
 
-    core = port->core;
+    OMX_SendCommand (g_omx_core_get_handle (port->core),
+            OMX_CommandPortEnable, port->port_index, NULL);
 
-    OMX_SendCommand (core->omx_handle, OMX_CommandPortEnable, port->port_index, NULL);
-    g_omx_port_allocate_buffers (port);
-    if (core->omx_state != OMX_StateLoaded)
-        g_omx_port_start_buffers (port);
-    g_omx_port_resume (port);
+    g_sem_down (port->core->port_sem);
 
-    g_sem_down (core->port_sem);
+    port->enabled = TRUE;
+
+    DEBUG (port, "end");
 }
 
 void
 g_omx_port_disable (GOmxPort *port)
 {
-    GOmxCore *core;
+    DEBUG (port, "begin");
 
-    core = port->core;
+    port->enabled = FALSE;
 
-    OMX_SendCommand (core->omx_handle, OMX_CommandPortDisable, port->port_index, NULL);
-    g_omx_port_pause (port);
-    g_omx_port_flush (port);
-    g_omx_port_free_buffers (port);
+    OMX_SendCommand (g_omx_core_get_handle (port->core),
+            OMX_CommandPortDisable, port->port_index, NULL);
 
-    g_sem_down (core->port_sem);
+    g_sem_down (port->core->port_sem);
+
+    DEBUG (port, "end");
 }
 
 void
 g_omx_port_finish (GOmxPort *port)
 {
+    DEBUG (port, "finish");
     port->enabled = FALSE;
     async_queue_disable (port->queue);
 }
@@ -638,7 +691,7 @@ g_omx_port_set_video_formats (GOmxPort *port, GstCaps *caps)
 
             if( err == OMX_ErrorIncorrectStateOperation )
             {
-                GST_DEBUG_OBJECT (port->core->object, "already executing?");
+                DEBUG (port, "already executing?");
 
                 /* if we are already executing, such as might be the case if
                  * we get a OMX_EventPortSettingsChanged event, just take the

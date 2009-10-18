@@ -384,7 +384,7 @@ type_instance_init (GTypeInstance *instance,
     /* GOmx */
     self->gomx = g_omx_core_new (self, g_class);
     self->gomx->use_timestamps = FALSE;
-    self->out_port = g_omx_core_get_port (self->gomx, klass->out_port_index);
+    self->out_port = g_omx_core_get_port (self->gomx, "out", klass->out_port_index);
     self->out_port->buffer_alloc = buffer_alloc;
 
     GST_LOG_OBJECT (self, "end");

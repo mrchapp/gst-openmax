@@ -25,6 +25,8 @@
 
 #include "gstomx_util.h"
 
+G_BEGIN_DECLS
+
 /* Typedefs. */
 
 typedef void (*GOmxCb) (GOmxCore *core);
@@ -100,12 +102,14 @@ void g_omx_core_wait_for_done (GOmxCore *core);
 void g_omx_core_flush_start (GOmxCore *core);
 void g_omx_core_flush_stop (GOmxCore *core);
 OMX_HANDLETYPE g_omx_core_get_handle (GOmxCore *core);
-GOmxPort *g_omx_core_get_port (GOmxCore *core, guint index);
+GOmxPort *g_omx_core_get_port (GOmxCore *core, const gchar *name, guint index);
 
 /* Friend:  helpers used by GOmxPort */
 void g_omx_core_got_buffer (GOmxCore *core,
         GOmxPort *port,
         OMX_BUFFERHEADERTYPE *omx_buffer);
+
+G_END_DECLS
 
 
 #endif /* GSTOMX_CORE_H */

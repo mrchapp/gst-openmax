@@ -303,9 +303,9 @@ type_instance_init (GTypeInstance *instance,
 
     omx_base->gomx->use_timestamps = TRUE;
 
-    self->vid_port = g_omx_core_get_port (omx_base->gomx,
+    self->vid_port = g_omx_core_get_port (omx_base->gomx, "vid",
             OMX_CAMERA_PORT_VIDEO_OUT_VIDEO);
-    self->img_port = g_omx_core_get_port (omx_base->gomx,
+    self->img_port = g_omx_core_get_port (omx_base->gomx, "img",
             OMX_CAMERA_PORT_IMAGE_OUT_IMAGE);
 // TODO I think we need to pad_alloc on the img port to figure out if the downstream element wants jpg or raw..
 //    self->img_port->buffer_alloc = img_buffer_alloc;
