@@ -58,6 +58,14 @@ struct GstOmxBaseSrcClass
 
 GType gst_omx_base_src_get_type (void);
 
+/* protected helper method which can be used by derived classes:
+ */
+void gst_omx_base_src_setup_ports (GstOmxBaseSrc *self);
+GstFlowReturn gst_omx_base_src_create_from_port (GstOmxBaseSrc *self,
+        GOmxPort *out_port,
+        GstBuffer **ret_buf);
+
+
 G_END_DECLS
 
 #endif /* GSTOMX_BASE_SRC_H */

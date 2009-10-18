@@ -55,6 +55,7 @@ dnl *** checks for OpenMAX ***
 dnl Check for OMX Core:
 PKG_CHECK_MODULES([OMXCORE], [libOMX_Core], [
 	echo "OMX Headers found.. using them!"
+	OMXCORE_CFLAGS="$OMXCORE_CFLAGS -DUSE_OMXTICORE"
 ], [
 	echo "OMX Headers not found.. using my own OMX headers!"
 	OMXCORE_CFLAGS="-I\$(srcdir)/headers"

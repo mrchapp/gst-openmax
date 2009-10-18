@@ -30,12 +30,13 @@ enum
     ARG_COMPONENT_ROLE,
     ARG_COMPONENT_NAME,
     ARG_LIBRARY_NAME,
+    ARG_NUM_OUTPUT_BUFFERS,
 };
 
 GSTOMX_BOILERPLATE (GstOmxBaseSrc, gst_omx_base_src, GstBaseSrc, GST_TYPE_BASE_SRC);
 
-static void
-setup_ports (GstOmxBaseSrc *self)
+void
+gst_omx_base_src_setup_ports (GstOmxBaseSrc *self)
 {
     OMX_PARAM_PORTDEFINITIONTYPE param;
 
@@ -104,34 +105,19 @@ finalize (GObject *obj)
     G_OBJECT_CLASS (parent_class)->finalize (obj);
 }
 
-static GstFlowReturn
-create (GstBaseSrc *gst_base,
-        guint64 offset,
-        guint length,
+/* protected helper method which can be used by derived classes:
+ */
+GstFlowReturn
+gst_omx_base_src_create_from_port (GstOmxBaseSrc *self,
+        GOmxPort *out_port,
         GstBuffer **ret_buf)
 {
     GOmxCore *gomx;
-    GOmxPort *out_port;
-    GstOmxBaseSrc *self;
     GstFlowReturn ret = GST_FLOW_OK;
-
-    self = GST_OMX_BASE_SRC (gst_base);
 
     gomx = self->gomx;
 
     GST_LOG_OBJECT (self, "begin");
-
-    GST_LOG_OBJECT (self, "state: %d", gomx->omx_state);
-
-    if (gomx->omx_state == OMX_StateLoaded)
-    {
-        GST_INFO_OBJECT (self, "omx: prepare");
-
-        setup_ports (self);
-        g_omx_core_prepare (self->gomx);
-    }
-
-    out_port = self->out_port;
 
     if (out_port->enabled)
     {
@@ -184,6 +170,27 @@ create (GstBaseSrc *gst_base,
     GST_LOG_OBJECT (self, "end");
 
     return ret;
+}
+
+static GstFlowReturn
+create (GstBaseSrc *gst_base,
+        guint64 offset,
+        guint length,
+        GstBuffer **ret_buf)
+{
+    GstOmxBaseSrc *self = GST_OMX_BASE_SRC (gst_base);
+
+    GST_LOG_OBJECT (self, "state: %d", self->gomx->omx_state);
+
+    if (self->gomx->omx_state == OMX_StateLoaded)
+    {
+        GST_INFO_OBJECT (self, "omx: prepare");
+
+        gst_omx_base_src_setup_ports (self);
+        g_omx_core_prepare (self->gomx);
+    }
+
+    return gst_omx_base_src_create_from_port (self, self->out_port, ret_buf);
 }
 
 static gboolean
@@ -241,6 +248,19 @@ set_property (GObject *obj,
             g_free (self->omx_library);
             self->omx_library = g_value_dup_string (value);
             break;
+        case ARG_NUM_OUTPUT_BUFFERS:
+            {
+                OMX_PARAM_PORTDEFINITIONTYPE param;
+                OMX_U32 nBufferCountActual = g_value_get_uint (value);
+
+                g_omx_port_get_config (self->out_port, &param);
+
+                g_return_if_fail (nBufferCountActual >= param.nBufferCountMin);
+                param.nBufferCountActual = nBufferCountActual;
+
+                g_omx_port_set_config (self->out_port, &param);
+            }
+            break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
             break;
@@ -267,6 +287,13 @@ get_property (GObject *obj,
             break;
         case ARG_LIBRARY_NAME:
             g_value_set_string (value, self->omx_library);
+            break;
+        case ARG_NUM_OUTPUT_BUFFERS:
+            {
+                OMX_PARAM_PORTDEFINITIONTYPE param;
+                g_omx_port_get_config (self->out_port, &param);
+                g_value_set_uint (value, param.nBufferCountActual);
+            }
             break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -317,6 +344,15 @@ type_class_init (gpointer g_class,
                                          g_param_spec_string ("library-name", "Library name",
                                                               "Name of the OpenMAX IL implementation library to use",
                                                               NULL, G_PARAM_READWRITE));
+
+        /* note: the default values for these are just a guess.. since we wouldn't know
+         * until the OMX component is constructed.  But that is ok, these properties are
+         * only for debugging
+         */
+        g_object_class_install_property (gobject_class, ARG_NUM_OUTPUT_BUFFERS,
+                                         g_param_spec_uint ("output-buffers", "Output buffers",
+                                                            "The number of OMX output buffers",
+                                                            1, 10, 4, G_PARAM_READWRITE));
     }
 
     omx_base_class->out_port_index = 0;

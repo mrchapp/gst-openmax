@@ -42,8 +42,13 @@ struct GstOmxCamera
     GstOmxBaseSrc omx_base;
 
     /*< private >*/
+    gint mode;
+
     GOmxPort *vid_port;
     GOmxPort *img_port;
+#if 0
+    GOmxPort *in_port;
+#endif
 
     GstPad   *vidsrcpad;
     GstPad   *imgsrcpad;
