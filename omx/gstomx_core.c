@@ -219,6 +219,8 @@ g_omx_core_init (GOmxCore *core)
     GST_DEBUG_OBJECT (core->object, "OMX_GetHandle(&%p) -> %s",
         core->omx_handle, g_omx_error_to_str (core->omx_error));
 
+    g_return_if_fail (core->omx_handle);
+
     if (component_role)
     {
         OMX_PARAM_COMPONENTROLETYPE param;
@@ -226,12 +228,12 @@ g_omx_core_init (GOmxCore *core)
         GST_DEBUG_OBJECT (core->object, "setting component role: %s",
                 component_role);
 
-        G_OMX_CORE_GET_PARAM (core->omx_handle,
+        G_OMX_CORE_GET_PARAM (core,
                 OMX_IndexParamStandardComponentRole, &param);
 
         strcpy((char*)param.cRole, component_role);
 
-        G_OMX_CORE_SET_PARAM (core->omx_handle,
+        G_OMX_CORE_SET_PARAM (core,
                 OMX_IndexParamStandardComponentRole, &param);
 
         g_free (component_role);
@@ -239,8 +241,6 @@ g_omx_core_init (GOmxCore *core)
 
     g_free (component_name);
     g_free (library_name);
-
-    g_return_if_fail (core->omx_handle);
 
     if (!core->omx_error)
         core->omx_state = OMX_StateLoaded;
