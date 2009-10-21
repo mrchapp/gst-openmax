@@ -158,12 +158,12 @@ omx_setup (GstOmxBaseFilter *omx_base)
     {
         OMX_PARAM_PORTDEFINITIONTYPE param;
 
-        g_omx_port_get_config (omx_base->out_port, &param);
+        G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
 
         /* this is against the standard; nBufferSize is read-only. */
         param.nBufferSize = 300000;
 
-        g_omx_port_set_config (omx_base->out_port, &param);
+        G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
     }
 
     {

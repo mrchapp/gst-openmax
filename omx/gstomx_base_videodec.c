@@ -139,12 +139,12 @@ sink_setcaps (GstPad *pad,
     {
         OMX_PARAM_PORTDEFINITIONTYPE param;
 
-        g_omx_port_get_config (omx_base->in_port, &param);
+        G_OMX_PORT_GET_DEFINITION (omx_base->in_port, &param);
 
         param.format.video.nFrameWidth = width;
         param.format.video.nFrameHeight = height;
 
-        g_omx_port_set_config (omx_base->in_port, &param);
+        G_OMX_PORT_SET_DEFINITION (omx_base->in_port, &param);
     }
 
     if (self->sink_setcaps)
@@ -170,7 +170,7 @@ src_getcaps (GstPad *pad)
         OMX_PARAM_PORTDEFINITIONTYPE param;
         int i;
 
-        g_omx_port_get_config (omx_base->out_port, &param);
+        G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
 
         caps = gst_caps_new_empty ();
 
@@ -236,7 +236,7 @@ src_setcaps (GstPad *pad, GstCaps *caps)
         /* Output port configuration: */
         OMX_PARAM_PORTDEFINITIONTYPE param;
 
-        g_omx_port_get_config (omx_base->out_port, &param);
+        G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
 
         param.format.video.eColorFormat = g_omx_fourcc_to_colorformat (
                 gst_video_format_to_fourcc (format));
@@ -244,7 +244,7 @@ src_setcaps (GstPad *pad, GstCaps *caps)
         param.format.video.nFrameHeight = height;
         param.format.video.nStride      = rowstride;
 
-        g_omx_port_set_config (omx_base->out_port, &param);
+        G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
     }
 
     return TRUE;
@@ -265,33 +265,33 @@ omx_setup (GstOmxBaseFilter *omx_base)
         OMX_PARAM_PORTDEFINITIONTYPE param;
 
         /* Input port configuration. */
-        g_omx_port_get_config (omx_base->in_port, &param);
+        G_OMX_PORT_GET_DEFINITION (omx_base->in_port, &param);
 
         param.format.video.eCompressionFormat = self->compression_format;
 
-        g_omx_port_set_config (omx_base->in_port, &param);
+        G_OMX_PORT_SET_DEFINITION (omx_base->in_port, &param);
 
         /* some workarounds required for TI components. */
         {
             gint width, height;
 
             {
-                g_omx_port_get_config (omx_base->in_port, &param);
+                G_OMX_PORT_GET_DEFINITION (omx_base->in_port, &param);
 
                 width = param.format.video.nFrameWidth;
                 height = param.format.video.nFrameHeight;
 
-                g_omx_port_set_config (omx_base->in_port, &param);
+                G_OMX_PORT_SET_DEFINITION (omx_base->in_port, &param);
             }
 
             /* the component should do this instead */
             {
-                g_omx_port_get_config (omx_base->out_port, &param);
+                G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
 
                 param.format.video.nFrameWidth = width;
                 param.format.video.nFrameHeight = height;
 
-                g_omx_port_set_config (omx_base->out_port, &param);
+                G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
             }
         }
     }

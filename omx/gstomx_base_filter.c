@@ -45,13 +45,13 @@ setup_ports (GstOmxBaseFilter *self)
 
     /* Input port configuration. */
 
-    g_omx_port_get_config (self->in_port, &param);
+    G_OMX_PORT_GET_DEFINITION (self->in_port, &param);
     g_omx_port_setup (self->in_port, &param);
     gst_pad_set_element_private (self->sinkpad, self->in_port);
 
     /* Output port configuration. */
 
-    g_omx_port_get_config (self->out_port, &param);
+    G_OMX_PORT_GET_DEFINITION (self->out_port, &param);
     g_omx_port_setup (self->out_port, &param);
     gst_pad_set_element_private (self->srcpad, self->out_port);
 
@@ -218,12 +218,12 @@ set_property (GObject *obj,
                 GOmxPort *port = (prop_id == ARG_NUM_INPUT_BUFFERS) ?
                         self->in_port : self->out_port;
 
-                g_omx_port_get_config (port, &param);
+                G_OMX_PORT_GET_DEFINITION (port, &param);
 
                 g_return_if_fail (nBufferCountActual >= param.nBufferCountMin);
                 param.nBufferCountActual = nBufferCountActual;
 
-                g_omx_port_set_config (port, &param);
+                G_OMX_PORT_SET_DEFINITION (port, &param);
             }
             break;
         default:
@@ -263,7 +263,7 @@ get_property (GObject *obj,
                 GOmxPort *port = (prop_id == ARG_NUM_INPUT_BUFFERS) ?
                         self->in_port : self->out_port;
 
-                g_omx_port_get_config (port, &param);
+                G_OMX_PORT_GET_DEFINITION (port, &param);
 
                 g_value_set_uint (value, param.nBufferCountActual);
             }

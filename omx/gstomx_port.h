@@ -63,10 +63,7 @@ struct GOmxPort
     gboolean share_buffer;
 };
 
-/* Functions. */
-
-GOmxPort *g_omx_port_new (GOmxCore *core, const gchar *name, guint index);
-void g_omx_port_free (GOmxPort *port);
+/* Macros. */
 
 #define G_OMX_PORT_GET_PARAM(port, idx, param) G_STMT_START {  \
 		_G_OMX_INIT_PARAM (param);                         \
@@ -78,15 +75,27 @@ void g_omx_port_free (GOmxPort *port);
         OMX_SetParameter (                                          \
             g_omx_core_get_handle ((port)->core), idx, (param))
 
-/* I think we can remove these two:
- */
-#define g_omx_port_get_config(port, param) \
+#define G_OMX_PORT_GET_CONFIG(port, idx, param) G_STMT_START {  \
+        _G_OMX_INIT_PARAM (param);                         \
+        (param)->nPortIndex = (port)->port_index;          \
+        OMX_GetConfig (g_omx_core_get_handle ((port)->core), idx, (param)); \
+    } G_STMT_END
+
+#define G_OMX_PORT_SET_CONFIG(port, idx, param)                     \
+        OMX_SetConfig (                                             \
+            g_omx_core_get_handle ((port)->core), idx, (param))
+
+#define G_OMX_PORT_GET_DEFINITION(port, param) \
         G_OMX_PORT_GET_PARAM (port, OMX_IndexParamPortDefinition, param)
 
-#define g_omx_port_set_config(port, param) \
+#define G_OMX_PORT_SET_DEFINITION(port, param) \
         G_OMX_PORT_SET_PARAM (port, OMX_IndexParamPortDefinition, param)
 
 
+/* Functions. */
+
+GOmxPort *g_omx_port_new (GOmxCore *core, const gchar *name, guint index);
+void g_omx_port_free (GOmxPort *port);
 
 void g_omx_port_setup (GOmxPort *port, OMX_PARAM_PORTDEFINITIONTYPE *omx_port);
 void g_omx_port_allocate_buffers (GOmxPort *port);

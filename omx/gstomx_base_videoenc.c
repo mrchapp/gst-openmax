@@ -145,7 +145,7 @@ sink_setcaps (GstPad *pad,
         /* Output port configuration: */
         OMX_PARAM_PORTDEFINITIONTYPE param;
 
-        g_omx_port_get_config (omx_base->in_port, &param);
+        G_OMX_PORT_GET_DEFINITION (omx_base->in_port, &param);
 
         param.format.video.eColorFormat = g_omx_fourcc_to_colorformat (
                 gst_video_format_to_fourcc (format));
@@ -167,7 +167,7 @@ sink_setcaps (GstPad *pad,
                 gst_value_get_fraction_denominator (framerate);
         }
 
-        g_omx_port_set_config (omx_base->out_port, &param);
+        G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
     }
 
     return TRUE;
@@ -188,14 +188,14 @@ omx_setup (GstOmxBaseFilter *omx_base)
         OMX_PARAM_PORTDEFINITIONTYPE param;
 
         /* Output port configuration. */
-        g_omx_port_get_config (omx_base->out_port, &param);
+        G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
 
         param.format.video.eCompressionFormat = self->compression_format;
 
         /** @todo this should be set with a property */
         param.format.video.nBitrate = self->bitrate;
 
-        g_omx_port_set_config (omx_base->out_port, &param);
+        G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
 
         /* some workarounds required for TI components. */
         {
@@ -205,7 +205,7 @@ omx_setup (GstOmxBaseFilter *omx_base)
 
             /* the component should do this instead */
             {
-                g_omx_port_get_config (omx_base->in_port, &param);
+                G_OMX_PORT_GET_DEFINITION (omx_base->in_port, &param);
 
                 width = param.format.video.nFrameWidth;
                 height = param.format.video.nFrameHeight;
@@ -217,12 +217,12 @@ omx_setup (GstOmxBaseFilter *omx_base)
                         gst_video_format_from_fourcc (fourcc),
                         width, height, param.format.video.nStride);
 
-                g_omx_port_set_config (omx_base->in_port, &param);
+                G_OMX_PORT_SET_DEFINITION (omx_base->in_port, &param);
             }
 
             /* the component should do this instead */
             {
-                g_omx_port_get_config (omx_base->out_port, &param);
+                G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
 
                 /* this is against the standard; nBufferSize is read-only. */
                 param.nBufferSize = width * height;
@@ -231,7 +231,7 @@ omx_setup (GstOmxBaseFilter *omx_base)
                 param.format.video.nFrameHeight = height;
                 param.format.video.xFramerate = framerate;
 
-                g_omx_port_set_config (omx_base->out_port, &param);
+                G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
             }
         }
     }

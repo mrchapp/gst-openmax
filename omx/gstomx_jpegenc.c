@@ -157,7 +157,7 @@ settings_changed_cb (GOmxCore *core)
     {
         OMX_PARAM_PORTDEFINITIONTYPE param;
 
-        g_omx_port_get_config (omx_base->out_port, &param);
+        G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
 
         width = param.format.image.nFrameWidth;
         height = param.format.image.nFrameHeight;
@@ -225,13 +225,13 @@ sink_setcaps (GstPad *pad,
         OMX_PARAM_PORTDEFINITIONTYPE param;
 
         /* Input port configuration. */
-        g_omx_port_get_config (omx_base->in_port, &param);
+        G_OMX_PORT_GET_DEFINITION (omx_base->in_port, &param);
 
         param.format.image.nFrameWidth = width;
         param.format.image.nFrameHeight = height;
         param.format.image.eColorFormat = color_format;
 
-        g_omx_port_set_config (omx_base->in_port, &param);
+        G_OMX_PORT_SET_DEFINITION (omx_base->in_port, &param);
     }
 
     return gst_pad_set_caps (pad, caps);
@@ -252,11 +252,11 @@ omx_setup (GstOmxBaseFilter *omx_base)
         OMX_PARAM_PORTDEFINITIONTYPE param;
 
         /* Output port configuration. */
-        g_omx_port_get_config (omx_base->out_port, &param);
+        G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
 
         param.format.image.eCompressionFormat = OMX_IMAGE_CodingJPEG;
 
-        g_omx_port_set_config (omx_base->out_port, &param);
+        G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
 
         /* some workarounds required for TI components. */
         {
@@ -265,7 +265,7 @@ omx_setup (GstOmxBaseFilter *omx_base)
 
             /* the component should do this instead */
             {
-                g_omx_port_get_config (omx_base->in_port, &param);
+                G_OMX_PORT_GET_DEFINITION (omx_base->in_port, &param);
 
                 width = param.format.image.nFrameWidth;
                 height = param.format.image.nFrameHeight;
@@ -277,19 +277,19 @@ omx_setup (GstOmxBaseFilter *omx_base)
                         gst_video_format_from_fourcc (fourcc),
                         GST_ROUND_UP_16 (width), GST_ROUND_UP_16 (height));
 
-                g_omx_port_set_config (omx_base->in_port, &param);
+                G_OMX_PORT_SET_DEFINITION (omx_base->in_port, &param);
             }
 
             /* the component should do this instead */
             {
-                g_omx_port_get_config (omx_base->out_port, &param);
+                G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
 
                 param.nBufferSize = width * height;
 
                 param.format.image.nFrameWidth = width;
                 param.format.image.nFrameHeight = height;
 
-                g_omx_port_set_config (omx_base->out_port, &param);
+                G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
             }
         }
     }

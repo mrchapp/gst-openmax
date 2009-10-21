@@ -278,7 +278,7 @@ src_setcaps (GstPad *pad, GstCaps *caps)
         /* Output port configuration: */
         OMX_PARAM_PORTDEFINITIONTYPE param;
 
-        g_omx_port_get_config (omx_base->out_port, &param);
+        G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
 
         param.format.video.eColorFormat = g_omx_fourcc_to_colorformat (
                 gst_video_format_to_fourcc (format));
@@ -286,8 +286,8 @@ src_setcaps (GstPad *pad, GstCaps *caps)
         param.format.video.nFrameHeight = height;
         param.format.video.nStride      = rowstride;
 
-        g_omx_port_set_config (omx_base->out_port, &param);
-        g_omx_port_set_config (self->vid_port, &param);
+        G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
+        G_OMX_PORT_SET_DEFINITION (self->vid_port, &param);
     }
 
     return TRUE;
@@ -327,14 +327,14 @@ setup_ports (GstOmxBaseSrc *base_src)
     GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
     OMX_PARAM_PORTDEFINITIONTYPE param;
 
-    g_omx_port_get_config (self->vid_port, &param);
+    G_OMX_PORT_GET_DEFINITION (self->vid_port, &param);
     g_omx_port_setup (self->vid_port, &param);
 
-    g_omx_port_get_config (self->img_port, &param);
+    G_OMX_PORT_GET_DEFINITION (self->img_port, &param);
     g_omx_port_setup (self->img_port, &param);
 
 #if 0
-    g_omx_port_get_config (self->in_port, &param);
+    G_OMX_PORT_GET_DEFINITION (self->in_port, &param);
     g_omx_port_setup (self->in_port, &param);
 #endif
 
@@ -561,12 +561,12 @@ set_property (GObject *obj,
             GOmxPort *port = (prop_id == ARG_NUM_IMAGE_OUTPUT_BUFFERS) ?
                     self->img_port : self->vid_port;
 
-            g_omx_port_get_config (port, &param);
+            G_OMX_PORT_GET_DEFINITION (port, &param);
 
             g_return_if_fail (nBufferCountActual >= param.nBufferCountMin);
             param.nBufferCountActual = nBufferCountActual;
 
-            g_omx_port_set_config (port, &param);
+            G_OMX_PORT_SET_DEFINITION (port, &param);
 
             break;
         }
@@ -648,7 +648,7 @@ get_property (GObject *obj,
             GOmxPort *port = (prop_id == ARG_NUM_IMAGE_OUTPUT_BUFFERS) ?
                     self->img_port : self->vid_port;
 
-            g_omx_port_get_config (port, &param);
+            G_OMX_PORT_GET_DEFINITION (port, &param);
 
             g_value_set_uint (value, param.nBufferCountActual);
 

@@ -41,7 +41,7 @@ gst_omx_base_src_setup_ports (GstOmxBaseSrc *self)
     OMX_PARAM_PORTDEFINITIONTYPE param;
 
     /* Output port configuration. */
-    g_omx_port_get_config (self->out_port, &param);
+    G_OMX_PORT_GET_DEFINITION (self->out_port, &param);
     g_omx_port_setup (self->out_port, &param);
 
     if (self->setup_ports)
@@ -253,12 +253,12 @@ set_property (GObject *obj,
                 OMX_PARAM_PORTDEFINITIONTYPE param;
                 OMX_U32 nBufferCountActual = g_value_get_uint (value);
 
-                g_omx_port_get_config (self->out_port, &param);
+                G_OMX_PORT_GET_DEFINITION (self->out_port, &param);
 
                 g_return_if_fail (nBufferCountActual >= param.nBufferCountMin);
                 param.nBufferCountActual = nBufferCountActual;
 
-                g_omx_port_set_config (self->out_port, &param);
+                G_OMX_PORT_SET_DEFINITION (self->out_port, &param);
             }
             break;
         default:
@@ -291,7 +291,7 @@ get_property (GObject *obj,
         case ARG_NUM_OUTPUT_BUFFERS:
             {
                 OMX_PARAM_PORTDEFINITIONTYPE param;
-                g_omx_port_get_config (self->out_port, &param);
+                G_OMX_PORT_GET_DEFINITION (self->out_port, &param);
                 g_value_set_uint (value, param.nBufferCountActual);
             }
             break;

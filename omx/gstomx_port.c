@@ -141,7 +141,7 @@ g_omx_port_allocate_buffers (GOmxPort *port)
 
     DEBUG (port, "begin");
 
-    g_omx_port_get_config (port, &param);
+    G_OMX_PORT_GET_DEFINITION (port, &param);
     size = param.nBufferSize;
 
     port->buffers = g_new0 (OMX_BUFFERHEADERTYPE *, port->num_buffers);
@@ -176,7 +176,7 @@ g_omx_port_allocate_buffers (GOmxPort *port)
                      * changes the size of the requested buffer.  So let's
                      * check that, and if necessary start-over:
                      */
-                    g_omx_port_get_config (port, &param);
+                    G_OMX_PORT_GET_DEFINITION (port, &param);
 
                     if (size != param.nBufferSize)
                     {

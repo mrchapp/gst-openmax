@@ -340,10 +340,10 @@ omx_setup (GstOmxBaseFilter *omx_base)
 
     {
         OMX_PARAM_PORTDEFINITIONTYPE param;
-        g_omx_port_get_config (omx_base->in_port, &param);
+        G_OMX_PORT_GET_DEFINITION (omx_base->in_port, &param);
 
         param.nBufferSize = IN_BUFFER_SIZE;
-        g_omx_port_set_config (omx_base->in_port, &param);
+        G_OMX_PORT_SET_DEFINITION (omx_base->in_port, &param);
     }
     /* PCM configuration. */
     {
@@ -360,10 +360,10 @@ omx_setup (GstOmxBaseFilter *omx_base)
      /* output port configuration. */
     {
         OMX_PARAM_PORTDEFINITIONTYPE param;
-        g_omx_port_get_config (omx_base->out_port, &param);
+        G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
 
         param.nBufferSize = OUT_BUFFER_SIZE;
-        g_omx_port_set_config (omx_base->out_port, &param);
+        G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
     }
     /* AAC configuration. */
     {
