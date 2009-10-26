@@ -157,11 +157,11 @@ settings_changed_cb (GOmxCore *core)
         GstCaps *new_caps;
 
         new_caps = gst_caps_new_simple ("video/x-raw-yuv",
+                                        "format", GST_TYPE_FOURCC, format,
                                         "width", G_TYPE_INT, width,
                                         "height", G_TYPE_INT, height,
                                         "framerate", GST_TYPE_FRACTION,
                                         self->framerate_num, self->framerate_denom,
-                                        "format", GST_TYPE_FOURCC, format,
                                         NULL);
 
         GST_INFO_OBJECT (omx_base, "caps are: %" GST_PTR_FORMAT, new_caps);
@@ -182,6 +182,7 @@ sink_setcaps (GstPad *pad,
     OMX_PARAM_PORTDEFINITIONTYPE param;
     gint width = 0;
     gint height = 0;
+    OMX_COLOR_FORMATTYPE color = OMX_COLOR_FormatCbYCrY;
 
     omx_base = GST_OMX_BASE_FILTER (GST_PAD_PARENT (pad));
     self = GST_OMX_JPEGDEC (omx_base);
@@ -195,12 +196,25 @@ sink_setcaps (GstPad *pad,
 
     gst_structure_get_int (structure, "width", &width);
     gst_structure_get_int (structure, "height", &height);
+    gst_structure_get_boolean (structure, "interlaced", &self->progressive);
 
     height = GST_ROUND_UP_16 ( height );
     width = GST_ROUND_UP_16 ( width );
 
+    {
+        guint32 fourcc;
 
-     {
+        if ( gst_structure_get_fourcc (structure, "format", &fourcc) )
+        {
+            if (fourcc == GST_MAKE_FOURCC ('I', '4', '2', '0'))
+                color = OMX_COLOR_FormatYUV420PackedPlanar;
+            else if ( (fourcc == GST_MAKE_FOURCC ('U', 'Y', 'V', 'Y')) ||
+                      (fourcc == GST_MAKE_FOURCC ('Y', 'U', 'Y', '2')) )
+                color = OMX_COLOR_FormatCbYCrY;
+        }
+    }
+
+    {
         const GValue *framerate = NULL;
         framerate = gst_structure_get_value (structure, "framerate");
         if (framerate)
@@ -229,6 +243,7 @@ sink_setcaps (GstPad *pad,
 
         param.format.image.nFrameWidth = width;
         param.format.image.nFrameHeight = height;
+        param.format.image.eColorFormat = color;
 
         G_OMX_PORT_SET_PARAM (omx_base->in_port, OMX_IndexParamPortDefinition, &param);
     }
@@ -258,6 +273,7 @@ omx_setup (GstOmxBaseFilter *omx_base)
         {
             G_OMX_PORT_GET_PARAM (omx_base->in_port, OMX_IndexParamPortDefinition, &param);
 
+            param.format.image.cMIMEType = "image/jpeg";
             param.format.image.eCompressionFormat = OMX_IMAGE_CodingJPEG;
 
             param.format.image.nFrameWidth = GST_ROUND_UP_16 (param.format.image.nFrameWidth);
@@ -271,18 +287,15 @@ omx_setup (GstOmxBaseFilter *omx_base)
             /* this is against the standard; nBufferSize is read-only. */
             param.nBufferSize = (width * height) / 2;
 
-            /*I am not sure if this is neccesary*/
-            /*param.format.video.eColorFormat = OMX_COLOR_FormatCbYCrY;
-            param.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedPlanar;*/
-
             G_OMX_PORT_SET_PARAM (omx_base->in_port, OMX_IndexParamPortDefinition, &param);
         }
 
-        /* the component should do this instead */
+        /* Output port configuration. */
         {
             guint32 fourcc;
             G_OMX_PORT_GET_PARAM (omx_base->out_port, OMX_IndexParamPortDefinition, &param);
 
+            param.format.image.cMIMEType = "video/x-raw-yuv";
             param.format.image.eCompressionFormat = OMX_IMAGE_CodingUnused;
             param.format.image.nFrameWidth = width;
             param.format.image.nFrameHeight = height;
@@ -337,7 +350,7 @@ omx_setup (GstOmxBaseFilter *omx_base)
         OMX_SetParameter (gomx->omx_handle, index, &pSubRegionDecode);
 
         /*scale factor*/
-    /*
+
         memset (&pScalefactor, 0, sizeof (pScalefactor));
         pScalefactor.nSize = sizeof (OMX_CONFIG_SCALEFACTORTYPE);
 
@@ -347,7 +360,7 @@ omx_setup (GstOmxBaseFilter *omx_base)
         pScalefactor.xHeight = (OMX_S32) 100;
 
         OMX_SetParameter (gomx->omx_handle, OMX_IndexConfigCommonScale, &pScalefactor);
-    */
+
 #endif
         /*Max resolution */
         memset (&pMaxResolution, 0, sizeof (pMaxResolution));
@@ -371,7 +384,7 @@ omx_setup (GstOmxBaseFilter *omx_base)
         /*Progressive image decode*/
         OMX_GetExtensionIndex(gomx->omx_handle, "OMX.TI.JPEG.decode.Config.ProgressiveFactor", &index);
 
-        nProgressive=0; /*harcoded by the moment, wait from the parser*/
+        nProgressive= self->progressive;
 
         OMX_SetConfig(gomx->omx_handle, index, &(nProgressive));
 
@@ -398,6 +411,7 @@ type_instance_init (GTypeInstance *instance,
 
     self->framerate_num = 0;
     self->framerate_denom = 1;
+    self->progressive = FALSE;
 
 }
 

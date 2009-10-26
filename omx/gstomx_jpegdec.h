@@ -69,6 +69,7 @@ struct GstOmxJpegDec
     GstOmxBaseFilter omx_base;
     gint framerate_num;
     gint framerate_denom;
+    gboolean progressive;
 
 };
 
