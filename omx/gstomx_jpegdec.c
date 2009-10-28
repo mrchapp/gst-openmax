@@ -144,7 +144,7 @@ settings_changed_cb (GOmxCore *core)
 
     {
         OMX_PARAM_PORTDEFINITIONTYPE param;
-        G_OMX_PORT_GET_PARAM (omx_base->out_port, OMX_IndexParamPortDefinition, &param);
+        G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
 
         width = param.format.image.nFrameWidth;
         height = param.format.image.nFrameHeight;
@@ -234,13 +234,13 @@ sink_setcaps (GstPad *pad,
 
     /* Input port configuration. */
     {
-        G_OMX_PORT_GET_PARAM (omx_base->in_port, OMX_IndexParamPortDefinition, &param);
+        G_OMX_PORT_GET_DEFINITION (omx_base->in_port, &param);
 
         param.format.image.nFrameWidth = width;
         param.format.image.nFrameHeight = height;
         param.format.image.eColorFormat = color_format;
 
-        G_OMX_PORT_SET_PARAM (omx_base->in_port, OMX_IndexParamPortDefinition, &param);
+        G_OMX_PORT_SET_DEFINITION (omx_base->in_port, &param);
     }
 
     return gst_pad_set_caps (pad, caps);
@@ -266,13 +266,10 @@ omx_setup (GstOmxBaseFilter *omx_base)
 
         /* Input port configuration. */
         {
-            G_OMX_PORT_GET_PARAM (omx_base->in_port, OMX_IndexParamPortDefinition, &param);
+            G_OMX_PORT_GET_DEFINITION (omx_base->in_port, &param);
 
             param.format.image.cMIMEType = "image/jpeg";
             param.format.image.eCompressionFormat = OMX_IMAGE_CodingJPEG;
-
-            param.format.image.nFrameWidth = GST_ROUND_UP_16 (param.format.image.nFrameWidth);
-            param.format.image.nFrameHeight = GST_ROUND_UP_16 (param.format.image.nFrameHeight);
 
             width = param.format.image.nFrameWidth;
             height = param.format.image.nFrameHeight;
@@ -282,13 +279,13 @@ omx_setup (GstOmxBaseFilter *omx_base)
             /* this is against the standard; nBufferSize is read-only. */
             param.nBufferSize = (width * height) / 2;
 
-            G_OMX_PORT_SET_PARAM (omx_base->in_port, OMX_IndexParamPortDefinition, &param);
+            G_OMX_PORT_SET_DEFINITION (omx_base->in_port, &param);
         }
 
         /* Output port configuration. */
         {
             guint32 fourcc;
-            G_OMX_PORT_GET_PARAM (omx_base->out_port, OMX_IndexParamPortDefinition, &param);
+            G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
 
             param.format.image.cMIMEType = "video/x-raw-yuv";
             param.format.image.eCompressionFormat = OMX_IMAGE_CodingUnused;
@@ -306,7 +303,7 @@ omx_setup (GstOmxBaseFilter *omx_base)
             param.nBufferSize = gst_video_format_get_size (
                     gst_video_format_from_fourcc (fourcc), width, height);
 
-            G_OMX_PORT_SET_PARAM (omx_base->out_port, OMX_IndexParamPortDefinition, &param);
+            G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
         }
     }
 
