@@ -182,7 +182,7 @@ sink_setcaps (GstPad *pad,
     OMX_PARAM_PORTDEFINITIONTYPE param;
     gint width = 0;
     gint height = 0;
-    OMX_COLOR_FORMATTYPE color = OMX_COLOR_FormatCbYCrY;
+    OMX_COLOR_FORMATTYPE color_format = OMX_COLOR_FormatCbYCrY;
 
     omx_base = GST_OMX_BASE_FILTER (GST_PAD_PARENT (pad));
     self = GST_OMX_JPEGDEC (omx_base);
@@ -203,14 +203,9 @@ sink_setcaps (GstPad *pad,
 
     {
         guint32 fourcc;
-
-        if ( gst_structure_get_fourcc (structure, "format", &fourcc) )
+        if (gst_structure_get_fourcc (structure, "format", &fourcc))
         {
-            if (fourcc == GST_MAKE_FOURCC ('I', '4', '2', '0'))
-                color = OMX_COLOR_FormatYUV420PackedPlanar;
-            else if ( (fourcc == GST_MAKE_FOURCC ('U', 'Y', 'V', 'Y')) ||
-                      (fourcc == GST_MAKE_FOURCC ('Y', 'U', 'Y', '2')) )
-                color = OMX_COLOR_FormatCbYCrY;
+            color_format = g_omx_fourcc_to_colorformat (fourcc);
         }
     }
 
@@ -243,7 +238,7 @@ sink_setcaps (GstPad *pad,
 
         param.format.image.nFrameWidth = width;
         param.format.image.nFrameHeight = height;
-        param.format.image.eColorFormat = color;
+        param.format.image.eColorFormat = color_format;
 
         G_OMX_PORT_SET_PARAM (omx_base->in_port, OMX_IndexParamPortDefinition, &param);
     }
