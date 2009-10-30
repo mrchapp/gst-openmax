@@ -401,7 +401,7 @@ create (GstBaseSrc *gst_base,
     GstBuffer *preview_buf = NULL;
     GstBuffer *vid_buf = NULL;
     GstBuffer *img_buf = NULL;
-    GstFlowReturn ret;
+    GstFlowReturn ret = GST_FLOW_OK;
     GstClockTime timestamp;
 
     GST_DEBUG_OBJECT (self, "begin, mode=%d", self->mode);
