@@ -180,9 +180,10 @@ g_omx_port_allocate_buffers (GOmxPort *port)
 
                     if (size != param.nBufferSize)
                     {
+                        size = param.nBufferSize;
                         gst_buffer_unref (buf);
-                        g_omx_port_allocate_buffers (port);
-                        return;
+                        i -= 1;
+                        continue;
                     }
                 }
             }
