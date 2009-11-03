@@ -29,9 +29,9 @@ GSTOMX_BOILERPLATE (GstOmxAacDec, gst_omx_aacdec, GstOmxBaseAudioDec, GST_OMX_BA
 
 typedef enum
 {
-    AAC_PROFILE_LC = 0,
-    AAC_PROFILE_LC_SBR = 1,
-    AAC_PROFILE_LC_SBR_PS = 2,
+    AAC_PROFILE_LC = 2,
+    AAC_PROFILE_LC_SBR = 5,
+    AAC_PROFILE_LC_SBR_PS = 6,
 } AacVersion;
 
 static GstCaps *
@@ -159,8 +159,8 @@ sink_setcaps (GstPad *pad,
     base_audiodec->channels = 2;
     gst_structure_get_int (structure, "channels", &base_audiodec->channels);
 
-    self->aacversion = 0;
-    gst_structure_get_int (structure, "aacversion", &self->aacversion);
+    self->aacversion = 2;
+    gst_structure_get_int (structure, "object_type", &self->aacversion);
 
     self->framed = FALSE;
     gst_structure_get_boolean (structure, "framed", &self->framed);
