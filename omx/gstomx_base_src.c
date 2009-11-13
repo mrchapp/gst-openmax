@@ -130,6 +130,8 @@ gst_omx_base_src_create_from_port (GstOmxBaseSrc *self,
         if (G_UNLIKELY (gomx->omx_state != OMX_StateExecuting))
         {
             GST_ERROR_OBJECT (self, "Whoa! very wrong");
+            ret = GST_FLOW_ERROR;
+            goto beach;
         }
 
         while (out_port->enabled)
@@ -166,6 +168,8 @@ gst_omx_base_src_create_from_port (GstOmxBaseSrc *self,
         GST_WARNING_OBJECT (self, "done");
         ret = GST_FLOW_UNEXPECTED;
     }
+
+beach:
 
     GST_LOG_OBJECT (self, "end");
 
@@ -358,6 +362,34 @@ type_class_init (gpointer g_class,
     omx_base_class->out_port_index = 0;
 }
 
+/* TODO make a util fxn out of this.. since this code is copied all over
+ * the place
+ */
+void check_settings (GOmxPort *port, GstPad *pad)
+{
+    /* note: specifically DO NOT check port->enabled!  This can be called
+     * during buffer allocation in transition-to-enabled while
+     * port->enabled is still FALSE
+     */
+    GOmxCore *gomx = port->core;
+    GstCaps *caps = NULL;
+
+    caps = gst_pad_get_negotiated_caps (pad);
+
+    if (!caps)
+    {
+        /** @todo We shouldn't be doing this. */
+        GST_WARNING_OBJECT (gomx->object, "faking settings changed notification");
+        if (gomx->settings_changed_cb)
+            gomx->settings_changed_cb (gomx);
+    }
+    else
+    {
+        GST_LOG_OBJECT (gomx->object, "caps already fixed: %" GST_PTR_FORMAT, caps);
+        gst_caps_unref (caps);
+    }
+}
+
 
 /**
  * overrides the default buffer allocation for output port to allow
@@ -367,33 +399,11 @@ static GstBuffer *
 buffer_alloc (GOmxPort *port, gint len)
 {
     GstOmxBaseSrc  *self = port->core->object;
-    GstBaseSrc *gst_base = GST_BASE_SRC (port->core->object);
+    GstBaseSrc *gst_base = GST_BASE_SRC (self);
     GstBuffer *buf;
     GstFlowReturn ret;
 
-#if 1
-    /** @todo remove this check */
-    if (G_LIKELY (self->out_port->enabled))
-    {
-        GstCaps *caps = NULL;
-
-        caps = gst_pad_get_negotiated_caps (gst_base->srcpad);
-
-        if (!caps)
-        {
-            /** @todo We shouldn't be doing this. */
-            GOmxCore *gomx = self->gomx;
-            GST_WARNING_OBJECT (self, "faking settings changed notification");
-            if (gomx->settings_changed_cb)
-                gomx->settings_changed_cb (gomx);
-        }
-        else
-        {
-            GST_LOG_OBJECT (self, "caps already fixed: %" GST_PTR_FORMAT, caps);
-            gst_caps_unref (caps);
-        }
-    }
-#endif
+    check_settings (self->out_port, gst_base->srcpad);
 
     ret = gst_pad_alloc_buffer_and_set_caps (
             gst_base->srcpad, GST_BUFFER_OFFSET_NONE,

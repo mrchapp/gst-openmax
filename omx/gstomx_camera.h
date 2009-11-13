@@ -42,7 +42,8 @@ struct GstOmxCamera
     GstOmxBaseSrc omx_base;
 
     /*< private >*/
-    gint mode;
+    gint mode, next_mode;
+    gint shutter;
 
     GOmxPort *vid_port;
     GOmxPort *img_port;
