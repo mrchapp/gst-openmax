@@ -136,9 +136,6 @@ g_omx_port_allocate_buffers (GOmxPort *port)
     if (port->buffers)
         return;
 
-    if (!port->enabled)
-        return;
-
     DEBUG (port, "begin");
 
     G_OMX_PORT_GET_DEFINITION (port, &param);
@@ -229,7 +226,11 @@ g_omx_port_free_buffers (GOmxPort *port)
     {
         OMX_BUFFERHEADERTYPE *omx_buffer;
 
-        omx_buffer = port->buffers[i];
+        /* pop the buffer, to be sure that it has been returned from the
+         * OMX component, to avoid freeing a buffer that the component
+         * is still accessing:
+         */
+        omx_buffer = async_queue_pop_full (port->queue, TRUE, TRUE);
 
         if (omx_buffer)
         {
@@ -242,6 +243,7 @@ g_omx_port_free_buffers (GOmxPort *port)
             }
 #endif
 
+            DEBUG (port, "OMX_FreeBuffer(%p)", omx_buffer);
             OMX_FreeBuffer (port->core->omx_handle, port->port_index, omx_buffer);
             port->buffers[i] = NULL;
         }
@@ -590,7 +592,7 @@ g_omx_port_flush (GOmxPort *port)
          * yet processed in the output_loop.
          */
         OMX_BUFFERHEADERTYPE *omx_buffer;
-        while ((omx_buffer = async_queue_pop_forced (port->queue)))
+        while ((omx_buffer = async_queue_pop_full (port->queue, FALSE, TRUE)))
         {
             omx_buffer->nFilledLen = 0;
             release_buffer (port, omx_buffer);
@@ -610,9 +612,14 @@ g_omx_port_enable (GOmxPort *port)
     OMX_SendCommand (g_omx_core_get_handle (port->core),
             OMX_CommandPortEnable, port->port_index, NULL);
 
+    g_omx_port_allocate_buffers (port);
+
     g_sem_down (port->core->port_sem);
 
     port->enabled = TRUE;
+
+    if (port->core->omx_state == OMX_StateExecuting)
+        g_omx_port_start_buffers (port);
 
     DEBUG (port, "end");
 }
@@ -626,6 +633,8 @@ g_omx_port_disable (GOmxPort *port)
 
     OMX_SendCommand (g_omx_core_get_handle (port->core),
             OMX_CommandPortDisable, port->port_index, NULL);
+
+    g_omx_port_free_buffers (port);
 
     g_sem_down (port->core->port_sem);
 

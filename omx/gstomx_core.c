@@ -271,6 +271,14 @@ g_omx_core_deinit (GOmxCore *core)
     core->imp = NULL;
 }
 
+static void
+port_prepare (GOmxPort *port)
+{
+    /* only allocate buffers if the port is actually enabled: */
+    if (port->enabled)
+        g_omx_port_allocate_buffers (port);
+}
+
 void
 g_omx_core_prepare (GOmxCore *core)
 {
@@ -278,7 +286,7 @@ g_omx_core_prepare (GOmxCore *core)
     change_state (core, OMX_StateIdle);
 
     /* Allocate buffers. */
-    core_for_each_port (core, g_omx_port_allocate_buffers);
+    core_for_each_port (core, port_prepare);
 
     wait_for_state (core, OMX_StateIdle);
     GST_DEBUG_OBJECT (core->object, "end");

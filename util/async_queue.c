@@ -64,19 +64,19 @@ async_queue_push (AsyncQueue *queue,
 }
 
 gpointer
-async_queue_pop (AsyncQueue *queue)
+async_queue_pop_full (AsyncQueue *queue, gboolean wait, gboolean force)
 {
     gpointer data = NULL;
 
     g_mutex_lock (queue->mutex);
 
-    if (!queue->enabled)
+    if (!force && !queue->enabled)
     {
         /* g_warning ("not enabled!"); */
         goto leave;
     }
 
-    if (!queue->tail)
+    if (wait && !queue->tail)
     {
         g_cond_wait (queue->condition, queue->mutex);
     }
@@ -102,29 +102,9 @@ leave:
 }
 
 gpointer
-async_queue_pop_forced (AsyncQueue *queue)
+async_queue_pop (AsyncQueue *queue)
 {
-    gpointer data = NULL;
-
-    g_mutex_lock (queue->mutex);
-
-    if (queue->tail)
-    {
-        GList *node = queue->tail;
-        data = node->data;
-
-        queue->tail = node->prev;
-        if (queue->tail)
-            queue->tail->next = NULL;
-        else
-            queue->head = NULL;
-        queue->length--;
-        g_list_free_1 (node);
-    }
-
-    g_mutex_unlock (queue->mutex);
-
-    return data;
+    return async_queue_pop_full (queue, TRUE, FALSE);
 }
 
 void
