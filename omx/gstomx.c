@@ -69,13 +69,13 @@ typedef struct TableItem
 
 static TableItem element_table[] =
 {
-    { "omx_dummy",          "libomxil-bellagio.so.0",   "OMX.st.dummy",                 NULL,                   GST_RANK_NONE,      gst_omx_dummy_get_type },
+    { "omx_dummy",          "libOMX_Core.so",           "OMX.TI.DUCATI1.MISC.SAMPLE",   NULL,                   GST_RANK_NONE,      gst_omx_dummy_get_type },
     { "omx_mpeg4dec",       "libOMX_Core.so",           "OMX.TI.Video.Decoder",         NULL,                   GST_RANK_PRIMARY,   gst_omx_mpeg4dec_get_type },
-    { "omx_h264dec",        "libOMX_Core.so",           "OMX.TI.Video.Decoder",         NULL,                   GST_RANK_PRIMARY,   gst_omx_h264dec_get_type },
+    { "omx_h264dec",        "libOMX_Core.so",           "OMX.TI.DUCATI1.VIDEO.H264D",   NULL,                   GST_RANK_PRIMARY,   gst_omx_h264dec_get_type },
     { "omx_h263dec",        "libOMX_Core.so",           "OMX.TI.Video.Decoder",         NULL,                   GST_RANK_PRIMARY,   gst_omx_h263dec_get_type },
     { "omx_wmvdec",         "libOMX_Core.so",           "OMX.TI.Video.Decoder",         NULL,                   GST_RANK_PRIMARY,   gst_omx_wmvdec_get_type },
     { "omx_mpeg4enc",       "libOMX_Core.so",           "OMX.TI.Video.encoder",         NULL,                   GST_RANK_PRIMARY,   gst_omx_mpeg4enc_get_type },
-    { "omx_h264enc",        "libOMX_Core.so",           "OMX.TI.Video.encoder",         NULL,                   GST_RANK_PRIMARY,   gst_omx_h264enc_get_type },
+    { "omx_h264enc",        "libOMX_Core.so",           "OMX.TI.DUCATI1.VIDEO.H264E",   NULL,                   GST_RANK_PRIMARY,   gst_omx_h264enc_get_type },
     { "omx_h263enc",        "libOMX_Core.so",           "OMX.TI.Video.encoder",         NULL,                   GST_RANK_PRIMARY,   gst_omx_h263enc_get_type },
     { "omx_vorbisdec",      "libomxil-bellagio.so.0",   "OMX.st.audio_decoder.ogg.single", NULL,                GST_RANK_PRIMARY,   gst_omx_vorbisdec_get_type },
     { "omx_mp3dec",         "libOMX_Core.so",           "OMX.TI.AUDIO.DECODE",          "audio_decode.dsp.mp3", GST_RANK_PRIMARY,   gst_omx_mp3dec_get_type },
@@ -95,12 +95,12 @@ static TableItem element_table[] =
     { "omx_ilbcdec",        "libomxil-bellagio.so.0",   "OMX.st.audio_decoder.ilbc",    NULL,                   GST_RANK_PRIMARY,   gst_omx_ilbcdec_get_type },
     { "omx_ilbcenc",        "libomxil-bellagio.so.0",   "OMX.st.audio_encoder.ilbc",    NULL,                   GST_RANK_PRIMARY,   gst_omx_ilbcenc_get_type },
     { "omx_jpegenc",        "libOMX_Core.so",           "OMX.TI.JPEG.encoder",          NULL,                   GST_RANK_PRIMARY,   gst_omx_jpegenc_get_type },
-    { "omx_jpegdec",        "libOMX_Core.so",           "OMX.TI.JPEG.decode",           NULL,                   GST_RANK_PRIMARY,   gst_omx_jpegdec_get_type },
+    { "omx_jpegdec",        "libOMX_Core.so",           "OMX.TI.DUCATI1.IMAGE.JPEGD",   NULL,                   GST_RANK_PRIMARY,   gst_omx_jpegdec_get_type },
     { "omx_audiosink",      "libomxil-bellagio.so.0",   "OMX.st.alsa.alsasink",         NULL,                   GST_RANK_NONE,      gst_omx_audiosink_get_type },
     { "omx_videosink",      "libomxil-bellagio.so.0",   "OMX.st.videosink",             NULL,                   GST_RANK_NONE,      gst_omx_videosink_get_type },
     { "omx_filereadersrc",  "libomxil-bellagio.so.0",   "OMX.st.audio_filereader",      NULL,                   GST_RANK_NONE,      gst_omx_filereadersrc_get_type },
     { "omx_volume",         "libomxil-bellagio.so.0",   "OMX.st.volume.component",      NULL,                   GST_RANK_NONE,      gst_omx_volume_get_type },
-    { "omx_camera",         "libOMX_Core.so",           "OMX.TI.CAMERA",                NULL,                   GST_RANK_PRIMARY,   gst_omx_camera_get_type },
+    { "omx_camera",         "libOMX_Core.so",           "OMX.TI.DUCATI1.VIDEO.CAMERA",  NULL,                   GST_RANK_PRIMARY,   gst_omx_camera_get_type },
     { NULL, NULL, NULL, NULL, 0, NULL },
 };
 
