@@ -77,8 +77,10 @@ setup_ports (GstOmxBaseFilter *self)
     }
     else
     {
-        self->in_port->share_buffer = TRUE;
-        self->out_port->share_buffer = TRUE;
+        self->in_port->omx_allocate = TRUE;
+        self->out_port->omx_allocate = TRUE;
+        self->in_port->share_buffer = FALSE;
+        self->out_port->share_buffer = FALSE;
     }
 
     GST_DEBUG_OBJECT (self, "in_port->omx_allocate=%d, out_port->omx_allocate=%d",
