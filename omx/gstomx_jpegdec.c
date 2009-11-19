@@ -254,7 +254,6 @@ omx_setup (GstOmxBaseFilter *omx_base)
     GOmxCore *gomx;
     gint width, height;
     OMX_COLOR_FORMATTYPE color_format;
-    OMX_INDEXTYPE index;
 
     self = GST_OMX_JPEGDEC (omx_base);
     gomx = (GOmxCore *) omx_base->gomx;
@@ -308,8 +307,10 @@ omx_setup (GstOmxBaseFilter *omx_base)
     }
 
     /*Set parameters*/
+#ifdef OMAP3
     {
         OMX_CUSTOM_RESOLUTION pMaxResolution;
+        OMX_INDEXTYPE index;
 #if 0
         /*By the moment properties don't have been added */
         OMX_CUSTOM_IMAGE_DECODE_SECTION pSectionDecode;
@@ -367,6 +368,7 @@ omx_setup (GstOmxBaseFilter *omx_base)
 
     /*Set config*/
     {
+        OMX_INDEXTYPE index;
         OMX_U32 nProgressive;
         /*Dinamic color change */
         OMX_GetExtensionIndex(gomx->omx_handle, "OMX.TI.JPEG.decode.Config.OutputColorFormat", &index);
@@ -381,6 +383,7 @@ omx_setup (GstOmxBaseFilter *omx_base)
         OMX_SetConfig(gomx->omx_handle, index, &(nProgressive));
 
     }
+#endif
     GST_INFO_OBJECT (omx_base, "end");
 }
 
