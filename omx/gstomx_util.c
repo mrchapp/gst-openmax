@@ -301,6 +301,8 @@ OMX_COLOR_FORMATTYPE g_omx_fourcc_to_colorformat (guint32 fourcc)
             return OMX_COLOR_FormatYCbYCr;
         case GST_MAKE_FOURCC ('U', 'Y', 'V', 'Y'):
             return OMX_COLOR_FormatCbYCrY;
+        case GST_MAKE_FOURCC ('N', 'V', '1', '2'):
+            return OMX_COLOR_FormatYUV420PackedSemiPlanar;
         default:
             /* TODO, add other needed color formats.. */
             return OMX_COLOR_FormatUnused;
@@ -317,6 +319,8 @@ guint32 g_omx_colorformat_to_fourcc (OMX_COLOR_FORMATTYPE eColorFormat)
             return GST_MAKE_FOURCC ('Y', 'U', 'Y', '2');
         case OMX_COLOR_FormatCbYCrY:
             return GST_MAKE_FOURCC ('U', 'Y', 'V', 'Y');
+        case OMX_COLOR_FormatYUV420PackedSemiPlanar:
+            return GST_MAKE_FOURCC ('N', 'V', '1', '2');
         default:
             /* TODO, add other needed color formats.. */
             return 0;

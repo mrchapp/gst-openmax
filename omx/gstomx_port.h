@@ -115,7 +115,7 @@ gpointer g_omx_port_recv (GOmxPort *port);
  * Some domain specific port related utility functions:
  */
 
-#define GSTOMX_ALL_FORMATS  "{ I420, YUY2, UYVY }"
+#define GSTOMX_ALL_FORMATS  "{ I420, YUY2, UYVY, NV12 }"
 
 GstCaps * g_omx_port_set_video_formats (GOmxPort *port, GstCaps *caps);
 
