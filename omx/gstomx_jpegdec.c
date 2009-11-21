@@ -37,7 +37,7 @@ static GstStaticPadTemplate src_template =
 GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ( GST_VIDEO_CAPS_YUV ("{ UYVY }") )
+    GST_STATIC_CAPS ( GST_VIDEO_CAPS_YUV ("{ NV12 }") )
 );
 
 static GstStaticPadTemplate sink_template =
@@ -294,7 +294,7 @@ omx_setup (GstOmxBaseFilter *omx_base)
             param.nBufferCountActual = 1;
 
             /** @todo get this from the srcpad */
-            param.format.image.eColorFormat = OMX_COLOR_FormatCbYCrY;
+            param.format.image.eColorFormat = OMX_COLOR_FormatYUV420PackedSemiPlanar;
             color_format = param.format.image.eColorFormat;
             fourcc = g_omx_colorformat_to_fourcc (color_format);
 
