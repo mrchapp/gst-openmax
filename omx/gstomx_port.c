@@ -75,7 +75,7 @@ g_omx_port_free (GOmxPort *port)
     g_free (port->buffers);
     g_free (port);
 
-    DEBUG (port, "end");
+    GST_DEBUG ("end");
 }
 
 void
