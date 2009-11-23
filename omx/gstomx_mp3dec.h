@@ -37,6 +37,7 @@ typedef struct GstOmxMp3DecClass GstOmxMp3DecClass;
 struct GstOmxMp3Dec
 {
     GstOmxBaseAudioDec omx_base;
+    gboolean framemode;
 };
 
 struct GstOmxMp3DecClass

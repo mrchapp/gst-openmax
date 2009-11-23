@@ -29,6 +29,14 @@
 #endif
 #include <OMX_Core.h>
 
+enum
+{
+    ARG_0,
+    ARG_FRAMEMODE,
+};
+
+#define DEFAULT_FRAMEMODE FALSE
+
 GSTOMX_BOILERPLATE (GstOmxMp3Dec, gst_omx_mp3dec, GstOmxBaseAudioDec, GST_OMX_BASE_AUDIODEC_TYPE);
 
 static GstCaps *
@@ -104,18 +112,62 @@ type_base_init (gpointer g_class)
 }
 
 static void
+set_property (GObject *obj,
+              guint prop_id,
+              const GValue *value,
+              GParamSpec *pspec)
+{
+    GstOmxMp3Dec *self;
+
+    self = GST_OMX_MP3DEC (obj);
+
+    switch (prop_id)
+    {
+        case ARG_FRAMEMODE:
+            self->framemode = g_value_get_boolean  (value);
+            break;
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
+            break;
+    }
+}
+
+static void
+get_property (GObject *obj,
+              guint prop_id,
+              GValue *value,
+              GParamSpec *pspec)
+{
+    GstOmxMp3Dec *self;
+
+    self = GST_OMX_MP3DEC (obj);
+
+    switch (prop_id)
+    {
+        case ARG_FRAMEMODE:
+            g_value_set_boolean (value, self->framemode);
+            break;
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
+            break;
+    }
+}
+
+static void
 omx_setup (GstOmxBaseFilter *omx_base)
 {
     /* This is specific for TI. */
 #ifdef USE_OMXTIAUDIODEC
     GOmxCore *gomx = omx_base->gomx;
+    GstOmxMp3Dec *self;
+    self = GST_OMX_MP3DEC (omx_base);
     {
         OMX_INDEXTYPE index;
         TI_OMX_DSP_DEFINITION audioinfo;
 
         memset (&audioinfo, 0, sizeof (audioinfo));
 
-        audioinfo.framemode = TRUE; /* TRUE = frame mode */
+        audioinfo.framemode = self->framemode;
 
         g_assert( OMX_GetExtensionIndex (gomx->omx_handle, "OMX.TI.index.config.mp3headerinfo",
                 &index) == OMX_ErrorNone);
@@ -146,6 +198,19 @@ static void
 type_class_init (gpointer g_class,
                  gpointer class_data)
 {
+    GObjectClass *gobject_class;
+
+    gobject_class = G_OBJECT_CLASS (g_class);
+
+    /* Properties stuff */
+    {
+        gobject_class->set_property = set_property;
+        gobject_class->get_property = get_property;
+
+        g_object_class_install_property (gobject_class, ARG_FRAMEMODE,
+                                          g_param_spec_boolean ("framemode", "Frame mode",
+                                                            "Frame mode", DEFAULT_FRAMEMODE, G_PARAM_READWRITE));
+    }
 }
 
 static void
@@ -153,11 +218,16 @@ type_instance_init (GTypeInstance *instance,
                     gpointer g_class)
 {
 	GstOmxBaseFilter *omx_base;
+	GstOmxMp3Dec *self;
+
+	self = GST_OMX_MP3DEC (instance);
 
 	omx_base = GST_OMX_BASE_FILTER (instance);
 
 	GST_DEBUG_OBJECT (omx_base, "start");
 
 	omx_base->omx_setup = omx_setup;
+
+	self->framemode = DEFAULT_FRAMEMODE;
 
 }
