@@ -500,12 +500,15 @@ pad_chain (GstPad *pad,
             if (gomx->omx_state != OMX_StateExecuting)
                 goto out_flushing;
 
+#if 0
             /* send buffer with codec data flag */
             if (self->codec_data)
             {
                 GST_BUFFER_FLAG_SET (self->codec_data, GST_BUFFER_FLAG_IN_CAPS);  /* just in case */
                 g_omx_port_send (in_port, self->codec_data);
             }
+#endif
+
         }
 
         if (G_UNLIKELY (gomx->omx_state != OMX_StateExecuting))
