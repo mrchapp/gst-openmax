@@ -39,6 +39,7 @@ struct GstOmxAacDec
     GstOmxBaseAudioDec omx_base;
     gint aacversion;
     gboolean framed;
+    gboolean framemode;
 };
 
 struct GstOmxAacDecClass

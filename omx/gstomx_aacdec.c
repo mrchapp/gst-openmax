@@ -25,6 +25,14 @@
 #include <string.h> /* for memset */
 #include <audio_decode/TIDspOmx.h>
 
+enum
+{
+    ARG_0,
+    ARG_FRAMEMODE,
+};
+
+#define FRAMEMODE_DEFAULT FALSE
+
 GSTOMX_BOILERPLATE (GstOmxAacDec, gst_omx_aacdec, GstOmxBaseAudioDec, GST_OMX_BASE_AUDIODEC_TYPE);
 
 typedef enum
@@ -56,13 +64,14 @@ generate_sink_template (void)
 {
     GstCaps *caps;
     GstStructure *struc;
-
     caps = gst_caps_new_empty ();
 
     struc = gst_structure_new ("audio/mpeg",
                                "mpegversion", G_TYPE_INT, 4,
+                               "channels", GST_TYPE_INT_RANGE, 1, 2,
                                "rate", GST_TYPE_INT_RANGE, 8000, 96000,
-                               "channels", GST_TYPE_INT_RANGE, 1, 6,
+                               "object_type", GST_TYPE_INT_RANGE, 1, 6,
+                               "parsed", G_TYPE_BOOLEAN, TRUE,
                                NULL);
 
     {
@@ -131,9 +140,64 @@ type_base_init (gpointer g_class)
 }
 
 static void
+set_property (GObject *obj,
+              guint prop_id,
+              const GValue *value,
+              GParamSpec *pspec)
+{
+    GstOmxAacDec *self;
+
+    self = GST_OMX_AACDEC (obj);
+
+    switch (prop_id)
+    {
+        case ARG_FRAMEMODE:
+            self->framemode = g_value_get_boolean  (value);
+            break;
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
+            break;
+    }
+}
+
+static void
+get_property (GObject *obj,
+              guint prop_id,
+              GValue *value,
+              GParamSpec *pspec)
+{
+    GstOmxAacDec *self;
+
+    self = GST_OMX_AACDEC (obj);
+
+    switch (prop_id)
+    {
+        case ARG_FRAMEMODE:
+            g_value_set_boolean (value, self->framemode);
+            break;
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
+            break;
+    }
+}
+
+static void
 type_class_init (gpointer g_class,
                  gpointer class_data)
 {
+    GObjectClass *gobject_class;
+
+    gobject_class = G_OBJECT_CLASS (g_class);
+
+    /* Properties stuff */
+    {
+        gobject_class->set_property = set_property;
+        gobject_class->get_property = get_property;
+
+        g_object_class_install_property (gobject_class, ARG_FRAMEMODE,
+                                         g_param_spec_boolean ("framemode", "Frame Mode",
+                                         "Frame Mode", FRAMEMODE_DEFAULT, G_PARAM_READWRITE));
+    }
 }
 
 static gboolean
@@ -162,9 +226,9 @@ sink_setcaps (GstPad *pad,
     self->aacversion = 2;
     gst_structure_get_int (structure, "object_type", &self->aacversion);
 
-    self->framed = FALSE;
-    gst_structure_get_boolean (structure, "framed", &self->framed);
+    self->framed = gst_structure_has_field (structure, "framed");
 
+#if 0
     {
         const GValue *codec_data;
         GstBuffer *buffer;
@@ -177,6 +241,7 @@ sink_setcaps (GstPad *pad,
             gst_buffer_ref (buffer);
         }
     }
+#endif
 
     return gst_pad_set_caps (pad, caps);
 }
@@ -188,31 +253,35 @@ omx_setup (GstOmxBaseFilter *omx_base)
     GstOmxAacDec *self = GST_OMX_AACDEC (omx_base);
 
     OMX_U32 streamFormat;
-    gint rate;
     gint profile;
+
+    GST_DEBUG_OBJECT (omx_base, "Begin Set-Up");
 
     switch (self->aacversion)
     {
-    case AAC_PROFILE_LC_SBR_PS:
-        profile = OMX_AUDIO_AACObjectHE_PS;
-        rate = base_audiodec->rate/2;
+        case AAC_PROFILE_LC_SBR_PS:
+            profile = OMX_AUDIO_AACObjectHE_PS;
         break;
-    case AAC_PROFILE_LC_SBR:
-        profile = OMX_AUDIO_AACObjectHE;
-        rate = base_audiodec->rate;
+        case AAC_PROFILE_LC_SBR:
+            profile = OMX_AUDIO_AACObjectHE;
         break;
-    case AAC_PROFILE_LC:
-    default:
-        profile = OMX_AUDIO_AACObjectLC;
-        rate = base_audiodec->rate;
+        case AAC_PROFILE_LC:
+        default:
+            profile = OMX_AUDIO_AACObjectLC;
         break;
     }
 
     // Does it come from a demuxer?
-    if(omx_base->codec_data != NULL)
+    if(self->framed)
+    {
         streamFormat = OMX_AUDIO_AACStreamFormatRAW;
+        GST_DEBUG_OBJECT (omx_base, "Format: Raw");
+    }
     else
+    {
         streamFormat = OMX_AUDIO_AACStreamFormatMax;
+        GST_DEBUG_OBJECT (omx_base, "Format: Max");
+    }
 
     {
         OMX_AUDIO_PARAM_AACPROFILETYPE param;
@@ -225,14 +294,14 @@ omx_setup (GstOmxBaseFilter *omx_base)
     {
         OMX_AUDIO_PARAM_PCMMODETYPE param;
         G_OMX_PORT_GET_PARAM (omx_base->out_port, OMX_IndexParamAudioPcm, &param);
-        param.nSamplingRate = rate;
+        param.nSamplingRate = base_audiodec->rate;
+        GST_DEBUG_OBJECT (omx_base, "PCM Sample Rate: %d", param.nSamplingRate);
         G_OMX_PORT_SET_PARAM (omx_base->out_port, OMX_IndexParamAudioPcm, &param);
     }
 
 
 #ifdef USE_OMXTIAUDIODEC
     // This is specific for TI.
-    if (self->framed == TRUE)
     {
         OMX_INDEXTYPE index;
         TI_OMX_DSP_DEFINITION audioinfo;
@@ -241,7 +310,8 @@ omx_setup (GstOmxBaseFilter *omx_base)
 
         memset (&audioinfo, 0, sizeof (audioinfo));
 
-        audioinfo.framemode = TRUE;
+        audioinfo.framemode = self->framemode;
+        GST_DEBUG_OBJECT (omx_base, "Frame Mode: %d", audioinfo.framemode);
 
         g_assert(
             OMX_GetExtensionIndex (
@@ -253,7 +323,7 @@ omx_setup (GstOmxBaseFilter *omx_base)
                 gomx->omx_handle, index,
                     &audioinfo) == OMX_ErrorNone);
 
-        GST_DEBUG_OBJECT (omx_base, "Setting frame-mode");
+        GST_DEBUG_OBJECT (omx_base, "End Set-Up");
     }
 #endif
 }
@@ -263,8 +333,11 @@ type_instance_init (GTypeInstance *instance,
                     gpointer g_class)
 {
     GstOmxBaseFilter *omx_base;
+    GstOmxAacDec *self;
 
+    self = GST_OMX_AACDEC (instance);
     omx_base = GST_OMX_BASE_FILTER (instance);
+    GST_DEBUG_OBJECT (omx_base, "start");
 
     omx_base->omx_setup = omx_setup;
 
