@@ -33,13 +33,14 @@ enum
     ARG_OUTPUT_FORMAT,
 };
 
-#define DEFAULT_BITRATE 128000
+#define DEFAULT_BITRATE 64000 /* Guarantee that all the 3 formats will work using this default. */
+#define MAX_BITRATE 256000 /* Maximum value supported by the component */
 #define DEFAULT_PROFILE OMX_AUDIO_AACObjectLC
 #define DEFAULT_OUTPUT_FORMAT OMX_AUDIO_AACStreamFormatRAW
 #define DEFAULT_RATE 44100
 #define DEFAULT_CHANNELS 2
-#define IN_BUFFER_SIZE 1024*4			/* 1024*2 */
-#define OUT_BUFFER_SIZE 1024*8		 	/* 1024*8 */
+#define IN_BUFFER_SIZE 1024*8			/* 1024*8 Recommended buffer size */
+#define OUT_BUFFER_SIZE 1024*8		 	/* 1024*8 Recommended buffer size */
 
 GSTOMX_BOILERPLATE (GstOmxAacEnc, gst_omx_aacenc, GstOmxBaseFilter, GST_OMX_BASE_FILTER_TYPE);
 
@@ -110,8 +111,8 @@ generate_src_template (void)
 
     struc = gst_structure_new ("audio/mpeg",
                                "mpegversion", G_TYPE_INT, 4,
-                               "rate", GST_TYPE_INT_RANGE, 8000, 96000,
-                               "channels", GST_TYPE_INT_RANGE, 1, 6,
+                               "rate", GST_TYPE_INT_RANGE, 8000, 48000,
+                               "channels", GST_TYPE_INT_RANGE, 1, 2,
                                NULL);
 
     {
@@ -149,9 +150,9 @@ generate_sink_template (void)
                                 "endianness", G_TYPE_INT, G_BYTE_ORDER,
                                 "width", G_TYPE_INT, 16,
                                 "depth", G_TYPE_INT, 16,
-                                "rate", GST_TYPE_INT_RANGE, 8000, 96000,
+                                "rate", GST_TYPE_INT_RANGE, 8000, 48000,
                                 "signed", G_TYPE_BOOLEAN, TRUE,
-                                "channels", GST_TYPE_INT_RANGE, 1, 6,
+                                "channels", GST_TYPE_INT_RANGE, 1, 2,
                                 NULL);
 
     return caps;
@@ -267,7 +268,7 @@ type_class_init (gpointer g_class,
         g_object_class_install_property (gobject_class, ARG_BITRATE,
                                          g_param_spec_uint ("bitrate", "Bit-rate",
                                                             "Encoding bit-rate",
-                                                            0, G_MAXUINT, DEFAULT_BITRATE, G_PARAM_READWRITE));
+                                                            0, MAX_BITRATE, DEFAULT_BITRATE, G_PARAM_READWRITE));
         g_object_class_install_property (gobject_class, ARG_PROFILE,
                                          g_param_spec_enum ("profile", "Encoding profile",
                                                             "OMX_AUDIO_AACPROFILETYPE of output",
