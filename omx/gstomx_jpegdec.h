@@ -70,6 +70,7 @@ struct GstOmxJpegDec
     gint framerate_num;
     gint framerate_denom;
     gboolean progressive;
+    gboolean outport_configured;
 
 };
 

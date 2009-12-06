@@ -30,6 +30,10 @@
 #include <string.h>
 #include <stdlib.h>
 
+/*these should change in the future to 864 x 480 (LCD resolution)*/
+#define MAX_WIDTH 176
+#define MAX_HEIGHT 144
+
 GSTOMX_BOILERPLATE (GstOmxJpegDec, gst_omx_jpegdec, GstOmxBaseFilter, GST_OMX_BASE_FILTER_TYPE);
 
 
@@ -37,7 +41,8 @@ static GstStaticPadTemplate src_template =
 GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ( GST_VIDEO_CAPS_YUV ("{ NV12 }") )
+    GST_STATIC_CAPS (
+        GST_VIDEO_CAPS_YUV_STRIDED ( "{ NV12, UYVY }", "[ 0, max ]") ";")
 );
 
 static GstStaticPadTemplate sink_template =
@@ -127,47 +132,80 @@ type_class_init (gpointer g_class,
     }
     */
 }
+static GstCaps *
+fixcaps (GstCaps* mycaps, GstCaps* intercaps)
+{
+    GstStructure *ins, *outs;
+    gint my_w, my_h, n_h, n_w;
+    gint p_w = 0, p_h = 0, i=0;
+
+    /*From preloaded caps we are only taken the fist structure to know width an d height*/
+    ins = gst_caps_get_structure (mycaps, 0);
+    outs = gst_caps_get_structure (intercaps, 0);
+
+    gst_structure_get_int (outs, "width", &p_w);
+    gst_structure_get_int (outs, "height", &p_h);
+    gst_structure_get_int (ins, "width", &my_w);
+    gst_structure_get_int (ins, "height", &my_h);
+
+    if ( p_h && ( my_h >= MAX_HEIGHT) && ( p_h < my_h) )
+    {
+        n_h = GST_ROUND_UP_2 (p_h);
+    }
+    else
+    {
+        n_h = my_h;
+        GST_WARNING ( "Height value is missing or resize is not supported for this image size");
+    }
+    if (p_w && ( my_w >= MAX_WIDTH) && (p_w < my_w) )
+    {
+        n_w = GST_ROUND_UP_2 (p_w);
+    }
+    else
+    {
+        n_w = my_w;
+        GST_WARNING (" Width value is missing resize is not supported for this image size");
+    }
+    /* now fixate */
+    intercaps = gst_caps_make_writable (intercaps);
+
+    for (i=0; i<gst_caps_get_size (intercaps); i++)
+    {
+        GstStructure *struc = gst_caps_get_structure (intercaps, i);
+        gst_structure_set (struc, "width", G_TYPE_INT, n_w, NULL);
+        gst_structure_set (struc, "height", G_TYPE_INT, n_h, NULL);
+    }
+
+    return intercaps;
+}
 
 static void
 settings_changed_cb (GOmxCore *core)
 {
     GstOmxBaseFilter *omx_base;
     GstOmxJpegDec *self;
-    guint width;
-    guint height;
-    guint32 format = 0;
+    GstCaps *inter_caps, *fixed_caps, *new_caps;
 
     omx_base = core->object;
     self = GST_OMX_JPEGDEC (omx_base);
 
-    GST_DEBUG_OBJECT (omx_base, "settings changed");
+    GST_DEBUG_OBJECT (omx_base, "settings changed cb ");
 
+    inter_caps = gst_caps_intersect ( gst_static_pad_template_get_caps (&src_template),
+                                gst_pad_peer_get_caps (omx_base->srcpad));
+
+    fixed_caps = fixcaps ( gst_pad_get_caps (omx_base->srcpad), inter_caps);
+
+    new_caps = gst_caps_intersect ( fixed_caps, gst_pad_peer_get_caps (omx_base->srcpad)) ;
+
+    if (!gst_caps_is_fixed (new_caps))
     {
-        OMX_PARAM_PORTDEFINITIONTYPE param;
-        G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
-
-        width = param.format.image.nFrameWidth;
-        height = param.format.image.nFrameHeight;
-
-        format = g_omx_colorformat_to_fourcc (
-                param.format.image.eColorFormat);
+        gst_caps_do_simplify (new_caps);
+        gst_pad_fixate_caps (omx_base->srcpad, new_caps);
+        GST_INFO_OBJECT (omx_base, "pre-fixated caps: %" GST_PTR_FORMAT, new_caps);
     }
 
-    {
-        GstCaps *new_caps;
-
-        new_caps = gst_caps_new_simple ("video/x-raw-yuv",
-                                        "format", GST_TYPE_FOURCC, format,
-                                        "width", G_TYPE_INT, width,
-                                        "height", G_TYPE_INT, height,
-                                        "framerate", GST_TYPE_FRACTION,
-                                        self->framerate_num, self->framerate_denom,
-                                        NULL);
-
-        GST_INFO_OBJECT (omx_base, "caps are: %" GST_PTR_FORMAT, new_caps);
-        gst_pad_set_caps (omx_base->srcpad, new_caps);
-    }
-
+    gst_pad_set_caps (omx_base->srcpad, new_caps);
 }
 
 static gboolean
@@ -247,6 +285,103 @@ sink_setcaps (GstPad *pad,
 
 }
 
+static gboolean
+src_setcaps (GstPad *pad, GstCaps *caps)
+{
+    GstOmxJpegDec *self;
+    GOmxCore *gomx;
+    GstStructure* structure;
+
+    GstOmxBaseFilter *omx_base;
+    GstVideoFormat format;
+    gint width, height, rowstride;
+    OMX_PARAM_PORTDEFINITIONTYPE param;
+
+    omx_base = GST_OMX_BASE_FILTER (GST_PAD_PARENT (pad));
+    self = GST_OMX_JPEGDEC (omx_base);
+    gomx = (GOmxCore *) omx_base->gomx;
+
+    g_return_val_if_fail (caps, FALSE);
+    g_return_val_if_fail (gst_caps_is_fixed (caps), FALSE);
+
+    GST_INFO_OBJECT (omx_base, "begin set src caps");
+
+    structure = gst_caps_get_structure (caps, 0);
+
+    G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
+
+    if (gst_video_format_parse_caps_strided (caps,
+                &format, &width, &height, &rowstride))
+    {
+        param.format.image.eColorFormat = g_omx_gstvformat_to_colorformat (format);
+        param.nBufferSize = gst_video_format_get_size_strided (format, width, height, rowstride);
+
+        param.format.image.nStride      = rowstride;
+        param.format.image.nFrameWidth  = GST_ROUND_UP_2  (width);          /*Should be factor of 2 or 16 ?*/
+        param.format.image.nFrameHeight = GST_ROUND_UP_2  (height);
+
+        G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
+
+            GST_INFO_OBJECT (omx_base, "exit set src caps");
+
+        return TRUE;
+    }
+    else
+    {
+            GST_WARNING_OBJECT (self, " GST_VIDEO_FORMAT_UNKNOWN ");
+            return FALSE;
+    }
+}
+
+static GstCaps *
+src_getcaps (GstPad *pad)
+{
+    GstOmxBaseFilter *omx_base;
+    GstOmxJpegDec *self;
+    GstCaps  *poss_caps;
+    omx_base = GST_OMX_BASE_FILTER (GST_PAD_PARENT (pad));
+    self = GST_OMX_JPEGDEC (omx_base);
+
+    if (self->outport_configured)
+    {
+        OMX_PARAM_PORTDEFINITIONTYPE param;
+        int i;
+
+        G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
+        poss_caps = gst_caps_new_empty ();
+
+        /* note: we only support strided caps if outport buffer is shared:
+         */
+        for (i=0; i<(omx_base->out_port->share_buffer ? 2 : 1); i++)
+        {
+            GstStructure *struc = gst_structure_new (
+                    (i ? "video/x-raw-yuv-strided" : "video/x-raw-yuv"),
+                    "width",  G_TYPE_INT, param.format.image.nFrameWidth,
+                    "height", G_TYPE_INT, param.format.image.nFrameHeight,
+                    NULL);
+            if(i)
+            {
+                gst_structure_set (struc, "rowstride", GST_TYPE_INT_RANGE, 1, G_MAXINT, NULL);
+            }
+            if (self->framerate_denom)
+            {
+                gst_structure_set (struc, "framerate", GST_TYPE_FRACTION, self->framerate_num,
+                    self->framerate_denom, NULL);
+            }
+            gst_caps_append_structure (poss_caps, struc);
+        }
+
+        poss_caps = g_omx_port_set_image_formats (omx_base->out_port, poss_caps);
+
+    }
+    else
+    {
+        /* we don't have valid width/height/etc yet, so just use the template.. */
+        poss_caps = gst_static_pad_template_get_caps (&src_template);
+    }
+    return poss_caps;
+}
+
 static void
 omx_setup (GstOmxBaseFilter *omx_base)
 {
@@ -254,6 +389,7 @@ omx_setup (GstOmxBaseFilter *omx_base)
     GOmxCore *gomx;
     gint width, height;
     OMX_COLOR_FORMATTYPE color_format;
+    guint32 fourcc;
 
     self = GST_OMX_JPEGDEC (omx_base);
     gomx = (GOmxCore *) omx_base->gomx;
@@ -267,43 +403,50 @@ omx_setup (GstOmxBaseFilter *omx_base)
         {
             G_OMX_PORT_GET_DEFINITION (omx_base->in_port, &param);
 
-            param.format.image.cMIMEType = "image/jpeg";
+            param.format.image.cMIMEType = "OMXJPEGD";
             param.format.image.eCompressionFormat = OMX_IMAGE_CodingJPEG;
 
             width = param.format.image.nFrameWidth;
             height = param.format.image.nFrameHeight;
-
+            param.format.image.nSliceHeight = 0;                /*Frame mode , no slice*/
+            param.format.image.nStride = 0;
+            color_format = param.format.image.eColorFormat;
+            fourcc = g_omx_colorformat_to_fourcc (color_format);
             param.nBufferCountActual = 1;
 
-            /* this is against the standard; nBufferSize is read-only. */
-            param.nBufferSize = (width * height) / 2;
+            /* this is against the standard;nBufferSize is read-only. */
+            param.nBufferSize = width * height;     /*Avoiding to get a biger image that memory allocated*/
 
             G_OMX_PORT_SET_DEFINITION (omx_base->in_port, &param);
         }
 
         /* Output port configuration. */
         {
-            guint32 fourcc;
             G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
 
-            param.format.image.cMIMEType = "video/x-raw-yuv";
+            param.format.image.cMIMEType = "OMXJPEGD";
             param.format.image.eCompressionFormat = OMX_IMAGE_CodingUnused;
+
+            /*We are configured the output port with the same values
+               from input port, except the eColorFormat = NV12*/
+            param.nBufferCountActual = 1;
+            /*No stride format by default, this maybe change after read the peer caps*/
+            param.format.image.nStride      = 0;
+
             param.format.image.nFrameWidth = width;
             param.format.image.nFrameHeight = height;
-
-            param.nBufferCountActual = 1;
-
-            /** @todo get this from the srcpad */
             param.format.image.eColorFormat = OMX_COLOR_FormatYUV420PackedSemiPlanar;
+
             color_format = param.format.image.eColorFormat;
             fourcc = g_omx_colorformat_to_fourcc (color_format);
 
             /* this is against the standard; nBufferSize is read-only. */
-            param.nBufferSize = gst_video_format_get_size (
-                    gst_video_format_from_fourcc (fourcc), width, height);
+            param.nBufferSize = gst_video_format_get_size_strided (
+                      gst_video_format_from_fourcc (fourcc), width, height, 0);
 
             G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
         }
+        self->outport_configured = TRUE;
     }
 
     /*Set parameters*/
@@ -404,9 +547,16 @@ type_instance_init (GTypeInstance *instance,
 
     gst_pad_set_setcaps_function (omx_base->sinkpad, sink_setcaps);
 
+    gst_pad_set_getcaps_function (omx_base->srcpad,
+            GST_DEBUG_FUNCPTR (src_getcaps));
+
+    gst_pad_set_setcaps_function (omx_base->srcpad,
+            GST_DEBUG_FUNCPTR (src_setcaps));
+
     self->framerate_num = 0;
     self->framerate_denom = 1;
     self->progressive = FALSE;
+    self->outport_configured = FALSE;
 
 }
 
