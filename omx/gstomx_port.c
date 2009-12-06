@@ -148,6 +148,17 @@ g_omx_port_allocate_buffers (GOmxPort *port)
 
         if (port->omx_allocate)
         {
+            /*OMX_UseBuffer still not supported properly lower layers, so we have to force to read the new caps and
+             * configure the omx component before to OMX_AllocateBuffer*/
+            gst_buffer_unref (buffer_alloc (port, size));
+
+            G_OMX_PORT_GET_DEFINITION (port, &param);
+            size = param.nBufferSize;
+
+            GST_INFO ( "Before Allocate buffer ->  Width: %d , Height: %d, color = %d , size= %d",
+                param.format.image.nFrameWidth,param.format.image.nFrameHeight,param.format.image.eColorFormat,
+                param.nBufferSize);
+
             DEBUG (port, "%d: OMX_AllocateBuffer(), size=%d", i, size);
             OMX_AllocateBuffer (port->core->omx_handle,
                                 &port->buffers[i],
