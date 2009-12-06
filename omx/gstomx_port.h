@@ -118,6 +118,7 @@ gpointer g_omx_port_recv (GOmxPort *port);
 #define GSTOMX_ALL_FORMATS  "{ I420, YUY2, UYVY, NV12 }"
 
 GstCaps * g_omx_port_set_video_formats (GOmxPort *port, GstCaps *caps);
+GstCaps * g_omx_port_set_image_formats (GOmxPort *port, GstCaps *caps);
 
 G_END_DECLS
 

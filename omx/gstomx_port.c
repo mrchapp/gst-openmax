@@ -726,5 +726,77 @@ g_omx_port_set_video_formats (GOmxPort *port, GstCaps *caps)
     return caps;
 }
 
-/* TODO.. add others here, such as g_omx_port_set_image_formats, or whatever else */
+    /*For avoid repeated code needs to do only one function in order to configure
+    video and images caps strure, and also maybe adding RGB color format*/
 
+static gint32 jpeg_fourcc[] = {
+        GST_MAKE_FOURCC ('U','Y','V','Y'),
+        GST_MAKE_FOURCC ('N','V','1','2')
+};
+
+/**
+ * A utility function to query the port for supported color formats, and
+ * add the appropriate list of formats to @caps.  The @port can either
+ * be an input port for a image encoder, or an output port for a decoder
+ */
+GstCaps *
+g_omx_port_set_image_formats (GOmxPort *port, GstCaps *caps)
+{
+    //OMX_IMAGE_PARAM_PORTFORMATTYPE param;
+    int i,j;
+
+    //G_OMX_PORT_GET_PARAM (port, OMX_IndexParamImagePortFormat, &param);
+
+    caps = gst_caps_make_writable (caps);
+
+    for (i=0; i<gst_caps_get_size (caps); i++)
+    {
+        GstStructure *struc = gst_caps_get_structure (caps, i);
+        GValue formats = {0};
+
+        g_value_init (&formats, GST_TYPE_LIST);
+
+        for (j=0; j<DIM(jpeg_fourcc); j++)
+        {
+            //OMX_ERRORTYPE err;
+            GValue fourccval = {0};
+
+            g_value_init (&fourccval, GST_TYPE_FOURCC);
+
+        /* Got error from omx jpeg component , avoiding these lines by the moment till they support it*/
+#if 0
+            /* check and see if OMX supports the format:
+             */
+            param.eColorFormat = g_omx_fourcc_to_colorformat (all_fourcc[j]);
+            err = G_OMX_PORT_SET_PARAM (port, OMX_IndexParamImagePortFormat, &param);
+
+            if( err == OMX_ErrorIncorrectStateOperation )
+            {
+                DEBUG (port, "already executing?");
+
+                /* if we are already executing, such as might be the case if
+                 * we get a OMX_EventPortSettingsChanged event, just take the
+                 * current format and bail:
+                 */
+                G_OMX_PORT_GET_PARAM (port, OMX_IndexParamImagePortFormat, &param);
+                gst_value_set_fourcc (&fourccval,
+                        g_omx_colorformat_to_fourcc (param.eColorFormat));
+                gst_value_list_append_value (&formats, &fourccval);
+                break;
+            }
+            else if( err == OMX_ErrorNone )
+            {
+                gst_value_set_fourcc (&fourccval, all_fourcc[j]);
+                gst_value_list_append_value (&formats, &fourccval);
+            }
+#else
+            gst_value_set_fourcc (&fourccval, jpeg_fourcc[j]);
+            gst_value_list_append_value (&formats, &fourccval);
+#endif
+        }
+
+        gst_structure_set_value (struc, "format", &formats);
+    }
+
+    return caps;
+}
