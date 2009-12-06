@@ -326,3 +326,28 @@ guint32 g_omx_colorformat_to_fourcc (OMX_COLOR_FORMATTYPE eColorFormat)
             return 0;
     }
 }
+
+OMX_COLOR_FORMATTYPE g_omx_gstvformat_to_colorformat (GstVideoFormat videoformat)
+{
+    switch (videoformat)
+    {
+        case GST_VIDEO_FORMAT_I420:
+            return OMX_COLOR_FormatYUV420PackedPlanar;
+        case GST_VIDEO_FORMAT_YUY2:
+            return OMX_COLOR_FormatYCbYCr;
+        case GST_VIDEO_FORMAT_UYVY:
+            return OMX_COLOR_FormatCbYCrY;
+        case GST_VIDEO_FORMAT_NV12:
+            return OMX_COLOR_FormatYUV420PackedSemiPlanar;
+        case GST_VIDEO_FORMAT_RGB:
+            return OMX_COLOR_Format24bitRGB888;
+        case GST_VIDEO_FORMAT_ARGB:
+            return OMX_COLOR_Format32bitARGB8888;
+        /* Remove this comment after RGB_16 being added to GstVideoFormat list
+        case GST_VIDEO_FORMAT_RGB_16:
+            return OMX_COLOR_Format16bitRGB565;
+        */
+        default:
+            return OMX_COLOR_FormatUnused;
+    }
+ }

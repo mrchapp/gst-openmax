@@ -24,6 +24,7 @@
 #define GSTOMX_UTIL_H
 
 #include <glib.h>
+#include <gst/video/video.h>
 #include <OMX_Core.h>
 #include <OMX_Component.h>
 
@@ -76,6 +77,7 @@ void g_omx_release_imp (GOmxImp *imp);
 const char * g_omx_error_to_str (OMX_ERRORTYPE omx_error);
 OMX_COLOR_FORMATTYPE g_omx_fourcc_to_colorformat (guint32 fourcc);
 guint32 g_omx_colorformat_to_fourcc (OMX_COLOR_FORMATTYPE eColorFormat);
+OMX_COLOR_FORMATTYPE g_omx_gstvformat_to_colorformat (GstVideoFormat videoformat);
 
 
 
