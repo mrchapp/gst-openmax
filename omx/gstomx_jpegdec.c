@@ -49,8 +49,8 @@ static GstStaticPadTemplate sink_template =
         GST_STATIC_PAD_TEMPLATE ("sink",
                 GST_PAD_SINK, GST_PAD_ALWAYS,
                 GST_STATIC_CAPS ("image/jpeg, "
-                        "width = (int)[16,4096], "
-                        "height = (int)[16,4096], "
+                        "width = (int)[16,MAX], "
+                        "height = (int)[16,MAX], "
                         "framerate = (fraction)[0/1,max];")
         );
 
