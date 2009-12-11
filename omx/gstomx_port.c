@@ -669,7 +669,8 @@ g_omx_port_finish (GOmxPort *port)
 static gint32 all_fourcc[] = {
         GST_MAKE_FOURCC ('I','4','2','0'),
         GST_MAKE_FOURCC ('Y','U','Y','2'),
-        GST_MAKE_FOURCC ('U','Y','V','Y')
+        GST_MAKE_FOURCC ('U','Y','V','Y'),
+        GST_MAKE_FOURCC ('N','V','1','2')
 };
 
 #ifndef DIM  /* XXX is there a better alternative available? */
@@ -705,6 +706,8 @@ g_omx_port_set_video_formats (GOmxPort *port, GstCaps *caps)
 
             g_value_init (&fourccval, GST_TYPE_FOURCC);
 
+            /* Got error from omx jpeg component , avoiding these lines by the moment till they support it*/
+#if 1
             /* check and see if OMX supports the format:
              */
             param.eColorFormat = g_omx_fourcc_to_colorformat (all_fourcc[j]);
@@ -729,6 +732,10 @@ g_omx_port_set_video_formats (GOmxPort *port, GstCaps *caps)
                 gst_value_set_fourcc (&fourccval, all_fourcc[j]);
                 gst_value_list_append_value (&formats, &fourccval);
             }
+#else
+            gst_value_set_fourcc (&fourccval, all_fourcc[j]);
+            gst_value_list_append_value (&formats, &fourccval);
+#endif
         }
 
         gst_structure_set_value (struc, "format", &formats);
@@ -811,3 +818,4 @@ g_omx_port_set_image_formats (GOmxPort *port, GstCaps *caps)
 
     return caps;
 }
+
