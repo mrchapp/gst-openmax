@@ -145,7 +145,61 @@ sink_setcaps (GstPad *pad,
         param.format.video.nFrameHeight = height;
 
         G_OMX_PORT_SET_DEFINITION (omx_base->in_port, &param);
+        GST_DEBUG_OBJECT (self, "G_OMX_PORT_SET_DEFINITION");
     }
+
+    /* Output port configuration. */
+    {
+        GstCaps *src_caps;
+        GstStructure *structure;
+        GstVideoFormat format;
+        gint rowstride = 0;
+        gint buffsize = 0;
+        guint32 fourcc;
+
+        src_caps = gst_caps_intersect (gst_pad_get_caps (omx_base->srcpad),
+               gst_pad_peer_get_caps (omx_base->srcpad));
+        gst_caps_do_simplify (src_caps);
+        GST_INFO_OBJECT (omx_base, "setcaps (src): %" GST_PTR_FORMAT, src_caps);
+
+        g_return_val_if_fail (src_caps, FALSE);
+        structure = gst_caps_get_structure (src_caps, 0);
+
+        gst_structure_get_int (structure, "rowstride", &rowstride);
+        GST_INFO_OBJECT (omx_base, "rowstride = %d", rowstride );
+
+        /*  format hardcoded for now, default value GST_VIDEO_FORMAT_UYVY */
+        fourcc = GST_MAKE_FOURCC ('N', 'V', '1', '2');
+        format = gst_video_format_from_fourcc (fourcc);
+
+        if (format == GST_VIDEO_FORMAT_UNKNOWN)
+            GST_INFO_OBJECT (omx_base, " GST_VIDEO_FORMAT_UNKNOWN !!!!");
+        else
+            GST_INFO_OBJECT (omx_base, "fourcc = %d | = %d", fourcc,
+                       g_omx_fourcc_to_colorformat (fourcc) );
+
+        if ((format != GST_VIDEO_FORMAT_UNKNOWN ) && (rowstride != 0))
+        {
+            OMX_PARAM_PORTDEFINITIONTYPE param;
+            G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
+
+            param.format.video.eColorFormat = g_omx_fourcc_to_colorformat (fourcc);
+            param.format.video.nFrameWidth  = width;
+            param.format.video.nFrameHeight = height;
+            param.format.video.nStride      = rowstride;
+            GST_DEBUG_OBJECT (omx_base, " Width: %d  Height: %d  Rowstride: %d ", width, height, rowstride);
+            buffsize=gst_video_format_get_size_strided (format, width, height, rowstride);
+            GST_DEBUG_OBJECT (omx_base, "Calculated buffer size = %d !!!!!!! ", buffsize);
+            param.nBufferSize= buffsize;
+            G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
+            GST_DEBUG_OBJECT (omx_base, "G_OMX_PORT_SET_DEFINITION ");
+        }
+        else
+        {
+            GST_INFO_OBJECT (omx_base, "NO sink strided caps");
+        }
+    }
+
 
     if (self->sink_setcaps)
         self->sink_setcaps (pad, caps);
@@ -176,7 +230,11 @@ src_getcaps (GstPad *pad)
 
         /* note: we only support strided caps if outport buffer is shared:
          */
-        for (i=0; i<(omx_base->out_port->share_buffer ? 2 : 1); i++)
+        /* for (i=0; i<(omx_base->out_port->share_buffer ? 2 : 1); i++)  */
+        /* *** ***************************************************** *** */
+        /* ***                       Workaround                      *** */
+        /* *** For now we will not verify the share_buffer parameter *** */
+        for (i=0; i<2; i++)
         {
             GstStructure *struc = gst_structure_new (
                     (i ? "video/x-raw-yuv-strided" : "video/x-raw-yuv"),
@@ -186,9 +244,23 @@ src_getcaps (GstPad *pad)
 
             if(i)
             {
-                gst_structure_set (struc,
-                        "rowstride", GST_TYPE_INT_RANGE, 1, G_MAXINT,
-                        NULL);
+                if (omx_base->out_port->share_buffer)
+                {
+                    gst_structure_set (struc,
+                            "rowstride", GST_TYPE_INT_RANGE, 1, G_MAXINT,
+                            NULL);
+                }
+                else
+                {
+                    OMX_PARAM_PORTDEFINITIONTYPE param;
+
+                    G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
+
+                    gst_structure_set (struc,
+                            "rowstride", G_TYPE_INT, param.format.video.nStride,
+                            NULL);
+                    GST_DEBUG_OBJECT (omx_base, "rowstride : %d ", param.format.video.nStride);
+                }
             }
 
             if (self->framerate_denom)
@@ -205,6 +277,7 @@ src_getcaps (GstPad *pad)
     {
         /* we don't have valid width/height/etc yet, so just use the template.. */
         caps = gst_static_pad_template_get_caps (&src_template);
+        GST_DEBUG_OBJECT (self, "caps=%"GST_PTR_FORMAT, caps);
     }
 
     caps = g_omx_port_set_video_formats (omx_base->out_port, caps);
@@ -245,6 +318,7 @@ src_setcaps (GstPad *pad, GstCaps *caps)
         param.format.video.nStride      = rowstride;
 
         G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
+        GST_INFO_OBJECT (omx_base,"G_OMX_PORT_SET_DEFINITION");
     }
 
     return TRUE;
@@ -270,6 +344,7 @@ omx_setup (GstOmxBaseFilter *omx_base)
         param.format.video.eCompressionFormat = self->compression_format;
 
         G_OMX_PORT_SET_DEFINITION (omx_base->in_port, &param);
+        GST_DEBUG_OBJECT (self, "G_OMX_PORT_SET_DEFINITION 1!!!");
 
         /* some workarounds required for TI components. */
         {
@@ -282,6 +357,8 @@ omx_setup (GstOmxBaseFilter *omx_base)
                 height = param.format.video.nFrameHeight;
 
                 G_OMX_PORT_SET_DEFINITION (omx_base->in_port, &param);
+                GST_DEBUG_OBJECT (self, "G_OMX_PORT_SET_DEFINITION 2!!!");
+
             }
 
             /* the component should do this instead */
@@ -292,6 +369,8 @@ omx_setup (GstOmxBaseFilter *omx_base)
                 param.format.video.nFrameHeight = height;
 
                 G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
+                GST_DEBUG_OBJECT (self, "G_OMX_PORT_SET_DEFINITION 3!!!");
+
             }
         }
     }
@@ -321,3 +400,4 @@ type_instance_init (GTypeInstance *instance,
     gst_pad_set_setcaps_function (omx_base->srcpad,
             GST_DEBUG_FUNCPTR (src_setcaps));
 }
+
