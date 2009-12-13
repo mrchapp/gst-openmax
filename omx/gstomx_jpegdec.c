@@ -254,6 +254,19 @@ sink_setcaps (GstPad *pad,
         {
             self->framerate_num = gst_value_get_fraction_numerator (framerate);
             self->framerate_denom = gst_value_get_fraction_denominator (framerate);
+            if (self->framerate_num == 0)
+            {
+                omx_base->duration = gst_util_uint64_scale_int(GST_SECOND,0,1);
+            }
+            else
+            {
+                omx_base->duration = gst_util_uint64_scale_int(GST_SECOND,
+                        gst_value_get_fraction_denominator (framerate),
+                        gst_value_get_fraction_numerator (framerate));
+            }
+
+            GST_DEBUG_OBJECT (self, "Nominal frame duration =%"GST_TIME_FORMAT,
+                                    GST_TIME_ARGS (omx_base->duration));
         }
     }
 

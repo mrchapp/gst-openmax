@@ -340,6 +340,8 @@ push_buffer (GstOmxBaseFilter *self,
 {
     GstFlowReturn ret;
 
+    GST_BUFFER_DURATION (buf) = self->duration;
+
     PRINT_BUFFER (self, buf);
 
     /** @todo check if tainted */
@@ -791,6 +793,8 @@ type_instance_init (GTypeInstance *instance,
 
     gst_element_add_pad (GST_ELEMENT (self), self->sinkpad);
     gst_element_add_pad (GST_ELEMENT (self), self->srcpad);
+
+    self->duration = GST_CLOCK_TIME_NONE;
 
     GST_LOG_OBJECT (self, "end");
 }

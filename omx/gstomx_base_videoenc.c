@@ -139,6 +139,18 @@ sink_setcaps (GstPad *pad,
     g_return_val_if_fail (caps, FALSE);
     g_return_val_if_fail (gst_caps_is_fixed (caps), FALSE);
 
+    framerate = gst_structure_get_value (
+            gst_caps_get_structure (caps, 0), "framerate");
+
+    if (framerate)
+    {
+        omx_base->duration = gst_util_uint64_scale_int(GST_SECOND,
+                gst_value_get_fraction_denominator (framerate),
+                gst_value_get_fraction_numerator (framerate));
+        GST_DEBUG_OBJECT (self, "Nominal frame duration =%"GST_TIME_FORMAT,
+                            GST_TIME_ARGS (omx_base->duration));
+    }
+
     if (gst_video_format_parse_caps_strided (caps,
             &format, &width, &height, &rowstride))
     {
@@ -153,9 +165,6 @@ sink_setcaps (GstPad *pad,
         param.format.video.nFrameHeight = height;
         param.format.video.nStride      = rowstride;
 
-        framerate = gst_structure_get_value (
-                gst_caps_get_structure (caps, 0), "framerate");
-
         if (framerate)
         {
             self->framerate_num = gst_value_get_fraction_numerator (framerate);
@@ -169,6 +178,8 @@ sink_setcaps (GstPad *pad,
 
         G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
     }
+
+
 
     return TRUE;
 }
