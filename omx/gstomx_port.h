@@ -98,6 +98,7 @@ GOmxPort *g_omx_port_new (GOmxCore *core, const gchar *name, guint index);
 void g_omx_port_free (GOmxPort *port);
 
 void g_omx_port_setup (GOmxPort *port, OMX_PARAM_PORTDEFINITIONTYPE *omx_port);
+void g_omx_port_prepare (GOmxPort *port);
 void g_omx_port_allocate_buffers (GOmxPort *port);
 void g_omx_port_free_buffers (GOmxPort *port);
 void g_omx_port_start_buffers (GOmxPort *port);
@@ -115,7 +116,7 @@ gpointer g_omx_port_recv (GOmxPort *port);
  * Some domain specific port related utility functions:
  */
 
-#define GSTOMX_ALL_FORMATS  "{ I420, YUY2, UYVY, NV12 }"
+#define GSTOMX_ALL_FORMATS  "{ NV12, I420, YUY2, UYVY }"
 
 GstCaps * g_omx_port_set_video_formats (GOmxPort *port, GstCaps *caps);
 GstCaps * g_omx_port_set_image_formats (GOmxPort *port, GstCaps *caps);

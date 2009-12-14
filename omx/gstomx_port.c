@@ -126,6 +126,37 @@ buffer_alloc (GOmxPort *port, gint len)
 }
 
 
+/**
+ * Ensure that srcpad caps are set before beginning transition-to-idle or
+ * transition-to-loaded.  This is a bit ugly, because it requires pad-alloc'ing
+ * a buffer from the downstream element for no particular purpose other than
+ * triggering upstream caps negotiation from the sink..
+ */
+void
+g_omx_port_prepare (GOmxPort *port)
+{
+    OMX_PARAM_PORTDEFINITIONTYPE param;
+    GstBuffer *buf;
+    guint size;
+
+    DEBUG (port, "begin");
+
+    G_OMX_PORT_GET_DEFINITION (port, &param);
+    size = param.nBufferSize;
+
+    buf = buffer_alloc (port, size);
+
+    if (GST_BUFFER_SIZE (buf) != size)
+    {
+        DEBUG (port, "buffer sized changed, %d->%d",
+                size, GST_BUFFER_SIZE (buf));
+    }
+
+    gst_buffer_unref (buf);
+
+    DEBUG (port, "end");
+}
+
 void
 g_omx_port_allocate_buffers (GOmxPort *port)
 {
@@ -148,17 +179,6 @@ g_omx_port_allocate_buffers (GOmxPort *port)
 
         if (port->omx_allocate)
         {
-            /*OMX_UseBuffer still not supported properly lower layers, so we have to force to read the new caps and
-             * configure the omx component before to OMX_AllocateBuffer*/
-            gst_buffer_unref (buffer_alloc (port, size));
-
-            G_OMX_PORT_GET_DEFINITION (port, &param);
-            size = param.nBufferSize;
-
-            GST_INFO ( "Before Allocate buffer ->  Width: %d , Height: %d, color = %d , size= %d",
-                param.format.image.nFrameWidth,param.format.image.nFrameHeight,param.format.image.eColorFormat,
-                param.nBufferSize);
-
             DEBUG (port, "%d: OMX_AllocateBuffer(), size=%d", i, size);
             OMX_AllocateBuffer (port->core->omx_handle,
                                 &port->buffers[i],
@@ -176,24 +196,6 @@ g_omx_port_allocate_buffers (GOmxPort *port)
             {
                 buf = buffer_alloc (port, size);
                 buffer_data = GST_BUFFER_DATA (buf);
-
-                if (i == 0)
-                {
-                    /* note: first buffer allocation may have triggered caps
-                     * to be renegotiated to use row-stride.. which in turn
-                     * changes the size of the requested buffer.  So let's
-                     * check that, and if necessary start-over:
-                     */
-                    G_OMX_PORT_GET_DEFINITION (port, &param);
-
-                    if (size != param.nBufferSize)
-                    {
-                        size = param.nBufferSize;
-                        gst_buffer_unref (buf);
-                        i -= 1;
-                        continue;
-                    }
-                }
             }
             else
             {
@@ -561,6 +563,7 @@ g_omx_port_recv (GOmxPort *port)
         if (port->share_buffer)
         {
             GstBuffer *new_buf = buffer_alloc (port, omx_buffer->nAllocLen);
+
             omx_buffer->pAppPrivate = new_buf;
             omx_buffer->pBuffer     = GST_BUFFER_DATA (new_buf);
             omx_buffer->nAllocLen   = GST_BUFFER_SIZE (new_buf);
@@ -618,7 +621,15 @@ g_omx_port_flush (GOmxPort *port)
 void
 g_omx_port_enable (GOmxPort *port)
 {
+    if (port->enabled)
+    {
+        DEBUG (port, "already enabled");
+        return;
+    }
+
     DEBUG (port, "begin");
+
+    g_omx_port_prepare (port);
 
     OMX_SendCommand (g_omx_core_get_handle (port->core),
             OMX_CommandPortEnable, port->port_index, NULL);
@@ -638,6 +649,12 @@ g_omx_port_enable (GOmxPort *port)
 void
 g_omx_port_disable (GOmxPort *port)
 {
+    if (!port->enabled)
+    {
+        DEBUG (port, "already disabled");
+        return;
+    }
+
     DEBUG (port, "begin");
 
     port->enabled = FALSE;
@@ -706,8 +723,6 @@ g_omx_port_set_video_formats (GOmxPort *port, GstCaps *caps)
 
             g_value_init (&fourccval, GST_TYPE_FOURCC);
 
-            /* Got error from omx jpeg component , avoiding these lines by the moment till they support it*/
-#if 1
             /* check and see if OMX supports the format:
              */
             param.eColorFormat = g_omx_fourcc_to_colorformat (all_fourcc[j]);
@@ -732,10 +747,6 @@ g_omx_port_set_video_formats (GOmxPort *port, GstCaps *caps)
                 gst_value_set_fourcc (&fourccval, all_fourcc[j]);
                 gst_value_list_append_value (&formats, &fourccval);
             }
-#else
-            gst_value_set_fourcc (&fourccval, all_fourcc[j]);
-            gst_value_list_append_value (&formats, &fourccval);
-#endif
         }
 
         gst_structure_set_value (struc, "format", &formats);
