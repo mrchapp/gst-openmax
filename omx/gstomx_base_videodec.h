@@ -42,7 +42,7 @@ struct GstOmxBaseVideoDec
     OMX_VIDEO_CODINGTYPE compression_format;
     gint framerate_num;
     gint framerate_denom;
-    gboolean outport_configured;
+    gboolean inport_configured;
     GstPadSetCapsFunction sink_setcaps;
 };
 
