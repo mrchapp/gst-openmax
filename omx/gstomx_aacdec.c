@@ -53,7 +53,7 @@ generate_src_template (void)
                                 "depth", G_TYPE_INT, 16,
                                 "rate", GST_TYPE_INT_RANGE, 8000, 96000,
                                 "signed", G_TYPE_BOOLEAN, TRUE,
-                                "channels", GST_TYPE_INT_RANGE, 1, 6,
+                                "channels", GST_TYPE_INT_RANGE, 1, 8,
                                 NULL);
 
     return caps;
@@ -68,7 +68,7 @@ generate_sink_template (void)
 
     struc = gst_structure_new ("audio/mpeg",
                                "mpegversion", G_TYPE_INT, 4,
-                               "channels", GST_TYPE_INT_RANGE, 1, 2,
+                               "channels", GST_TYPE_INT_RANGE, 1, 8,
                                "rate", GST_TYPE_INT_RANGE, 8000, 96000,
                                "object_type", GST_TYPE_INT_RANGE, 1, 6,
                                "parsed", G_TYPE_BOOLEAN, TRUE,
