@@ -237,6 +237,7 @@ src_getcaps (GstPad *pad)
                     (i ? "video/x-raw-yuv-strided" : "video/x-raw-yuv"),
                     "width",  G_TYPE_INT, outparam.format.video.nFrameWidth,
                     "height", G_TYPE_INT, outparam.format.video.nFrameHeight,
+                    "buffer-count-requested", G_TYPE_INT, outparam.nBufferCountActual,
                     NULL);
 
             if(i)

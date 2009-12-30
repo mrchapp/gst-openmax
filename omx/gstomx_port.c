@@ -137,6 +137,7 @@ g_omx_port_prepare (GOmxPort *port)
 {
     OMX_PARAM_PORTDEFINITIONTYPE param;
     GstBuffer *buf;
+    GstCaps *caps;
     guint size;
 
     DEBUG (port, "begin");
@@ -145,11 +146,40 @@ g_omx_port_prepare (GOmxPort *port)
     size = param.nBufferSize;
 
     buf = buffer_alloc (port, size);
+    caps = GST_BUFFER_CAPS (buf);
+
+    /* the buffer_alloc() could have triggered srccaps to be set, so don't
+     * trust that the original port params are still valid:
+     */
+    G_OMX_PORT_GET_DEFINITION (port, &param);
+    size = param.nBufferSize;
+
+    if (caps)
+    {
+        GstStructure *s;
+        gint cnt;
+
+        g_warn_if_fail (gst_caps_is_fixed (caps));
+
+        s = gst_caps_get_structure (caps, 0);
+
+        if (gst_structure_get_int (s, "buffer-count-actual", &cnt))
+        {
+            port->num_buffers = param.nBufferCountActual = cnt;
+            port->omx_allocate = FALSE;
+            port->share_buffer = 2;
+            DEBUG (port, "buffer allocator (sink) supports OMX compliant (non pBuffer swapping) buffer sharing mode");
+            DEBUG (port, "nBufferCountActual: %d", param.nBufferCountActual);
+            G_OMX_PORT_SET_DEFINITION (port, &param);
+        }
+    }
 
     if (GST_BUFFER_SIZE (buf) != size)
     {
         DEBUG (port, "buffer sized changed, %d->%d",
                 size, GST_BUFFER_SIZE (buf));
+        param.nBufferSize = GST_BUFFER_SIZE (buf);
+        G_OMX_PORT_SET_DEFINITION (port, &param);
     }
 
     gst_buffer_unref (buf);
@@ -289,9 +319,22 @@ g_omx_port_start_buffers (GOmxPort *port)
         /* If it's an input port we will need to fill the buffer, so put it in
          * the queue, otherwise send to omx for processing (fill it up). */
         if (port->type == GOMX_PORT_INPUT)
+        {
             g_omx_core_got_buffer (port->core, port, omx_buffer);
+        }
         else
-            release_buffer (port, omx_buffer);
+        {
+            if ((port->share_buffer == 2) && (i >= port->num_buffers-3))
+            {
+                GstBuffer *buf = port->buffers[i]->pAppPrivate;
+//                port->buffers[i]->pAppPrivate = NULL;
+                gst_buffer_unref (buf);
+            }
+            else
+            {
+                release_buffer (port, omx_buffer);
+            }
+        }
     }
 
     DEBUG (port, "end");
@@ -383,8 +426,10 @@ send_prep_buffer_data (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer, GstBuff
     {
         omx_buffer->nFilledLen = MIN (GST_BUFFER_SIZE (buf),
                 omx_buffer->nAllocLen - omx_buffer->nOffset);
+        DEBUG (port, "begin evil memcpy of %d bytes", omx_buffer->nFilledLen);
         memcpy (omx_buffer->pBuffer + omx_buffer->nOffset,
                 GST_BUFFER_DATA (buf), omx_buffer->nFilledLen);
+        DEBUG (port, "done memcpy");
     }
 
     if (port->core->use_timestamps)
@@ -523,10 +568,15 @@ g_omx_port_recv (GOmxPort *port)
                 if (buf)
                     gst_buffer_unref (buf);
 
+                /* this probably won't work for share_buffers==2 case..
+                 * but this is only for encoders anyways..
+                 */
                 buf = buffer_alloc (port, omx_buffer->nFilledLen);
+                DEBUG (port, "begin evil memcpy of %d bytes", omx_buffer->nFilledLen);
                 memcpy (GST_BUFFER_DATA (buf),
                         omx_buffer->pBuffer + omx_buffer->nOffset,
                         omx_buffer->nFilledLen);
+                DEBUG (port, "done memcpy");
             }
             else if (buf)
             {
@@ -563,6 +613,28 @@ g_omx_port_recv (GOmxPort *port)
         if (port->share_buffer)
         {
             GstBuffer *new_buf = buffer_alloc (port, omx_buffer->nAllocLen);
+
+            if (port->share_buffer == 2)
+            {
+                gpointer buffer_data = GST_BUFFER_DATA (new_buf);
+                gint i;
+                omx_buffer = NULL;
+                for (i=0; i<port->num_buffers; i++)
+                {
+                    if (port->buffers[i]->pBuffer == buffer_data)
+                    {
+                        DEBUG (port, "found buffer %d", i);
+                        omx_buffer = port->buffers[i];
+                        break;
+                    }
+                }
+                if (!omx_buffer)
+                {
+                    WARNING (port, "could not find buffer!!  goodbye cruel world!");
+                    g_return_val_if_fail (omx_buffer, NULL);
+                }
+            }
+
 
             omx_buffer->pAppPrivate = new_buf;
             omx_buffer->pBuffer     = GST_BUFFER_DATA (new_buf);
