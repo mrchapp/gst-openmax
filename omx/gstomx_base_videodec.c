@@ -149,6 +149,7 @@ sink_setcaps (GstPad *pad,
 
         param.format.video.nFrameWidth = width;
         param.format.video.nFrameHeight = height;
+        param.nBufferSize = width * height;
 
         G_OMX_PORT_SET_DEFINITION (omx_base->in_port, &param);
         GST_DEBUG_OBJECT (self, "G_OMX_PORT_SET_DEFINITION");
