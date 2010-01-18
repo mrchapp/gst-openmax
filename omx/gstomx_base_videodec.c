@@ -238,6 +238,11 @@ src_getcaps (GstPad *pad)
                     "width",  G_TYPE_INT, outparam.format.video.nFrameWidth,
                     "height", G_TYPE_INT, outparam.format.video.nFrameHeight,
                     "buffer-count-requested", G_TYPE_INT, outparam.nBufferCountActual,
+                    // XXX hack, crop settings should eventually come as buffer meta-data
+                    "crop-top",  G_TYPE_INT, 24,  // XXX eventually this needs to be figured out dynamically
+                    "crop-left", G_TYPE_INT, 36,  // XXX eventually this needs to be figured out dynamically
+                    "crop-width",  G_TYPE_INT, inparam.format.video.nFrameWidth,
+                    "crop-height", G_TYPE_INT, inparam.format.video.nFrameHeight,
                     NULL);
 
             if(i)
