@@ -28,7 +28,6 @@
 
 GSTOMX_BOILERPLATE (GstOmxBaseVideoDec, gst_omx_base_videodec, GstOmxBaseFilter, GST_OMX_BASE_FILTER_TYPE);
 
-
 static GstStaticPadTemplate src_template =
         GST_STATIC_PAD_TEMPLATE ("src",
                 GST_PAD_SRC,
@@ -231,7 +230,8 @@ src_getcaps (GstPad *pad)
 
         caps = gst_caps_new_empty ();
 
-        for (i=0; i<2; i++)
+//        for (i=0; i<2; i++)
+        for (i=1; i<2; i++)
         {
             GstStructure *struc = gst_structure_new (
                     (i ? "video/x-raw-yuv-strided" : "video/x-raw-yuv"),

@@ -756,10 +756,10 @@ g_omx_port_finish (GOmxPort *port)
 
 /* keep this list in sync GSTOMX_ALL_FORMATS */
 static gint32 all_fourcc[] = {
+        GST_MAKE_FOURCC ('N','V','1','2'),
         GST_MAKE_FOURCC ('I','4','2','0'),
         GST_MAKE_FOURCC ('Y','U','Y','2'),
         GST_MAKE_FOURCC ('U','Y','V','Y'),
-        GST_MAKE_FOURCC ('N','V','1','2')
 };
 
 #ifndef DIM  /* XXX is there a better alternative available? */
