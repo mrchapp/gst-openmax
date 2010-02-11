@@ -23,7 +23,9 @@
 #include "gstomx.h"
 
 #include <string.h> /* for memset */
-#include <audio_decode/TIDspOmx.h>
+#ifdef USE_OMXTIAUDIODEC
+#  include <audio_decode/TIDspOmx.h>
+#endif
 
 enum
 {
