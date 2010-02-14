@@ -450,13 +450,15 @@ send_prep_eos_event (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer, GstEvent 
 {
     omx_buffer->nFlags |= OMX_BUFFERFLAG_EOS;
     omx_buffer->nFilledLen = 0;
-    omx_buffer->nAllocLen  = 0;
-    /* OMX should not try to read from the buffer, since it is empty.. but yet
-     * it complains if pBuffer is NULL.  This will get us past that check, and
-     * ensure that OMX segfaults in a debuggible way if they do something
-     * stupid like read from the empty buffer:
-     */
-    omx_buffer->pBuffer    = (OMX_U8 *)1;
+    if (port->share_buffer) {
+        /* OMX should not try to read from the buffer, since it is empty..
+         * but yet it complains if pBuffer is NULL.  This will get us past
+         * that check, and ensure that OMX segfaults in a debuggible way
+         * if they do something stupid like read from the empty buffer:
+         */
+        omx_buffer->pBuffer    = (OMX_U8 *)1;
+        omx_buffer->nAllocLen  = 0;
+    }
 }
 
 /**
