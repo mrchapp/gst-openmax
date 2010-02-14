@@ -61,6 +61,8 @@ struct GOmxPort
 
     /** @todo this is a hack.. OpenMAX IL spec should be revised. */
     gboolean share_buffer;
+
+    gint ignore_count;  /* XXX hack to work around seek bug w/ codec */
 };
 
 /* Macros. */

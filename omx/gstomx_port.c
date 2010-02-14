@@ -59,6 +59,8 @@ g_omx_port_new (GOmxCore *core, const gchar *name, guint index)
     port->queue = async_queue_new ();
     port->mutex = g_mutex_new ();
 
+    port->ignore_count = 0;
+
     return port;
 }
 
@@ -557,6 +559,14 @@ g_omx_port_recv (GOmxPort *port)
                 omx_buffer->nAllocLen, omx_buffer->nFilledLen, omx_buffer->nFlags,
                 omx_buffer->nOffset, omx_buffer->nTimeStamp);
 
+        if (port->ignore_count)
+        {
+            DEBUG (port, "ignore_count=%d", port->ignore_count);
+            release_buffer (port, omx_buffer);
+            port->ignore_count--;
+            continue;
+        }
+
         if (G_UNLIKELY (omx_buffer->nFlags & OMX_BUFFERFLAG_EOS))
         {
             DEBUG (port, "got eos");
@@ -694,6 +704,7 @@ g_omx_port_flush (GOmxPort *port)
 
     OMX_SendCommand (port->core->omx_handle, OMX_CommandFlush, port->port_index, NULL);
     g_sem_down (port->core->flush_sem);
+    port->ignore_count = port->num_buffers;
     DEBUG (port, "end");
 }
 
