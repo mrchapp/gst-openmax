@@ -500,6 +500,10 @@ g_omx_port_send (GOmxPort *port, gpointer obj)
             return -1;
         }
 
+        /* don't assume OMX component clears flags!
+         */
+        omx_buffer->nFlags = 0;
+
         /* if buffer sharing is enabled, pAppPrivate might hold the ref to
          * a buffer that is no longer required and should be unref'd.  We
          * do this check here, rather than in send_prep_buffer_data() so
