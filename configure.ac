@@ -119,6 +119,7 @@ AC_CONFIG_FILES([Makefile \
 		 omx/Makefile \
 		 util/Makefile \
 		 tests/Makefile \
+		 tests/standalone/Makefile \
 		 m4/Makefile])
 
 AC_OUTPUT
