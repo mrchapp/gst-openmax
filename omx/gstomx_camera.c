@@ -29,6 +29,8 @@
 #ifdef USE_OMXTICORE
 #  include <OMX_TI_IVCommon.h>
 #  include <OMX_TI_Index.h>
+#  include <OMX_Index.h>
+#  include <OMX_Component.h>
 #endif
 
 /**
@@ -90,16 +92,24 @@ enum
     ARG_VNF,
     ARG_YUV_RANGE,
     ARG_VSTAB,
+    ARG_ROTATION,
+    ARG_MIRROR,
 #endif
 };
 
 #ifdef USE_OMXTICORE
 #  define DEFAULT_VNF          OMX_VideoNoiseFilterModeOn
 #  define DEFAULT_YUV_RANGE    OMX_ITURBT601
+#  define DEFAULT_ROTATION     180
+#  define DEFAULT_MIRROR       OMX_MirrorNone
 #endif
 
 
 GSTOMX_BOILERPLATE (GstOmxCamera, gst_omx_camera, GstOmxBaseSrc, GST_OMX_BASE_SRC_TYPE);
+
+#define USE_GSTOMXCAM_IMGSRCPAD
+//#define USE_GSTOMXCAM_VIDSRCPAD
+//#define USE_GSTOMXCAM_IN_PORT
 
 /*
  * Mode table
@@ -245,6 +255,30 @@ gst_omx_camera_yuv_range_get_type (void)
 
     return type;
 }
+
+#define GST_TYPE_OMX_CAMERA_MIRROR (gst_omx_camera_mirror_get_type ())
+static GType
+gst_omx_camera_mirror_get_type (void)
+{
+    static GType type = 0;
+
+    if (!type)
+    {
+        static GEnumValue vals[] =
+        {
+            {OMX_MirrorNone,        "off",              "off"},
+            {OMX_MirrorVertical,    "Vertical",         "Vertical"},
+            {OMX_MirrorHorizontal,  "Horizontal",       "Horizontal"},
+            {OMX_MirrorBoth,        "Both"              "Both"},
+            {OMX_MirrorMax,         "Max"               "Max"},
+            {0, NULL, NULL},
+        };
+
+        type = g_enum_register_static ("GstOmxCameraMirror", vals);
+    }
+
+    return type;
+}
 #endif
 
 
@@ -274,7 +308,7 @@ static GstStaticPadTemplate vidsrc_template = GST_STATIC_PAD_TEMPLATE ("vidsrc",
         GST_STATIC_CAPS (GST_VIDEO_CAPS_YUV_STRIDED (GSTOMX_ALL_FORMATS, "[ 0, max ]"))
     );
 
-#if 0
+#ifdef USE_GSTOMXCAM_IN_PORT
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
         GST_PAD_SINK,
         GST_PAD_ALWAYS,
@@ -290,6 +324,8 @@ src_setcaps (GstPad *pad, GstCaps *caps)
 
     GstVideoFormat format;
     gint width, height, rowstride;
+    gint framerate_num, framerate_denom;
+    const GValue *framerate = NULL;
 
     if (!self)
     {
@@ -310,15 +346,38 @@ src_setcaps (GstPad *pad, GstCaps *caps)
 
         G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
 
-        param.format.video.eColorFormat = g_omx_fourcc_to_colorformat (
-                gst_video_format_to_fourcc (format));
+        param.format.video.eColorFormat = g_omx_gstvformat_to_colorformat (format);
         param.format.video.nFrameWidth  = width;
         param.format.video.nFrameHeight = height;
         param.format.video.nStride      = rowstride;
+        param.nBufferSize = gst_video_format_get_size_strided (format, width, height, rowstride);
 
+        framerate = gst_structure_get_value (
+                gst_caps_get_structure (caps, 0), "framerate");
+
+        if (framerate)
+        {
+            framerate_num = gst_value_get_fraction_numerator (framerate);
+            framerate_denom = gst_value_get_fraction_denominator (framerate);
+
+            param.format.video.xFramerate = (framerate_num << 16) / framerate_denom;
+        }
+
+        /* At the moment we are only using preview port and not vid_port
+         * From omx camera desing document we are missing
+         * SetParam CommonSensormode -> bOneShot = FALSE ?
+         */
         G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
-        G_OMX_PORT_SET_DEFINITION (self->vid_port, &param);
 
+#ifdef USE_GSTOMXCAM_VIDSRCPAD
+        G_OMX_PORT_SET_DEFINITION (self->vid_port, &param);
+#endif
+
+        GST_INFO_OBJECT (omx_base, " Rowstride= %d ,Width = %d , Height = %d, Color = %d , Buffersize= %d, framerate = %d",
+            param.format.video.nStride, param.format.video.nFrameWidth, param.format.video.nFrameHeight, param.format.video.eColorFormat, param.nBufferSize,param.format.video.xFramerate );
+
+        gst_pad_set_caps (GST_BASE_SRC (self)->srcpad, caps);
+#if 0
         /* force the src pad and vidsrc pad to use the same caps: */
         if (pad == self->vidsrcpad)
         {
@@ -328,6 +387,9 @@ src_setcaps (GstPad *pad, GstCaps *caps)
         {
             gst_pad_set_caps (self->vidsrcpad, caps);
         }
+
+        GST_INFO_OBJECT (omx_base, " exit setcaps src: %");
+#endif
     }
 
     return TRUE;
@@ -342,7 +404,6 @@ imgsrc_setcaps (GstPad *pad, GstCaps *caps)
     GstVideoFormat format;
     gint width, height, rowstride;
     GstStructure *s;
-
 
     GST_INFO_OBJECT (omx_base, "setcaps (imgsrc): %" GST_PTR_FORMAT, caps);
 
@@ -360,8 +421,7 @@ imgsrc_setcaps (GstPad *pad, GstCaps *caps)
         G_OMX_PORT_GET_DEFINITION (self->img_port, &param);
 
         param.format.image.eCompressionFormat = OMX_IMAGE_CodingUnused;
-        param.format.image.eColorFormat = g_omx_fourcc_to_colorformat (
-                gst_video_format_to_fourcc (format));
+        param.format.image.eColorFormat = g_omx_gstvformat_to_colorformat (format);
         param.format.image.nFrameWidth  = width;
         param.format.image.nFrameHeight = height;
         param.format.image.nStride      = rowstride;
@@ -380,15 +440,22 @@ imgsrc_setcaps (GstPad *pad, GstCaps *caps)
         gst_structure_get_int (s, "width", &width);
         gst_structure_get_int (s, "height", &height);
 
+        param.format.image.eColorFormat = OMX_COLOR_FormatCbYCrY;
         param.format.image.eCompressionFormat = OMX_IMAGE_CodingJPEG;
         param.format.image.nFrameWidth  = width;
         param.format.image.nFrameHeight = height;
+        param.format.image.nStride      = 0;
+        param.nBufferCountActual = 1;
+
+        GST_INFO_OBJECT (self, "Rowstride= %d ,Width = %d , Height = %d, Buffersize= %d, num-buffer= %d",
+            param.format.image.nStride, param.format.image.nFrameWidth, param.format.image.nFrameHeight, param.nBufferSize, param.nBufferCountActual);
 
         G_OMX_PORT_SET_DEFINITION (self->img_port, &param);
     }
 
     return TRUE;
 }
+
 
 /* note.. maybe this should be moved somewhere common... GstOmxBaseVideoDec has
  * almost same logic..
@@ -428,8 +495,13 @@ settings_changed_cb (GOmxCore *core)
     GST_DEBUG_OBJECT (self, "settings changed");
 
     settings_changed (GST_ELEMENT (self), GST_BASE_SRC (self)->srcpad);
-    settings_changed (GST_ELEMENT (self), self->imgsrcpad);
+
+#ifdef USE_GSTOMXCAM_VIDSRCPAD
     settings_changed (GST_ELEMENT (self), self->vidsrcpad);
+#endif
+#ifdef USE_GSTOMXCAM_IMGSRCPAD
+    settings_changed (GST_ELEMENT (self), self->imgsrcpad);
+#endif
 }
 
 static void
@@ -439,20 +511,35 @@ setup_ports (GstOmxBaseSrc *base_src)
     GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
     OMX_PARAM_PORTDEFINITIONTYPE param;
 
+#ifdef USE_GSTOMXCAM_VIDSRCPAD
     G_OMX_PORT_GET_DEFINITION (self->vid_port, &param);
     g_omx_port_setup (self->vid_port, &param);
+#endif
 
+#ifdef USE_GSTOMXCAM_IMGSRCPAD
     G_OMX_PORT_GET_DEFINITION (self->img_port, &param);
     g_omx_port_setup (self->img_port, &param);
+#endif
 
-#if 0
+#ifdef USE_GSTOMXCAM_IN_PORT
     G_OMX_PORT_GET_DEFINITION (self->in_port, &param);
     g_omx_port_setup (self->in_port, &param);
 #endif
 
+/*   Not supported yet
     omx_base->out_port->share_buffer = TRUE;
     self->vid_port->share_buffer = TRUE;
     self->img_port->share_buffer = TRUE;
+*/
+    GST_DEBUG_OBJECT (self, "Setup omx_allocate ports = TRUE; ");
+    omx_base->out_port->omx_allocate = TRUE;
+    omx_base->out_port->share_buffer = FALSE;
+
+#ifdef USE_GSTOMXCAM_IMGSRCPAD
+    self->img_port->omx_allocate = TRUE;
+    self->img_port->share_buffer = FALSE;
+#endif
+
 }
 
 
@@ -498,10 +585,35 @@ get_timestamp (GstOmxCamera *self)
     return timestamp;
 }
 
+#ifdef USE_GSTOMXCAM_IMGSRCPAD
+/** This function configure the camera component on capturing/no capturing mode **/
+static void
+set_capture (GstOmxCamera *self, gboolean capture_mode)
+{
+    OMX_CONFIG_BOOLEANTYPE param;
+    GOmxCore *gomx;
+    OMX_ERRORTYPE err;
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    gomx = (GOmxCore *) omx_base->gomx;
+
+    _G_OMX_INIT_PARAM (&param);
+
+    param.bEnabled = (capture_mode == TRUE) ? OMX_TRUE : OMX_FALSE;
+
+    err = G_OMX_CORE_SET_CONFIG (gomx, OMX_IndexConfigCapturing, &param);
+    g_warn_if_fail (err == OMX_ErrorNone);
+
+    GST_DEBUG_OBJECT (self, "Capture = %d", param.bEnabled);
+}
+#endif
 
 static void
 start_ports (GstOmxCamera *self)
 {
+
+#if 0
+    /* Not utilized  because we are setting the preview port enable since the beginning*/
     GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
 
     if (config[self->mode] & PORT_PREVIEW)
@@ -509,6 +621,9 @@ start_ports (GstOmxCamera *self)
         GST_DEBUG_OBJECT (self, "enable preview port");
         g_omx_port_enable (omx_base->out_port);
     }
+#endif
+
+#ifdef USE_GSTOMXCAM_VIDSRCPAD
     if (config[self->mode] & PORT_VIDEO)
     {
         GST_DEBUG_OBJECT (self, "enable video port");
@@ -516,26 +631,37 @@ start_ports (GstOmxCamera *self)
         gst_element_add_pad (GST_ELEMENT_CAST (self), self->vidsrcpad);
         g_omx_port_enable (self->vid_port);
     }
+#endif
+
+#ifdef USE_GSTOMXCAM_IMGSRCPAD
     if (config[self->mode] & PORT_IMAGE)
     {
         GST_DEBUG_OBJECT (self, "enable image port");
         gst_pad_set_active (self->imgsrcpad, TRUE);
         gst_element_add_pad (GST_ELEMENT_CAST (self), self->imgsrcpad);
         g_omx_port_enable (self->img_port);
+
+        GST_DEBUG_OBJECT (self, "image port set_capture set to  %d", TRUE);
+        set_capture (self, TRUE);
     }
+#endif
 }
 
 
 static void
 stop_ports (GstOmxCamera *self)
 {
-    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
 
+#if 0
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
     if (config[self->mode] & PORT_PREVIEW)
     {
         GST_DEBUG_OBJECT (self, "disable preview port");
         g_omx_port_disable (omx_base->out_port);
     }
+#endif
+
+#ifdef USE_GSTOMXCAM_VIDSRCPAD
     if (config[self->mode] & PORT_VIDEO)
     {
         GST_DEBUG_OBJECT (self, "disable video port");
@@ -543,6 +669,9 @@ stop_ports (GstOmxCamera *self)
         //gst_element_remove_pad (GST_ELEMENT_CAST (self), self->vidsrcpad);
         g_omx_port_disable (self->vid_port);
     }
+#endif
+
+#ifdef USE_GSTOMXCAM_IMGSRCPAD
     if (config[self->mode] & PORT_IMAGE)
     {
         GST_DEBUG_OBJECT (self, "disable image port");
@@ -550,6 +679,7 @@ stop_ports (GstOmxCamera *self)
         //gst_element_remove_pad (GST_ELEMENT_CAST (self), self->imgsrcpad);
         g_omx_port_disable (self->img_port);
     }
+#endif
 }
 
 
@@ -570,6 +700,7 @@ create (GstBaseSrc *gst_base,
     GstBuffer *img_buf = NULL;
     GstFlowReturn ret = GST_FLOW_NOT_NEGOTIATED;
     GstClockTime timestamp;
+    static guint cont;
 
     GST_DEBUG_OBJECT (self, "begin, mode=%d", self->mode);
 
@@ -578,7 +709,6 @@ create (GstBaseSrc *gst_base,
     if (omx_base->gomx->omx_state == OMX_StateLoaded)
     {
         GST_INFO_OBJECT (self, "omx: prepare");
-
         gst_omx_base_src_setup_ports (omx_base);
         g_omx_core_prepare (omx_base->gomx);
     }
@@ -627,7 +757,8 @@ create (GstBaseSrc *gst_base,
     }
 
     timestamp = get_timestamp (self);
-
+    cont ++;
+    GST_DEBUG_OBJECT (self, "******** preview buffers cont = %d", cont);
     GST_BUFFER_TIMESTAMP (preview_buf) = timestamp;
 
     *ret_buf = preview_buf;
@@ -696,15 +827,31 @@ set_property (GObject *obj,
         {
             self->next_mode = g_value_get_enum (value);
             GST_DEBUG_OBJECT (self, "mode: %d", self->next_mode);
+
+            if (self->next_mode == 3)
+            {
+                /* Select Usecase -> remove from this part*/
+                OMX_CONFIG_CAMOPERATINGMODETYPE mode;
+                OMX_ERRORTYPE err;
+
+                _G_OMX_INIT_PARAM (&mode);
+
+                mode.eCamOperatingMode = OMX_CaptureImageProfileBase;
+
+                err = G_OMX_CORE_SET_PARAM (omx_base->gomx, OMX_IndexCameraOperatingMode, &mode);
+                g_warn_if_fail (err == OMX_ErrorNone);
+            }
             break;
         }
         case ARG_SHUTTER:
         {
             self->shutter = g_value_get_enum (value);
-            GST_DEBUG_OBJECT (self, "mode: %d", self->shutter);
+            GST_DEBUG_OBJECT (self, "shutter: %d", self->shutter);
             break;
         }
-#ifdef USE_OMXTICORE
+/*#ifdef USE_OMXTICORE*/
+/*By the moment we are not seeting some properties*/
+#if 1
         case ARG_VNF:
         {
             OMX_PARAM_VIDEONOISEFILTERTYPE param;
@@ -745,6 +892,29 @@ set_property (GObject *obj,
             G_OMX_CORE_SET_PARAM (omx_base->gomx, OMX_IndexParamFrameStabilisation, &param);
             G_OMX_CORE_SET_CONFIG (omx_base->gomx, OMX_IndexConfigCommonFrameStabilisation, &config);
 
+            break;
+        }
+        case ARG_ROTATION:
+        {
+            OMX_CONFIG_ROTATIONTYPE  config;
+
+            G_OMX_PORT_GET_CONFIG (self->img_port, OMX_IndexConfigCommonRotate, &config);
+
+            config.nRotation = g_value_get_uint (value);
+            GST_DEBUG_OBJECT (self, "Rotation: param=%d", config.nRotation);
+
+            G_OMX_PORT_SET_CONFIG (self->img_port, OMX_IndexConfigCommonRotate, &config);
+            break;
+        }
+        case ARG_MIRROR:
+        {
+            OMX_CONFIG_MIRRORTYPE  config;
+            G_OMX_PORT_GET_CONFIG (self->img_port, OMX_IndexConfigCommonMirror, &config);
+
+            config.eMirror = g_value_get_enum (value);
+            GST_DEBUG_OBJECT (self, "Mirror: param=%d", config.eMirror);
+
+            G_OMX_PORT_SET_CONFIG (self->img_port, OMX_IndexConfigCommonMirror, &config);
             break;
         }
 #endif
@@ -830,6 +1000,25 @@ get_property (GObject *obj,
 
             break;
         }
+        case ARG_ROTATION:
+        {
+            OMX_CONFIG_ROTATIONTYPE  config;
+
+            G_OMX_PORT_GET_CONFIG (self->img_port, OMX_IndexConfigCommonRotate, &config);
+
+            GST_DEBUG_OBJECT (self, "Rotation: param=%d", config.nRotation);
+            g_value_set_uint (value, config.nRotation);
+            break;
+        }
+        case ARG_MIRROR:
+        {
+            OMX_CONFIG_MIRRORTYPE  config;
+            G_OMX_PORT_GET_CONFIG (self->img_port, OMX_IndexConfigCommonMirror, &config);
+
+            GST_DEBUG_OBJECT (self, "Mirror: param=%d", config.eMirror);
+            g_value_set_enum (value, config.eMirror);
+            break;
+        }
 #endif
         default:
         {
@@ -856,10 +1045,10 @@ type_base_init (gpointer g_class)
         gst_static_pad_template_get (&src_template));
 
     gst_element_class_add_pad_template (element_class,
-        gst_static_pad_template_get (&imgsrc_template));
+        gst_static_pad_template_get (&vidsrc_template));
 
     gst_element_class_add_pad_template (element_class,
-        gst_static_pad_template_get (&vidsrc_template));
+        gst_static_pad_template_get (&imgsrc_template));
 
 #if 0
     gst_element_class_add_pad_template (element_class,
@@ -926,11 +1115,23 @@ type_class_init (gpointer g_class,
                     "is video stabilization algorithm enabled?",
                     TRUE,
                     G_PARAM_READWRITE));
+
+    g_object_class_install_property (gobject_class, ARG_ROTATION,
+            g_param_spec_uint ("rotation", "Rotation",
+                    "Image rotation",
+                    0, 270, DEFAULT_ROTATION , G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_MIRROR,
+            g_param_spec_enum ("mirror", "Mirror",
+                    "Mirror image",
+                    GST_TYPE_OMX_CAMERA_MIRROR,
+                    DEFAULT_MIRROR,
+                    G_PARAM_READWRITE));
 #endif
 }
 
 
 void check_settings (GOmxPort *port, GstPad *pad);
+
 
 /**
  * overrides the default buffer allocation for img_port to allow
@@ -943,6 +1144,7 @@ img_buffer_alloc (GOmxPort *port, gint len)
     GstBuffer *buf;
     GstFlowReturn ret;
 
+    GST_DEBUG_OBJECT (self, "img_buffer_alloc begin");
     check_settings (self->img_port, self->imgsrcpad);
 
     ret = gst_pad_alloc_buffer_and_set_caps (
@@ -974,6 +1176,7 @@ type_instance_init (GTypeInstance *instance,
     omx_base->gomx->settings_changed_cb = settings_changed_cb;
 
     omx_base->gomx->use_timestamps = TRUE;
+
     self->vid_port = g_omx_core_get_port (omx_base->gomx, "vid",
             OMX_CAMERA_PORT_VIDEO_OUT_VIDEO);
     self->img_port = g_omx_core_get_port (omx_base->gomx, "img",
@@ -1010,14 +1213,12 @@ type_instance_init (GTypeInstance *instance,
     self->imgsrcpad = gst_pad_new_from_template (pad_template, "imgsrc");
     gst_pad_set_setcaps_function (self->imgsrcpad,
             GST_DEBUG_FUNCPTR (imgsrc_setcaps));
-
-    /* disable all ports to begin with: */
-    g_omx_port_disable (omx_base->out_port);
-    g_omx_port_disable (self->img_port);
-    g_omx_port_disable (self->vid_port);
 #if 0
+    /* disable all ports to begin with: */
     g_omx_port_disable (self->in_port);
+    g_omx_port_disable (omx_base->out_port);
 #endif
-
+    g_omx_port_disable (self->vid_port);
+    g_omx_port_disable (self->img_port);
     GST_DEBUG_OBJECT (omx_base, "end");
 }

@@ -140,7 +140,7 @@ gst_omx_base_src_create_from_port (GstOmxBaseSrc *self,
 
             if (G_UNLIKELY (!obj))
             {
-                /* ret = GST_FLOW_ERROR; */
+                ret = GST_FLOW_ERROR;
                 break;
             }
 
