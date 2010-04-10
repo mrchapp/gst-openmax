@@ -702,6 +702,7 @@ g_omx_port_flush (GOmxPort *port)
         }
     }
 
+    DEBUG (port, "SendCommand(Flush, %d)", port->port_index);
     OMX_SendCommand (port->core->omx_handle, OMX_CommandFlush, port->port_index, NULL);
     g_sem_down (port->core->flush_sem);
     port->ignore_count = port->num_buffers;
@@ -721,6 +722,7 @@ g_omx_port_enable (GOmxPort *port)
 
     g_omx_port_prepare (port);
 
+    DEBUG (port, "SendCommand(PortEnable, %d)", port->port_index);
     OMX_SendCommand (g_omx_core_get_handle (port->core),
             OMX_CommandPortEnable, port->port_index, NULL);
 
@@ -749,6 +751,7 @@ g_omx_port_disable (GOmxPort *port)
 
     port->enabled = FALSE;
 
+    DEBUG (port, "SendCommand(PortDisable, %d)", port->port_index);
     OMX_SendCommand (g_omx_core_get_handle (port->core),
             OMX_CommandPortDisable, port->port_index, NULL);
 
