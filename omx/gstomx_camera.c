@@ -120,7 +120,6 @@ enum
     MODE_VIDEO          = 1,
     MODE_VIDEO_IMAGE    = 2,
     MODE_IMAGE          = 3,
-    MODE_IMAGE_TEMPO_BR = 4,
 };
 
 /*
@@ -146,15 +145,11 @@ static const enum
     PORT_PREVIEW  = 0x01,
     PORT_VIDEO    = 0x02,
     PORT_IMAGE    = 0x04,
-
-    /* features that can be used: */
-    FEAT_TEMPO_BR = 0x10,
 } config[] = {
     /* MODE_PREVIEW */            PORT_PREVIEW,
     /* MODE_VIDEO */              PORT_VIDEO,
     /* MODE_VIDEO_IMAGE */        PORT_VIDEO | PORT_IMAGE,
     /* MODE_IMAGE */              PORT_PREVIEW | PORT_IMAGE,
-    /* MODE_IMAGE_TEMPO_BR */     PORT_PREVIEW | PORT_IMAGE | FEAT_TEMPO_BR,
 };
 
 
@@ -177,7 +172,6 @@ gst_omx_camera_mode_get_type (void)
             {MODE_VIDEO,          "Video Capture",              "video"},
             {MODE_VIDEO_IMAGE,    "Video+Image Capture",        "video-image"},
             {MODE_IMAGE,          "Image Capture",              "image"},
-            {MODE_IMAGE_TEMPO_BR, "Image (Temporal Bracket)",   "image-tb"},
             {0, NULL, NULL},
         };
 
@@ -748,12 +742,6 @@ create (GstBaseSrc *gst_base,
     if (vid_buf && !preview_buf)
     {
         preview_buf = gst_buffer_ref (vid_buf);
-    }
-
-    if (config[self->mode] & FEAT_TEMPO_BR)
-    {
-        // TODO
-        GST_DEBUG_OBJECT (self, "temporal bracketing not implemented yet");
     }
 
     timestamp = get_timestamp (self);
