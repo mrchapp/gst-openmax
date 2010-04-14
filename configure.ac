@@ -84,8 +84,10 @@ if test "x$USE_DEBUG" = xyes; then
 fi
 AC_SUBST(PROFILE_CFLAGS)
 
-DEPRECATED_CFLAGS="-DGST_DISABLE_DEPRECATED"
-AC_SUBST(DEPRECATED_CFLAGS)
+dnl XXX temporarily disabled deprecated checks because gst_element_class_set_details()
+dnl was deprecated..  this is only a temporary solution
+dnl DEPRECATED_CFLAGS="-DGST_DISABLE_DEPRECATED"
+dnl AC_SUBST(DEPRECATED_CFLAGS)
 
 dnl every flag in GST_OPTION_CFLAGS can be overridden at make time
 GST_OPTION_CFLAGS="\$(ERROR_CFLAGS) \$(DEBUG_CFLAGS) \$(PROFILE_CFLAGS) \$(GCOV_CFLAGS) \$(OPT_CFLAGS) \$(DEPRECATED_CFLAGS)"
