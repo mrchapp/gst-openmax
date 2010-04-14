@@ -367,7 +367,7 @@ src_setcaps (GstPad *pad, GstCaps *caps)
         G_OMX_PORT_SET_DEFINITION (self->vid_port, &param);
 #endif
 
-        GST_INFO_OBJECT (omx_base, " Rowstride= %d ,Width = %d , Height = %d, Color = %d , Buffersize= %d, framerate = %d",
+        GST_INFO_OBJECT (omx_base, " Rowstride=%d, Width=%d, Height=%d, Color=%d, Buffersize=%d, framerate=%d",
             param.format.video.nStride, param.format.video.nFrameWidth, param.format.video.nFrameHeight, param.format.video.eColorFormat, param.nBufferSize,param.format.video.xFramerate );
 
         gst_pad_set_caps (GST_BASE_SRC (self)->srcpad, caps);
@@ -439,9 +439,8 @@ imgsrc_setcaps (GstPad *pad, GstCaps *caps)
         param.format.image.nFrameWidth  = width;
         param.format.image.nFrameHeight = height;
         param.format.image.nStride      = 0;
-        param.nBufferCountActual = 1;
 
-        GST_INFO_OBJECT (self, "Rowstride= %d ,Width = %d , Height = %d, Buffersize= %d, num-buffer= %d",
+        GST_INFO_OBJECT (self, "Rowstride=%d, Width=%d, Height=%d, Buffersize=%d, num-buffer=%d",
             param.format.image.nStride, param.format.image.nFrameWidth, param.format.image.nFrameHeight, param.nBufferSize, param.nBufferCountActual);
 
         G_OMX_PORT_SET_DEFINITION (self->img_port, &param);
@@ -816,7 +815,7 @@ set_property (GObject *obj,
             self->next_mode = g_value_get_enum (value);
             GST_DEBUG_OBJECT (self, "mode: %d", self->next_mode);
 
-            if (self->next_mode == 3)
+            if (self->next_mode == MODE_IMAGE)
             {
                 /* Select Usecase -> remove from this part*/
                 OMX_CONFIG_CAMOPERATINGMODETYPE mode;
@@ -837,9 +836,7 @@ set_property (GObject *obj,
             GST_DEBUG_OBJECT (self, "shutter: %d", self->shutter);
             break;
         }
-/*#ifdef USE_OMXTICORE*/
-/*By the moment we are not seeting some properties*/
-#if 1
+#ifdef USE_OMXTICORE
         case ARG_VNF:
         {
             OMX_PARAM_VIDEONOISEFILTERTYPE param;
