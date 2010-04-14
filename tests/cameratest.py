@@ -18,43 +18,36 @@ import gst.interfaces
 
 loop = gobject.MainLoop()
 
-#pipeline = "omx_camera vstab=1 mode=1 vnf=1 name=cam cam.src ! queue ! fakesink sync=false cam.vidsrc ! video/x-raw-yuv, format=(fourcc)UYVY, width=720, height=480, framerate=30/1 ! queue ! fakesink sync=false"
-pipeline = '''
-omx_camera name=cam
-  cam.src    ! queue ! fakesink sync=false async=false
-  cam.imgsrc ! image/jpeg, width=720, height=480 ! queue ! fakesink sync=false async=false
-  cam.vidsrc ! video/x-raw-yuv, format=(fourcc)UYVY, width=720, height=480, framerate=30/1 ! queue ! fakesink sync=false async=false
-'''
 
-bin = gst.parse_launch(pipeline)
-
+# TODO add vidbin for video capture later
+pipeline = gst.parse_launch('''
+omx_camera name=cam vstab=false vnf=off output-buffers=6 image-output-buffers=1
+  cam.src ! ( queue ! video/x-raw-yuv-strided, format=(fourcc)UYVY, width=640, height=480, framerate=30/1, buffer-count-requested=6 ! v4l2sink sync=false )
+  cam.imgsrc ! ( name=imgbin queue ! image/jpeg, width=640, height=480 ! multifilesink location=test_imagecapture_%02d.jpg )
+''')
 
 i = 0
-
 def on_timeout():
   global i
   if i == 0:
-    print "setting state to paused"
-    bin.set_state(gst.STATE_PAUSED)
-  elif i == 1:
-    print "switching to video mode"
-    cam.set_property('mode', 'video')
-    print "setting state to playing"
-    bin.set_state(gst.STATE_PLAYING)
-  elif i == 2:
-    print "setting state to paused"
-    bin.set_state(gst.STATE_PAUSED)
-  elif i == 3:
     print "switching to image mode"
     cam.set_property('mode', 'image')
-    print "setting state to playing"
-    bin.set_state(gst.STATE_PLAYING)
+    pipeline.add(imgbin)
+    #cam.link_pads('imgsrc', imgbin, None)
+    gobject.timeout_add(10000, on_timeout)
+  elif i == 1:
+    print "switching to preview mode"
+    cam.set_property('mode', 'preview')
+    gobject.timeout_add(10000, on_timeout)
+  elif i == 2:
+    print "finishing up"
+    pipeline.set_state(gst.STATE_NULL)
   i = i + 1
   return False
 
 
 def on_message(bus, message):
-  global bin
+  global pipeline
   t = message.type
   if t == gst.MESSAGE_ERROR:
     err, debug = message.parse_error()
@@ -65,27 +58,40 @@ def on_message(bus, message):
     oldstate, newstate, pending = message.parse_state_changed()
     elem = message.src
     print "State Changed: %s: %s --> %s" % (elem, oldstate.value_name, newstate.value_name)
-    if elem == bin:
-      print "State Change complete.. triggering next step"
-      gobject.timeout_add(10000, on_timeout)
+    if elem == pipeline:
+      if newstate == gst.STATE_PLAYING:
+        print "State Change complete.. triggering next step"
+        gobject.timeout_add(10000, on_timeout)
 
 
-bus = bin.get_bus()
+bus = pipeline.get_bus()
 bus.enable_sync_message_emission()
 bus.add_signal_watch()
 bus.connect('message', on_message)
 
 
-cam = None;
+cam = None
+imgbin = None
+vidbin = None
 
-for elem in bin:
-  if elem.get_name().startswith("cam"):
+for elem in pipeline:
+  name = elem.get_name()
+  if name.startswith('cam'):
     cam = elem
-    break
+  elif name.startswith('imgbin'):
+    imgbin = elem
+  elif name.startswith('vidbin'):
+    vidbin = elem
+
+cam.set_property('mode', 'preview')
+pipeline.remove(imgbin)
 
 print "setting state to playing"
-bin.set_state(gst.STATE_PLAYING)
+ret = pipeline.set_state(gst.STATE_PLAYING)
+print "setting pipeline to PLAYING: %s" % ret.value_name
 
+ret = imgbin.set_state(gst.STATE_PLAYING)
+print "setting imgbin to PLAYING: %s" % ret.value_name
 
 loop.run()
 
