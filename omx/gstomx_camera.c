@@ -712,6 +712,12 @@ create (GstBaseSrc *gst_base,
             stop_ports (self);
         self->mode = self->next_mode;
         start_ports (self);
+
+        /* @todo for now just capture one image... later let the user config
+         * this to the number of desired burst mode images
+         */
+        if (self->mode == MODE_IMAGE)
+            self->img_count = 1;
     }
 
     if (config[self->mode] & PORT_PREVIEW)
@@ -736,6 +742,9 @@ create (GstBaseSrc *gst_base,
                 self->img_port, &img_buf);
         if (ret != GST_FLOW_OK)
             goto fail;
+
+        if (--self->img_count == 0)
+            self->next_mode = MODE_PREVIEW;
     }
 
     if (vid_buf && !preview_buf)
