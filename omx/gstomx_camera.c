@@ -346,6 +346,11 @@ src_setcaps (GstPad *pad, GstCaps *caps)
         param.format.video.nStride      = rowstride;
         param.nBufferSize = gst_video_format_get_size_strided (format, width, height, rowstride);
 
+        /* special hack to work around OMX camera bug:
+         */
+        if (param.format.video.eColorFormat == OMX_COLOR_FormatYUV420PackedSemiPlanar)
+            param.format.video.eColorFormat = OMX_COLOR_FormatYUV420SemiPlanar;
+
         framerate = gst_structure_get_value (
                 gst_caps_get_structure (caps, 0), "framerate");
 
@@ -419,6 +424,11 @@ imgsrc_setcaps (GstPad *pad, GstCaps *caps)
         param.format.image.nFrameWidth  = width;
         param.format.image.nFrameHeight = height;
         param.format.image.nStride      = rowstride;
+
+        /* special hack to work around OMX camera bug:
+         */
+        if (param.format.video.eColorFormat == OMX_COLOR_FormatYUV420PackedSemiPlanar)
+            param.format.video.eColorFormat = OMX_COLOR_FormatYUV420SemiPlanar;
 
         G_OMX_PORT_SET_DEFINITION (self->img_port, &param);
     }
