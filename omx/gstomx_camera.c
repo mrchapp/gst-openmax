@@ -530,13 +530,11 @@ setup_ports (GstOmxBaseSrc *base_src)
 #endif
 
 /*   Not supported yet
-    omx_base->out_port->share_buffer = TRUE;
     self->vid_port->share_buffer = TRUE;
     self->img_port->share_buffer = TRUE;
 */
-    GST_DEBUG_OBJECT (self, "Setup omx_allocate ports = TRUE; ");
-    omx_base->out_port->omx_allocate = TRUE;
-    omx_base->out_port->share_buffer = FALSE;
+    omx_base->out_port->omx_allocate = FALSE;
+    omx_base->out_port->share_buffer = TRUE;
 
 #ifdef USE_GSTOMXCAM_IMGSRCPAD
     self->img_port->omx_allocate = TRUE;

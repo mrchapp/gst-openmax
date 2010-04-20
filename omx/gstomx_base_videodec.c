@@ -216,7 +216,7 @@ src_getcaps (GstPad *pad)
             outparam.format.video.nFrameWidth = width;
             outparam.format.video.nFrameHeight = height;
             outparam.nBufferCountMin = ref_frames + 3;
-            outparam.nBufferCountActual = outparam.nBufferCountMin + 4;
+            outparam.nBufferCountActual = outparam.nBufferCountMin;
 
             /* oh, and don't assume decoder has sane rowstride configured:
              */
@@ -237,7 +237,7 @@ src_getcaps (GstPad *pad)
                     (i ? "video/x-raw-yuv-strided" : "video/x-raw-yuv"),
                     "width",  G_TYPE_INT, outparam.format.video.nFrameWidth,
                     "height", G_TYPE_INT, outparam.format.video.nFrameHeight,
-                    "buffer-count-requested", G_TYPE_INT, outparam.nBufferCountActual,
+                    "buffer-count-requested", G_TYPE_INT, outparam.nBufferCountActual + 4,
                     // XXX hack, crop settings should eventually come as buffer meta-data
                     "crop-top",  G_TYPE_INT, 24,  // XXX eventually this needs to be figured out dynamically
                     "crop-left", G_TYPE_INT, 36,  // XXX eventually this needs to be figured out dynamically
@@ -247,6 +247,8 @@ src_getcaps (GstPad *pad)
 
             if(i)
             {
+#if 0
+/* XXX fix in v4l2sink! */
                 /* if buffer sharing is used, we let the upstream that allocates
                  * the buffer dictate stride, otherwise we let the OMX component
                  * decide on the stride
@@ -258,6 +260,7 @@ src_getcaps (GstPad *pad)
                             NULL);
                 }
                 else
+#endif
                 {
                     gst_structure_set (struc,
                             "rowstride", G_TYPE_INT, outparam.format.video.nStride,
@@ -363,6 +366,11 @@ type_instance_init (GTypeInstance *instance,
     omx_base->omx_setup = omx_setup;
 
     omx_base->gomx->settings_changed_cb = settings_changed_cb;
+
+    omx_base->in_port->omx_allocate = TRUE;
+    omx_base->out_port->omx_allocate = FALSE;
+    omx_base->in_port->share_buffer = FALSE;
+    omx_base->out_port->share_buffer = TRUE;
 
     gst_pad_set_setcaps_function (omx_base->sinkpad,
             GST_DEBUG_FUNCPTR (sink_setcaps));

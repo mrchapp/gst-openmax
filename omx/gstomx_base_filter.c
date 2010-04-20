@@ -75,13 +75,6 @@ setup_ports (GstOmxBaseFilter *self)
         self->in_port->share_buffer = FALSE;
         self->out_port->share_buffer = FALSE;
     }
-    else
-    {
-        self->in_port->omx_allocate = TRUE;
-        self->out_port->omx_allocate = TRUE;
-        self->in_port->share_buffer = FALSE;
-        self->out_port->share_buffer = FALSE;
-    }
 
     GST_DEBUG_OBJECT (self, "in_port->omx_allocate=%d, out_port->omx_allocate=%d",
             self->in_port->omx_allocate, self->out_port->omx_allocate);
@@ -775,6 +768,11 @@ type_instance_init (GTypeInstance *instance,
     self->out_port = g_omx_core_get_port (self->gomx, "out", 1);
 
     self->out_port->buffer_alloc = buffer_alloc;
+
+    self->in_port->omx_allocate = TRUE;
+    self->out_port->omx_allocate = TRUE;
+    self->in_port->share_buffer = FALSE;
+    self->out_port->share_buffer = FALSE;
 
     self->ready_lock = g_mutex_new ();
 

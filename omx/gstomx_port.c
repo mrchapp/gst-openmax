@@ -26,12 +26,16 @@
 #include "gstomx_port.h"
 #include "gstomx.h"
 
+#include <OMX_TI_Common.h>
+#include <OMX_TI_Index.h>
+
 GST_DEBUG_CATEGORY_EXTERN (gstomx_util_debug);
 
 #define CODEC_DATA_FLAG 0x00000080 /* special nFlags field to use to indicated codec-data */
 
 static OMX_BUFFERHEADERTYPE * request_buffer (GOmxPort *port);
 static void release_buffer (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer);
+static void setup_shared_buffer (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer);
 
 #define DEBUG(port, fmt, args...) \
     GST_DEBUG ("<%s:%s> "fmt, GST_OBJECT_NAME ((port)->core->object), (port)->name, ##args)
@@ -154,7 +158,27 @@ g_omx_port_prepare (GOmxPort *port)
                 size, GST_BUFFER_SIZE (buf));
     }
 
+    /* number of buffers could have changed */
+    G_OMX_PORT_GET_DEFINITION (port, &param);
+    port->num_buffers = param.nBufferCountActual;
+
     gst_buffer_unref (buf);
+
+    if (port->share_buffer)
+    {
+        OMX_TI_PARAM_BUFFERPREANNOUNCE param;
+        OMX_TI_CONFIG_BUFFERREFCOUNTNOTIFYTYPE config;
+
+        G_OMX_PORT_GET_PARAM (port, OMX_TI_IndexParamBufferPreAnnouncement, &param);
+        param.bEnabled = TRUE;
+        G_OMX_PORT_SET_PARAM (port, OMX_TI_IndexParamBufferPreAnnouncement, &param);
+
+        G_OMX_PORT_GET_CONFIG (port, OMX_TI_IndexConfigBufferRefCountNotification, &config);
+        config.bNotifyOnDecrease = TRUE;
+        config.bNotifyOnIncrease = TRUE;
+        config.nCountForNotification = 1;
+        G_OMX_PORT_SET_CONFIG (port, OMX_TI_IndexConfigBufferRefCountNotification, &config);
+    }
 
     DEBUG (port, "end");
 }
@@ -192,14 +216,9 @@ g_omx_port_allocate_buffers (GOmxPort *port)
         }
         else
         {
-            GstBuffer *buf = NULL;
-            gpointer buffer_data;
-            if (port->share_buffer)
-            {
-                buf = buffer_alloc (port, size);
-                buffer_data = GST_BUFFER_DATA (buf);
-            }
-            else
+            gpointer buffer_data = NULL;
+
+            if (! port->share_buffer)
             {
                 buffer_data = g_malloc (size);
             }
@@ -216,10 +235,8 @@ g_omx_port_allocate_buffers (GOmxPort *port)
 
             if (port->share_buffer)
             {
-                port->buffers[i]->pAppPrivate = buf;
-                port->buffers[i]->pBuffer     = GST_BUFFER_DATA (buf);
-                port->buffers[i]->nAllocLen   = GST_BUFFER_SIZE (buf);
-                port->buffers[i]->nOffset     = 0;
+                /* we will need this later: */
+                port->buffers[i]->nAllocLen = size;
             }
         }
     }
@@ -292,9 +309,14 @@ g_omx_port_start_buffers (GOmxPort *port)
         /* If it's an input port we will need to fill the buffer, so put it in
          * the queue, otherwise send to omx for processing (fill it up). */
         if (port->type == GOMX_PORT_INPUT)
+        {
             g_omx_core_got_buffer (port->core, port, omx_buffer);
+        }
         else
+        {
+            setup_shared_buffer (port, omx_buffer);
             release_buffer (port, omx_buffer);
+        }
     }
 
     DEBUG (port, "end");
@@ -353,6 +375,28 @@ release_buffer (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer)
  *
  */
 
+static void
+setup_shared_buffer (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer)
+{
+    if (port->share_buffer)
+    {
+        GstBuffer *new_buf = buffer_alloc (port, omx_buffer->nAllocLen);
+
+        omx_buffer->pAppPrivate = new_buf;
+        omx_buffer->pBuffer     = GST_BUFFER_DATA (new_buf);
+        omx_buffer->nAllocLen   = GST_BUFFER_SIZE (new_buf);
+        omx_buffer->nOffset     = 0;
+        omx_buffer->nFlags      = 0;
+
+        /* special hack.. this should be removed: */
+        omx_buffer->nFlags     |= OMX_BUFFERHEADERFLAG_MODIFIED;
+    }
+    else
+    {
+        g_assert (omx_buffer->pBuffer && !omx_buffer->pAppPrivate);
+    }
+}
+
 typedef void (*SendPrep) (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer, gpointer obj);
 
 static void
@@ -381,6 +425,9 @@ send_prep_buffer_data (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer, GstBuff
         omx_buffer->nFilledLen  = GST_BUFFER_SIZE (buf);
         omx_buffer->nAllocLen   = GST_BUFFER_SIZE (buf);
         omx_buffer->pAppPrivate = gst_buffer_ref (buf);
+
+        /* special hack.. this should be removed: */
+        omx_buffer->nFlags     |= OMX_BUFFERHEADERFLAG_MODIFIED;
     }
     else
     {
@@ -577,19 +624,7 @@ g_omx_port_recv (GOmxPort *port)
             DEBUG (port, "empty buffer"); /* keep looping */
         }
 
-        if (port->share_buffer)
-        {
-            GstBuffer *new_buf = buffer_alloc (port, omx_buffer->nAllocLen);
-
-            omx_buffer->pAppPrivate = new_buf;
-            omx_buffer->pBuffer     = GST_BUFFER_DATA (new_buf);
-            omx_buffer->nAllocLen   = GST_BUFFER_SIZE (new_buf);
-            omx_buffer->nOffset     = 0;
-        }
-        else
-        {
-            g_assert (omx_buffer->pBuffer && !omx_buffer->pAppPrivate);
-        }
+        setup_shared_buffer (port, omx_buffer);
 
         release_buffer (port, omx_buffer);
     }
