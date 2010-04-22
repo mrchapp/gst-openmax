@@ -1189,6 +1189,8 @@ type_instance_init (GTypeInstance *instance,
             OMX_CAMERA_PORT_VIDEO_IN_VIDEO);
 #endif
 
+    gst_base_src_set_live (basesrc, TRUE);
+
     /* setup src pad (already created by basesrc): */
 
     gst_pad_set_setcaps_function (basesrc->srcpad,
