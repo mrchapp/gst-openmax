@@ -88,6 +88,7 @@ enum
     ARG_NUM_VIDEO_OUTPUT_BUFFERS,
     ARG_MODE,
     ARG_SHUTTER,
+    ARG_ZOOM,
 #ifdef USE_OMXTICORE
     ARG_VNF,
     ARG_YUV_RANGE,
@@ -96,6 +97,10 @@ enum
     ARG_MIRROR,
 #endif
 };
+#define DEFAULT_ZOOM_LEVEL           100
+#define MIN_ZOOM_LEVEL               100
+#define MAX_ZOOM_LEVEL               600
+#define CAM_ZOOM_IN_STEP             0x10000
 
 #ifdef USE_OMXTICORE
 #  define DEFAULT_VNF          OMX_VideoNoiseFilterModeOn
@@ -804,9 +809,7 @@ set_property (GObject *obj,
               GParamSpec *pspec)
 {
     GstOmxCamera *self = GST_OMX_CAMERA (obj);
-#ifdef USE_OMXTICORE
     GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
-#endif
 
     switch (prop_id)
     {
@@ -853,6 +856,33 @@ set_property (GObject *obj,
             GST_DEBUG_OBJECT (self, "shutter: %d", self->shutter);
             break;
         }
+        case ARG_ZOOM:
+        {
+            OMX_CONFIG_SCALEFACTORTYPE zoom_scalefactor;
+            GOmxCore *gomx;
+            OMX_U32 zoom_factor;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+            gint32 zoom_value;
+            zoom_value = g_value_get_int (value);
+            gomx = (GOmxCore *) omx_base->gomx;
+            zoom_factor = (OMX_U32)(zoom_value / 100);
+            GST_DEBUG_OBJECT (self, "Set Property for zoom factor = %d", zoom_factor);
+
+            _G_OMX_INIT_PARAM (&zoom_scalefactor);
+            error_val = OMX_GetConfig (gomx->omx_handle, OMX_IndexConfigCommonDigitalZoom,
+                                       &zoom_scalefactor);
+            g_assert (error_val == OMX_ErrorNone);
+            GST_DEBUG_OBJECT (self, "OMX_GetConfig Successful for zoom");
+            zoom_scalefactor.xWidth = (CAM_ZOOM_IN_STEP * zoom_factor);
+            zoom_scalefactor.xHeight = (CAM_ZOOM_IN_STEP * zoom_factor);
+            GST_DEBUG_OBJECT (self, "zoom = x%d", zoom_scalefactor.xWidth / CAM_ZOOM_IN_STEP);
+            error_val = OMX_SetConfig (gomx->omx_handle, OMX_IndexConfigCommonDigitalZoom,
+                                       &zoom_scalefactor);
+            g_assert (error_val == OMX_ErrorNone);
+            GST_DEBUG_OBJECT (self, "OMX_SetConfig Successful for zoom");
+            break;
+        }
+
 #ifdef USE_OMXTICORE
         case ARG_VNF:
         {
@@ -935,9 +965,7 @@ get_property (GObject *obj,
               GParamSpec *pspec)
 {
     GstOmxCamera *self = GST_OMX_CAMERA (obj);
-#ifdef USE_OMXTICORE
     GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
-#endif
 
     switch (prop_id)
     {
@@ -964,6 +992,20 @@ get_property (GObject *obj,
         {
             GST_DEBUG_OBJECT (self, "shutter: %d", self->shutter);
             g_value_set_enum (value, self->shutter);
+            break;
+        }
+        case ARG_ZOOM:
+        {
+            OMX_CONFIG_SCALEFACTORTYPE zoom_scalefactor;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+            gomx = (GOmxCore *) omx_base->gomx;
+            GST_DEBUG_OBJECT (self, "Get Property for zoom");
+
+            _G_OMX_INIT_PARAM (&zoom_scalefactor);
+            error_val = OMX_GetConfig (gomx->omx_handle, OMX_IndexConfigCommonDigitalZoom,
+                                       &zoom_scalefactor);
+            g_assert (error_val == OMX_ErrorNone);
             break;
         }
 #ifdef USE_OMXTICORE
@@ -1099,6 +1141,11 @@ type_class_init (gpointer g_class,
                     SHUTTER_OFF,
                     G_PARAM_READWRITE));
 
+    g_object_class_install_property (gobject_class, ARG_ZOOM,
+            g_param_spec_int ("zoom", "Digital Zoom",
+                    "digital zoom factor/level",
+                    MIN_ZOOM_LEVEL, MAX_ZOOM_LEVEL, DEFAULT_ZOOM_LEVEL,
+                    G_PARAM_READWRITE));
 #ifdef USE_OMXTICORE
     g_object_class_install_property (gobject_class, ARG_VNF,
             g_param_spec_enum ("vnf", "Video Noise Filter",
