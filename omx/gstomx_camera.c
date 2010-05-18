@@ -569,7 +569,8 @@ get_timestamp (GstOmxCamera *self)
 
     if (clock) {
       /* the time now is the time of the clock minus the base time */
-      timestamp = gst_clock_get_time (clock) - timestamp;
+      /* Hack: Need to subtract the extra lag that is causing problems to AV sync */
+      timestamp = gst_clock_get_time (clock) - timestamp - (140 * GST_MSECOND);
       gst_object_unref (clock);
 
       /* if we have a framerate adjust timestamp for frame latency */
