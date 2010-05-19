@@ -180,6 +180,7 @@ src_getcaps (GstPad *pad)
 
     if (self->inport_configured)
     {
+        gint width, height;
         /* if we already have src-caps, we want to take the already configured
          * width/height/etc.  But we can still support any option of rowstride,
          * so we still don't want to return fixed caps
@@ -194,9 +195,9 @@ src_getcaps (GstPad *pad)
         /* The following calculation of padding and number of reference frames is
          * specific to H264..  should be moved into h264dec component..
          */
+        width = inparam.format.video.nFrameWidth;
+        height = inparam.format.video.nFrameHeight;
         {
-            gint width = inparam.format.video.nFrameWidth;
-            gint height = inparam.format.video.nFrameHeight;
             gint spec_computation, ref_frames;
 
             /* decoder needs some padding:
@@ -213,8 +214,8 @@ src_getcaps (GstPad *pad)
             spec_computation = (1024 * 12288) / ((width/16)*(height/16)*384);
             ref_frames = (spec_computation > 16) ? 16 : spec_computation;
 
-            outparam.format.video.nFrameWidth = width;
-            outparam.format.video.nFrameHeight = height;
+            outparam.format.video.nFrameWidth = inparam.format.video.nFrameWidth;
+            outparam.format.video.nFrameHeight = inparam.format.video.nFrameHeight;
             outparam.nBufferCountMin = ref_frames + 3;
             outparam.nBufferCountActual = outparam.nBufferCountMin;
 
@@ -235,8 +236,8 @@ src_getcaps (GstPad *pad)
         {
             GstStructure *struc = gst_structure_new (
                     (i ? "video/x-raw-yuv-strided" : "video/x-raw-yuv"),
-                    "width",  G_TYPE_INT, outparam.format.video.nFrameWidth,
-                    "height", G_TYPE_INT, outparam.format.video.nFrameHeight,
+                    "width",  G_TYPE_INT, width,
+                    "height", G_TYPE_INT, height,
                     "buffer-count-requested", G_TYPE_INT, outparam.nBufferCountActual + 4,
                     // XXX hack, crop settings should eventually come as buffer meta-data
                     "crop-top",  G_TYPE_INT, 24,  // XXX eventually this needs to be figured out dynamically
