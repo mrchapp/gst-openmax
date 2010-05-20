@@ -315,6 +315,13 @@ src_setcaps (GstPad *pad, GstCaps *caps)
         /* Output port configuration: */
         OMX_PARAM_PORTDEFINITIONTYPE param;
 
+/* BEGIN WORKAROUND */
+        OMX_PARAM_PORTDEFINITIONTYPE inparam;
+        G_OMX_PORT_GET_DEFINITION (omx_base->in_port, &inparam);
+        width = inparam.format.video.nFrameWidth;
+        height = inparam.format.video.nFrameHeight;
+/* END WORKAROUND */
+
         G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
 
         param.format.video.eColorFormat = g_omx_fourcc_to_colorformat (
