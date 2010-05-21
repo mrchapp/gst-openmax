@@ -24,6 +24,10 @@
 
 #include <gst/video/video.h>
 
+#ifdef USE_OMXTICORE
+#  include <OMX_TI_Index.h>
+#endif
+
 #include <string.h> /* for memset */
 
 GSTOMX_BOILERPLATE (GstOmxBaseVideoDec, gst_omx_base_videodec, GstOmxBaseFilter, GST_OMX_BASE_FILTER_TYPE);
@@ -162,7 +166,6 @@ sink_setcaps (GstPad *pad,
     return gst_pad_set_caps (pad, caps);
 }
 
-
 static GstCaps *
 src_getcaps (GstPad *pad)
 {
@@ -170,11 +173,12 @@ src_getcaps (GstPad *pad)
     GstOmxBaseVideoDec *self   = GST_OMX_BASE_VIDEODEC (GST_PAD_PARENT (pad));
     GstOmxBaseFilter *omx_base = GST_OMX_BASE_FILTER (self);
 
-    if (omx_base->gomx->omx_state != OMX_StateLoaded)
+    if (omx_base->gomx->omx_state > OMX_StateLoaded)
     {
         /* currently, we cannot change caps once out of loaded..  later this
          * could possibly be supported by enabling/disabling the port..
          */
+        GST_DEBUG_OBJECT (self, "cannot getcaps in %d state", omx_base->gomx->omx_state);
         return GST_PAD_CAPS (pad);
     }
 
@@ -184,71 +188,23 @@ src_getcaps (GstPad *pad)
          * width/height/etc.  But we can still support any option of rowstride,
          * so we still don't want to return fixed caps
          */
-        OMX_PARAM_PORTDEFINITIONTYPE inparam, outparam;
+        OMX_PARAM_PORTDEFINITIONTYPE param;
         int i;
 
-        G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &outparam);
-        G_OMX_PORT_GET_DEFINITION (omx_base->in_port, &inparam);
-
-        /**** BEGIN WORKAROUND **************************/
-        /* The following calculation of padding and number of reference frames is
-         * specific to H264..  should be moved into h264dec component..
-         */
-        {
-            gint width = inparam.format.video.nFrameWidth;
-            gint height = inparam.format.video.nFrameHeight;
-            gint spec_computation, ref_frames;
-
-            /* decoder needs some padding:
-             */
-#define PADX    32
-#define PADY    24
-            width = (width + (2*PADX) + 127) & 0xFFFFFF80;
-            height = height + (4*PADY);
-
-            /* decoder needs a minimum number of buffers for reference frames based on
-             * the resolution:
-             */
-            /* 12288 is the value for Profile 4.1 */
-            spec_computation = (1024 * 12288) / ((width/16)*(height/16)*384);
-            ref_frames = (spec_computation > 16) ? 16 : spec_computation;
-
-            outparam.format.video.nFrameWidth = width;
-            outparam.format.video.nFrameHeight = height;
-            outparam.nBufferCountMin = ref_frames + 3;
-            outparam.nBufferCountActual = outparam.nBufferCountMin;
-
-            /* oh, and don't assume decoder has sane rowstride configured:
-             */
-            outparam.format.video.nStride = 4096;
-
-            /* configure encoder with new sanitized parameters:
-             */
-            G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &outparam);
-        }
-        /**** END WORKAROUND ****************************/
+        G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
 
         caps = gst_caps_new_empty ();
 
-//        for (i=0; i<2; i++)
-        for (i=1; i<2; i++)
+        for (i=0; i<2; i++)
         {
             GstStructure *struc = gst_structure_new (
                     (i ? "video/x-raw-yuv-strided" : "video/x-raw-yuv"),
-                    "width",  G_TYPE_INT, outparam.format.video.nFrameWidth,
-                    "height", G_TYPE_INT, outparam.format.video.nFrameHeight,
-                    "buffer-count-requested", G_TYPE_INT, outparam.nBufferCountActual + 4,
-                    // XXX hack, crop settings should eventually come as buffer meta-data
-                    "crop-top",  G_TYPE_INT, 24,  // XXX eventually this needs to be figured out dynamically
-                    "crop-left", G_TYPE_INT, 36,  // XXX eventually this needs to be figured out dynamically
-                    "crop-width",  G_TYPE_INT, inparam.format.video.nFrameWidth,
-                    "crop-height", G_TYPE_INT, inparam.format.video.nFrameHeight,
+                    "width",  G_TYPE_INT, param.format.video.nFrameWidth,
+                    "height", G_TYPE_INT, param.format.video.nFrameHeight,
                     NULL);
 
             if(i)
             {
-#if 0
-/* XXX fix in v4l2sink! */
                 /* if buffer sharing is used, we let the upstream that allocates
                  * the buffer dictate stride, otherwise we let the OMX component
                  * decide on the stride
@@ -260,10 +216,9 @@ src_getcaps (GstPad *pad)
                             NULL);
                 }
                 else
-#endif
                 {
                     gst_structure_set (struc,
-                            "rowstride", G_TYPE_INT, outparam.format.video.nStride,
+                            "rowstride", G_TYPE_INT, param.format.video.nStride,
                             NULL);
                 }
             }
@@ -291,7 +246,6 @@ src_getcaps (GstPad *pad)
 
     return caps;
 }
-
 
 static gboolean
 src_setcaps (GstPad *pad, GstCaps *caps)
@@ -327,6 +281,78 @@ src_setcaps (GstPad *pad, GstCaps *caps)
     }
 
     return TRUE;
+}
+
+static gboolean
+src_query (GstPad *pad, GstQuery *query)
+{
+    GstOmxBaseVideoDec *self   = GST_OMX_BASE_VIDEODEC (GST_PAD_PARENT (pad));
+    GstOmxBaseFilter *omx_base = GST_OMX_BASE_FILTER (self);
+    gboolean ret = FALSE;
+
+    GST_DEBUG_OBJECT (self, "begin");
+
+    if (GST_QUERY_TYPE (query) == GST_QUERY_BUFFERS) {
+        const GstCaps *caps;
+        OMX_ERRORTYPE err;
+        OMX_PARAM_PORTDEFINITIONTYPE param;
+
+        _G_OMX_INIT_PARAM (&param);
+
+        gst_query_parse_buffers_caps (query, &caps);
+
+        /* ensure the caps we are querying are the current ones, otherwise
+         * results are meaningless..
+         *
+         * @todo should we save and restore current caps??
+         */
+        src_setcaps (pad, (GstCaps *)caps);
+
+        param.nPortIndex = omx_base->out_port->port_index;
+        err = OMX_GetParameter (omx_base->gomx->omx_handle,
+                OMX_IndexParamPortDefinition, &param);
+        g_assert (err == OMX_ErrorNone);
+
+        /**** BEGIN WORKAROUND **************************/
+        /* value calculated by ducati doesn't seem to be quite enough.. some
+         * tuning still required here..
+         */
+        param.nBufferCountMin += 2;
+        param.nBufferCountActual = param.nBufferCountMin;
+        err = OMX_SetParameter (omx_base->gomx->omx_handle,
+                OMX_IndexParamPortDefinition, &param);
+        g_assert (err == OMX_ErrorNone);
+        /**** END WORKAROUND ****************************/
+
+        GST_DEBUG_OBJECT (self, "min buffers: %d", param.nBufferCountMin);
+
+        gst_query_set_buffers_count (query, param.nBufferCountMin);
+
+#ifdef USE_OMXTICORE
+        {
+            OMX_CONFIG_RECTTYPE rect;
+            _G_OMX_INIT_PARAM (&rect);
+
+            rect.nPortIndex = omx_base->out_port->port_index;
+            err = OMX_GetParameter (omx_base->gomx->omx_handle,
+                    OMX_TI_IndexParam2DBufferAllocDimension, &rect);
+            if (err == OMX_ErrorNone) {
+                GST_DEBUG_OBJECT (self, "min dimensions: %dx%d",
+                        rect.nWidth, rect.nHeight);
+                gst_query_set_buffers_dimensions (query,
+                        rect.nWidth, rect.nHeight);
+                gst_pad_push_event (omx_base->srcpad,
+                        gst_event_new_vstab (rect.nTop, rect.nLeft));
+            }
+        }
+#endif
+
+        ret = TRUE;
+    }
+
+    GST_DEBUG_OBJECT (self, "end -> %d", ret);
+
+    return ret;
 }
 
 static void
@@ -379,5 +405,7 @@ type_instance_init (GTypeInstance *instance,
             GST_DEBUG_FUNCPTR (src_getcaps));
     gst_pad_set_setcaps_function (omx_base->srcpad,
             GST_DEBUG_FUNCPTR (src_setcaps));
+    gst_pad_set_query_function (omx_base->srcpad,
+            GST_DEBUG_FUNCPTR (src_query));
 }
 
