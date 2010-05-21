@@ -90,6 +90,7 @@ enum
     ARG_SHUTTER,
     ARG_ZOOM,
     ARG_FOCUS,
+    ARG_AWB,
 #ifdef USE_OMXTICORE
     ARG_VNF,
     ARG_YUV_RANGE,
@@ -104,6 +105,7 @@ enum
 #define CAM_ZOOM_IN_STEP             0x10000
 
 #define DEFAULT_FOCUS       OMX_IMAGE_FocusControlOff
+#define DEFAULT_AWB         OMX_WhiteBalControlOff
 
 #ifdef USE_OMXTICORE
 #  define DEFAULT_VNF          OMX_VideoNoiseFilterModeOn
@@ -229,6 +231,35 @@ gst_omx_camera_focus_get_type (void)
         };
 
         type = g_enum_register_static ("GstOmxCameraFocus", vals);
+    }
+
+    return type;
+}
+
+#define GST_TYPE_OMX_CAMERA_AWB (gst_omx_camera_awb_get_type ())
+static GType
+gst_omx_camera_awb_get_type ()
+{
+    static GType type = 0;
+
+    if (!type)
+    {
+        static const GEnumValue vals[] =
+        {
+            {OMX_WhiteBalControlOff,           "Off",           "No balance"},
+            {OMX_WhiteBalControlAuto,          "Auto",          "Auto balance"},
+            {OMX_WhiteBalControlSunLight,      "Sunlight",      "Sun light"},
+            {OMX_WhiteBalControlCloudy,        "Cloudy",        "Cloudy"},
+            {OMX_WhiteBalControlShade,         "Shade",         "Shade"},
+            {OMX_WhiteBalControlTungsten,      "Tungsten",      "Tungsten"},
+            {OMX_WhiteBalControlFluorescent,   "Fluorescent",   "Fluorescent"},
+            {OMX_WhiteBalControlIncandescent,  "Incandescent",  "Incandescent"},
+            {OMX_WhiteBalControlFlash,         "Flash",         "Flash" },
+            {OMX_WhiteBalControlHorizon,       "Horizon",       "Horizon" },
+            {0, NULL, NULL },
+        };
+
+        type = g_enum_register_static ("GstOmxCameraWhiteBalance",vals);
     }
 
     return type;
@@ -928,6 +959,30 @@ set_property (GObject *obj,
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
+        case ARG_AWB:
+        {
+            OMX_CONFIG_WHITEBALCONTROLTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigCommonWhiteBalance,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            config.nPortIndex = omx_base->out_port->port_index;
+            config.eWhiteBalControl = g_value_get_enum (value);
+            GST_DEBUG_OBJECT (self, "AWB: param=%d",
+                                     config.eWhiteBalControl,
+                                     config.nPortIndex);
+
+            error_val = OMX_SetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigCommonWhiteBalance,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
 #ifdef USE_OMXTICORE
         case ARG_VNF:
         {
@@ -1068,6 +1123,24 @@ get_property (GObject *obj,
             GST_DEBUG_OBJECT (self, "AF: param=%d port=%d", config.eFocusControl,
                                                             config.nPortIndex);
             g_value_set_enum (value, config.eFocusControl);
+
+            break;
+        }
+        case ARG_AWB:
+        {
+            OMX_CONFIG_WHITEBALCONTROLTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+            gomx = (GOmxCore *) omx_base->gomx;
+
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigCommonWhiteBalance,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            config.nPortIndex = omx_base->out_port->port_index;
+            GST_DEBUG_OBJECT (self, "AWB: param=%d", config.eWhiteBalControl);
+            g_value_set_enum (value, config.eWhiteBalControl);
 
             break;
         }
@@ -1215,6 +1288,13 @@ type_class_init (gpointer g_class,
                     "auto focus state",
                     GST_TYPE_OMX_CAMERA_FOCUS,
                     DEFAULT_FOCUS,
+                    G_PARAM_READWRITE));
+
+    g_object_class_install_property (gobject_class, ARG_AWB,
+            g_param_spec_enum ("awb", "Auto White Balance",
+                    "auto white balance state",
+                    GST_TYPE_OMX_CAMERA_AWB,
+                    DEFAULT_AWB,
                     G_PARAM_READWRITE));
 #ifdef USE_OMXTICORE
     g_object_class_install_property (gobject_class, ARG_VNF,
