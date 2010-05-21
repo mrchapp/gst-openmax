@@ -673,10 +673,9 @@ set_capture (GstOmxCamera *self, gboolean capture_mode)
 static void
 start_ports (GstOmxCamera *self)
 {
-
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
 #if 0
     /* Not utilized  because we are setting the preview port enable since the beginning*/
-    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
 
     if (config[self->mode] & PORT_PREVIEW)
     {
@@ -701,6 +700,25 @@ start_ports (GstOmxCamera *self)
         GST_DEBUG_OBJECT (self, "enable image port");
         gst_pad_set_active (self->imgsrcpad, TRUE);
         gst_element_add_pad (GST_ELEMENT_CAST (self), self->imgsrcpad);
+
+        if (self->next_mode == MODE_IMAGE)
+        {
+            /* Select Usecase -> remove from this part */
+            OMX_CONFIG_CAMOPERATINGMODETYPE mode;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&mode);
+
+            mode.eCamOperatingMode = OMX_CaptureImageProfileBase;
+            error_val = OMX_SetParameter (gomx->omx_handle,
+                            OMX_IndexCameraOperatingMode, &mode);
+            g_assert (error_val == OMX_ErrorNone);
+            GST_DEBUG_OBJECT (self, "OMX_CaptureImageMode: set = %d",
+                              mode.eCamOperatingMode);
+        }
+
         g_omx_port_enable (self->img_port);
 
         GST_DEBUG_OBJECT (self, "image port set_capture set to  %d", TRUE);
@@ -890,20 +908,6 @@ set_property (GObject *obj,
         {
             self->next_mode = g_value_get_enum (value);
             GST_DEBUG_OBJECT (self, "mode: %d", self->next_mode);
-
-            if (self->next_mode == MODE_IMAGE)
-            {
-                /* Select Usecase -> remove from this part*/
-                OMX_CONFIG_CAMOPERATINGMODETYPE mode;
-                OMX_ERRORTYPE err;
-
-                _G_OMX_INIT_PARAM (&mode);
-
-                mode.eCamOperatingMode = OMX_CaptureImageProfileBase;
-
-                err = G_OMX_CORE_SET_PARAM (omx_base->gomx, OMX_IndexCameraOperatingMode, &mode);
-                g_warn_if_fail (err == OMX_ErrorNone);
-            }
             break;
         }
         case ARG_SHUTTER:
