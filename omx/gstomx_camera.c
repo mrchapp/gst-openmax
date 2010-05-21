@@ -130,6 +130,7 @@ enum
     MODE_VIDEO          = 1,
     MODE_VIDEO_IMAGE    = 2,
     MODE_IMAGE          = 3,
+    MODE_IMAGE_HS       = 4,
 };
 
 /*
@@ -160,6 +161,7 @@ static const enum
     /* MODE_VIDEO */              PORT_VIDEO,
     /* MODE_VIDEO_IMAGE */        PORT_VIDEO | PORT_IMAGE,
     /* MODE_IMAGE */              PORT_PREVIEW | PORT_IMAGE,
+    /* MODE_IMAGE_HS */           PORT_PREVIEW | PORT_IMAGE,
 };
 
 
@@ -182,6 +184,7 @@ gst_omx_camera_mode_get_type (void)
             {MODE_VIDEO,          "Video Capture",              "video"},
             {MODE_VIDEO_IMAGE,    "Video+Image Capture",        "video-image"},
             {MODE_IMAGE,          "Image Capture",              "image"},
+            {MODE_IMAGE_HS,       "Image Capture High Speed",   "image-hs"},
             {0, NULL, NULL},
         };
 
@@ -711,7 +714,16 @@ start_ports (GstOmxCamera *self)
             gomx = (GOmxCore *) omx_base->gomx;
             _G_OMX_INIT_PARAM (&mode);
 
-            mode.eCamOperatingMode = OMX_CaptureImageProfileBase;
+            if (self->next_mode == MODE_IMAGE)
+            {
+                mode.eCamOperatingMode =
+                    OMX_CaptureImageProfileBase;
+            }
+            else if (self->next_mode == MODE_IMAGE_HS)
+            {
+                mode.eCamOperatingMode =
+                    OMX_CaptureImageHighSpeedTemporalBracketing;
+            }
             error_val = OMX_SetParameter (gomx->omx_handle,
                             OMX_IndexCameraOperatingMode, &mode);
             g_assert (error_val == OMX_ErrorNone);
@@ -805,6 +817,8 @@ create (GstBaseSrc *gst_base,
          */
         if (self->mode == MODE_IMAGE)
             self->img_count = 1;
+        if (self->mode == MODE_IMAGE_HS)
+            self->img_count = self->img_port->num_buffers;
     }
 
     if (config[self->mode] & PORT_PREVIEW)
@@ -831,7 +845,12 @@ create (GstBaseSrc *gst_base,
             goto fail;
 
         if (--self->img_count == 0)
+        {
             self->next_mode = MODE_PREVIEW;
+            GST_DEBUG_OBJECT (self, "image port set_capture set to %d", FALSE);
+            set_capture (self, FALSE);
+        }
+        GST_DEBUG_OBJECT (self, "### img_count = %d ###", self->img_count);
     }
 
     if (vid_buf && !preview_buf)
