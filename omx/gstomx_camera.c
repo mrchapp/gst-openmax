@@ -89,6 +89,7 @@ enum
     ARG_MODE,
     ARG_SHUTTER,
     ARG_ZOOM,
+    ARG_FOCUS,
 #ifdef USE_OMXTICORE
     ARG_VNF,
     ARG_YUV_RANGE,
@@ -101,6 +102,8 @@ enum
 #define MIN_ZOOM_LEVEL               100
 #define MAX_ZOOM_LEVEL               600
 #define CAM_ZOOM_IN_STEP             0x10000
+
+#define DEFAULT_FOCUS       OMX_IMAGE_FocusControlOff
 
 #ifdef USE_OMXTICORE
 #  define DEFAULT_VNF          OMX_VideoNoiseFilterModeOn
@@ -208,7 +211,28 @@ gst_omx_camera_shutter_get_type (void)
     return type;
 }
 
+#define GST_TYPE_OMX_CAMERA_FOCUS (gst_omx_camera_focus_get_type ())
+static GType
+gst_omx_camera_focus_get_type (void)
+{
+    static GType type = 0;
 
+    if (!type)
+    {
+        static GEnumValue vals[] =
+        {
+            {OMX_IMAGE_FocusControlOff,      "off",              "off"},
+            {OMX_IMAGE_FocusControlOn,       "on",               "on"},
+            {OMX_IMAGE_FocusControlAuto,     "auto",             "auto"},
+            {OMX_IMAGE_FocusControlAutoLock, "autolock",         "autolock"},
+            {0, NULL, NULL},
+        };
+
+        type = g_enum_register_static ("GstOmxCameraFocus", vals);
+    }
+
+    return type;
+}
 
 #ifdef USE_OMXTICORE
 #define GST_TYPE_OMX_CAMERA_VNF (gst_omx_camera_vnf_get_type ())
@@ -883,7 +907,27 @@ set_property (GObject *obj,
             GST_DEBUG_OBJECT (self, "OMX_SetConfig Successful for zoom");
             break;
         }
+        case ARG_FOCUS:
+        {
+            OMX_IMAGE_CONFIG_FOCUSCONTROLTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
 
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig(gomx->omx_handle,
+                                       OMX_IndexConfigFocusControl, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            config.nPortIndex = omx_base->out_port->port_index;
+            config.eFocusControl = g_value_get_enum (value);
+            GST_DEBUG_OBJECT (self, "AF: param=%d port=%d", config.eFocusControl,
+                                                            config.nPortIndex);
+
+            error_val = OMX_SetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigFocusControl, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
 #ifdef USE_OMXTICORE
         case ARG_VNF:
         {
@@ -1007,6 +1051,24 @@ get_property (GObject *obj,
             error_val = OMX_GetConfig (gomx->omx_handle, OMX_IndexConfigCommonDigitalZoom,
                                        &zoom_scalefactor);
             g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
+        case ARG_FOCUS:
+        {
+            OMX_IMAGE_CONFIG_FOCUSCONTROLTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+            gomx = (GOmxCore *) omx_base->gomx;
+
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                        OMX_IndexConfigFocusControl, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            config.nPortIndex = omx_base->out_port->port_index;
+            GST_DEBUG_OBJECT (self, "AF: param=%d port=%d", config.eFocusControl,
+                                                            config.nPortIndex);
+            g_value_set_enum (value, config.eFocusControl);
+
             break;
         }
 #ifdef USE_OMXTICORE
@@ -1146,6 +1208,13 @@ type_class_init (gpointer g_class,
             g_param_spec_int ("zoom", "Digital Zoom",
                     "digital zoom factor/level",
                     MIN_ZOOM_LEVEL, MAX_ZOOM_LEVEL, DEFAULT_ZOOM_LEVEL,
+                    G_PARAM_READWRITE));
+
+    g_object_class_install_property (gobject_class, ARG_FOCUS,
+            g_param_spec_enum ("focus", "Auto Focus",
+                    "auto focus state",
+                    GST_TYPE_OMX_CAMERA_FOCUS,
+                    DEFAULT_FOCUS,
                     G_PARAM_READWRITE));
 #ifdef USE_OMXTICORE
     g_object_class_install_property (gobject_class, ARG_VNF,
