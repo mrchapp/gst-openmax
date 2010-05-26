@@ -32,6 +32,15 @@
 
 GSTOMX_BOILERPLATE (GstOmxBaseVideoDec, gst_omx_base_videodec, GstOmxBaseFilter, GST_OMX_BASE_FILTER_TYPE);
 
+/* OMX component not handling other color formats properly.. use this workaround
+ * until component is fixed or we rebase to get config file support..
+ */
+#define VIDDEC_COLOR_WORKAROUND
+#ifdef VIDDEC_COLOR_WORKAROUND
+#  undef GSTOMX_ALL_FORMATS
+#  define GSTOMX_ALL_FORMATS  "{NV12}"
+#endif
+
 static GstStaticPadTemplate src_template =
         GST_STATIC_PAD_TEMPLATE ("src",
                 GST_PAD_SRC,
@@ -201,6 +210,9 @@ src_getcaps (GstPad *pad)
                     (i ? "video/x-raw-yuv-strided" : "video/x-raw-yuv"),
                     "width",  G_TYPE_INT, param.format.video.nFrameWidth,
                     "height", G_TYPE_INT, param.format.video.nFrameHeight,
+#ifdef VIDDEC_COLOR_WORKAROUND
+                    "format", GST_TYPE_FOURCC, GST_MAKE_FOURCC ('N', 'V', '1', '2'),
+#endif
                     NULL);
 
             if(i)
@@ -240,7 +252,9 @@ src_getcaps (GstPad *pad)
         GST_DEBUG_OBJECT (self, "caps=%"GST_PTR_FORMAT, caps);
     }
 
+#ifndef VIDDEC_COLOR_WORKAROUND
     caps = g_omx_port_set_video_formats (omx_base->out_port, caps);
+#endif
 
     GST_DEBUG_OBJECT (self, "caps=%"GST_PTR_FORMAT, caps);
 
