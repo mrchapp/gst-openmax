@@ -704,7 +704,7 @@ start_ports (GstOmxCamera *self)
         gst_pad_set_active (self->imgsrcpad, TRUE);
         gst_element_add_pad (GST_ELEMENT_CAST (self), self->imgsrcpad);
 
-        if (self->next_mode == MODE_IMAGE)
+        if ((self->next_mode == MODE_IMAGE) || (self->next_mode == MODE_IMAGE_HS))
         {
             /* Select Usecase -> remove from this part */
             OMX_CONFIG_CAMOPERATINGMODETYPE mode;
