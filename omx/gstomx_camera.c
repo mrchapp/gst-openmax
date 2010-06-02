@@ -91,6 +91,8 @@ enum
     ARG_ZOOM,
     ARG_FOCUS,
     ARG_AWB,
+    ARG_THUMBNAIL_WIDTH,
+    ARG_THUMBNAIL_HEIGHT,
 #ifdef USE_OMXTICORE
     ARG_VNF,
     ARG_YUV_RANGE,
@@ -106,6 +108,11 @@ enum
 
 #define DEFAULT_FOCUS       OMX_IMAGE_FocusControlOff
 #define DEFAULT_AWB         OMX_WhiteBalControlOff
+
+#define DEFAULT_THUMBNAIL_WIDTH       352
+#define DEFAULT_THUMBNAIL_HEIGHT      288
+#define MIN_THUMBNAIL_LEVEL           16
+#define MAX_THUMBNAIL_LEVEL           1920
 
 #ifdef USE_OMXTICORE
 #  define DEFAULT_VNF          OMX_VideoNoiseFilterModeOn
@@ -1006,6 +1013,46 @@ set_property (GObject *obj,
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
+        case ARG_THUMBNAIL_WIDTH:
+        {
+            OMX_PARAM_THUMBNAILTYPE param;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&param);
+            error_val = OMX_GetParameter (gomx->omx_handle,
+                                          OMX_IndexParamThumbnail,
+                                          &param);
+            g_assert (error_val == OMX_ErrorNone);
+            self->img_thumbnail_width = g_value_get_int (value);
+            param.nWidth = self->img_thumbnail_width;
+            GST_DEBUG_OBJECT (self, "Thumbnail width=%d", param.nWidth);
+            error_val = OMX_SetParameter (gomx->omx_handle,
+                    OMX_IndexParamThumbnail,&param);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
+        case ARG_THUMBNAIL_HEIGHT:
+        {
+            OMX_PARAM_THUMBNAILTYPE param;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&param);
+            error_val = OMX_GetParameter (gomx->omx_handle,
+                                          OMX_IndexParamThumbnail,
+                                          &param);
+            g_assert (error_val == OMX_ErrorNone);
+            self->img_thumbnail_height = g_value_get_int (value);
+            param.nHeight = self->img_thumbnail_height;
+            GST_DEBUG_OBJECT (self, "Thumbnail height=%d", param.nHeight);
+            error_val = OMX_SetParameter (gomx->omx_handle,
+                    OMX_IndexParamThumbnail,&param);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
 #ifdef USE_OMXTICORE
         case ARG_VNF:
         {
@@ -1167,6 +1214,40 @@ get_property (GObject *obj,
 
             break;
         }
+        case ARG_THUMBNAIL_WIDTH:
+        {
+            OMX_PARAM_THUMBNAILTYPE param;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&param);
+            error_val = OMX_GetParameter(gomx->omx_handle,
+                                       OMX_IndexParamThumbnail,
+                                       &param);
+            g_assert (error_val == OMX_ErrorNone);
+            self->img_thumbnail_width = param.nWidth;
+            GST_DEBUG_OBJECT (self, "Thumbnail width=%d",
+                                    self->img_thumbnail_width);
+            break;
+        }
+        case ARG_THUMBNAIL_HEIGHT:
+        {
+            OMX_PARAM_THUMBNAILTYPE param;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&param);
+            error_val = OMX_GetParameter(gomx->omx_handle,
+                                       OMX_IndexParamThumbnail,
+                                       &param);
+            g_assert (error_val == OMX_ErrorNone);
+            self->img_thumbnail_height = param.nHeight;
+            GST_DEBUG_OBJECT (self, "Thumbnail height=%d",
+                                    self->img_thumbnail_height);
+            break;
+        }
 #ifdef USE_OMXTICORE
         case ARG_VNF:
         {
@@ -1318,6 +1399,16 @@ type_class_init (gpointer g_class,
                     "auto white balance state",
                     GST_TYPE_OMX_CAMERA_AWB,
                     DEFAULT_AWB,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_THUMBNAIL_WIDTH,
+            g_param_spec_int ("thumb-width", "Thumbnail width",
+                    "Thumbnail width in pixels", MIN_THUMBNAIL_LEVEL,
+                    MAX_THUMBNAIL_LEVEL, DEFAULT_THUMBNAIL_WIDTH,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_THUMBNAIL_HEIGHT,
+            g_param_spec_int ("thumb-height", "Thumbnail height",
+                    "Thumbnail height in pixels", MIN_THUMBNAIL_LEVEL,
+                    MAX_THUMBNAIL_LEVEL, DEFAULT_THUMBNAIL_HEIGHT,
                     G_PARAM_READWRITE));
 #ifdef USE_OMXTICORE
     g_object_class_install_property (gobject_class, ARG_VNF,

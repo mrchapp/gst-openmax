@@ -45,6 +45,8 @@ struct GstOmxCamera
     gint mode, next_mode;
     gint shutter;
     gint img_count;
+    gint img_thumbnail_width;
+    gint img_thumbnail_height;
 
     GOmxPort *vid_port;
     GOmxPort *img_port;
