@@ -94,6 +94,7 @@ enum
     ARG_THUMBNAIL_WIDTH,
     ARG_THUMBNAIL_HEIGHT,
     ARG_CONTRAST,
+    ARG_BRIGHTNESS,
 #ifdef USE_OMXTICORE
     ARG_VNF,
     ARG_YUV_RANGE,
@@ -118,6 +119,10 @@ enum
 #define DEFAULT_CONTRAST_LEVEL        0
 #define MIN_CONTRAST_LEVEL            -100
 #define MAX_CONTRAST_LEVEL            100
+
+#define DEFAULT_BRIGHTNESS_LEVEL      50
+#define MIN_BRIGHTNESS_LEVEL          0
+#define MAX_BRIGHTNESS_LEVEL          100
 
 #ifdef USE_OMXTICORE
 #  define DEFAULT_VNF          OMX_VideoNoiseFilterModeOn
@@ -1077,6 +1082,25 @@ set_property (GObject *obj,
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
+        case ARG_BRIGHTNESS:
+        {
+            OMX_CONFIG_BRIGHTNESSTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigCommonBrightness, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            config.nBrightness = g_value_get_int (value);
+            GST_DEBUG_OBJECT (self, "Brightness: param=%d", config.nBrightness);
+
+            error_val = OMX_SetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigCommonBrightness, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
 #ifdef USE_OMXTICORE
         case ARG_VNF:
         {
@@ -1286,6 +1310,20 @@ get_property (GObject *obj,
             GST_DEBUG_OBJECT (self, "Contrast=%d", config.nContrast);
             break;
         }
+        case ARG_BRIGHTNESS:
+        {
+            OMX_CONFIG_BRIGHTNESSTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigCommonBrightness, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            GST_DEBUG_OBJECT (self, "Brightness=%d", config.nBrightness);
+            break;
+        }
 #ifdef USE_OMXTICORE
         case ARG_VNF:
         {
@@ -1452,6 +1490,11 @@ type_class_init (gpointer g_class,
             g_param_spec_int ("contrast", "Contrast",
                     "contrast level", MIN_CONTRAST_LEVEL,
                     MAX_CONTRAST_LEVEL, DEFAULT_CONTRAST_LEVEL,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_BRIGHTNESS,
+            g_param_spec_int ("brightness", "Brightness",
+                    "brightness level", MIN_BRIGHTNESS_LEVEL,
+                    MAX_BRIGHTNESS_LEVEL, DEFAULT_BRIGHTNESS_LEVEL,
                     G_PARAM_READWRITE));
 #ifdef USE_OMXTICORE
     g_object_class_install_property (gobject_class, ARG_VNF,
