@@ -96,6 +96,7 @@ enum
     ARG_CONTRAST,
     ARG_BRIGHTNESS,
     ARG_FLICKER,
+    ARG_EXPOSURE,
 #ifdef USE_OMXTICORE
     ARG_VNF,
     ARG_YUV_RANGE,
@@ -126,6 +127,7 @@ enum
 #define MAX_BRIGHTNESS_LEVEL          100
 
 #define DEFAULT_FLICKER     OMX_FlickerCancelOff
+#define DEFAULT_EXPOSURE    OMX_ExposureControlOff
 
 #ifdef USE_OMXTICORE
 #  define DEFAULT_VNF          OMX_VideoNoiseFilterModeOn
@@ -306,6 +308,35 @@ gst_omx_camera_flicker_get_type ()
         };
 
         type = g_enum_register_static ("GstOmxCameraFlickerCancel", vals);
+    }
+
+    return type;
+}
+
+#define GST_TYPE_OMX_CAMERA_EXPOSURE (gst_omx_camera_exposure_get_type ())
+static GType
+gst_omx_camera_exposure_get_type ()
+{
+    static GType type = 0;
+
+    if (!type)
+    {
+        static const GEnumValue vals[] =
+        {
+            {OMX_ExposureControlOff,             "Off",            "No exposure control"},
+            {OMX_ExposureControlAuto,            "Auto",           "Auto exposure"},
+            {OMX_ExposureControlNight,           "Night",          "Night exposure"},
+            {OMX_ExposureControlBackLight,       "Backlight",      "Backlight exposure"},
+            {OMX_ExposureControlSpotLight,       "SportLight",     "SportLight exposure"},
+            {OMX_ExposureControlSports,          "Sports",         "Sports exposure"},
+            {OMX_ExposureControlSnow,            "Snow",           "Snow exposure"},
+            {OMX_ExposureControlBeach,           "Beach",          "Beach exposure"},
+            {OMX_ExposureControlLargeAperture,   "LargeAperture",  "LargeAperture exposure"},
+            {OMX_ExposureControlSmallApperture,  "SmallAperture",  "SmallAperture exposure"},
+            {0, NULL, NULL },
+        };
+
+        type = g_enum_register_static ("GstOmxCameraExposureControl", vals);
     }
 
     return type;
@@ -1148,6 +1179,28 @@ set_property (GObject *obj,
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
+        case ARG_EXPOSURE:
+        {
+            OMX_CONFIG_EXPOSURECONTROLTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigCommonExposure,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            config.eExposureControl = g_value_get_enum (value);
+            GST_DEBUG_OBJECT (self, "Exposure control = %d",
+                              config.eExposureControl);
+
+            error_val = OMX_SetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigCommonExposure,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
 #ifdef USE_OMXTICORE
         case ARG_VNF:
         {
@@ -1388,6 +1441,24 @@ get_property (GObject *obj,
 
             break;
         }
+        case ARG_EXPOSURE:
+        {
+            OMX_CONFIG_EXPOSURECONTROLTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+            gomx = (GOmxCore *) omx_base->gomx;
+
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigCommonExposure,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            GST_DEBUG_OBJECT (self, "Exposure control = %d",
+                              config.eExposureControl);
+            g_value_set_enum (value, config.eExposureControl);
+
+            break;
+        }
 #ifdef USE_OMXTICORE
         case ARG_VNF:
         {
@@ -1565,6 +1636,12 @@ type_class_init (gpointer g_class,
                     "flicker control state",
                     GST_TYPE_OMX_CAMERA_FLICKER,
                     DEFAULT_FLICKER,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_EXPOSURE,
+            g_param_spec_enum ("exposure", "Exposure Control",
+                    "exposure control mode",
+                    GST_TYPE_OMX_CAMERA_EXPOSURE,
+                    DEFAULT_EXPOSURE,
                     G_PARAM_READWRITE));
 #ifdef USE_OMXTICORE
     g_object_class_install_property (gobject_class, ARG_VNF,
