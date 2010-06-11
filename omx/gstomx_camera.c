@@ -596,6 +596,78 @@ imgsrc_setcaps (GstPad *pad, GstCaps *caps)
     return TRUE;
 }
 
+static gboolean
+src_query (GstPad *pad, GstQuery *query)
+{
+    GstOmxCamera *self = GST_OMX_CAMERA (GST_PAD_PARENT (pad));
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+    gboolean ret = FALSE;
+
+    GST_DEBUG_OBJECT (self, "Begin");
+
+    if (GST_QUERY_TYPE (query) == GST_QUERY_BUFFERS)
+    {
+        const GstCaps *caps;
+        OMX_ERRORTYPE err;
+        OMX_PARAM_PORTDEFINITIONTYPE param;
+
+        _G_OMX_INIT_PARAM (&param);
+
+        gst_query_parse_buffers_caps (query, &caps);
+
+        /* ensure the caps we are querying are the current ones, otherwise
+         * results are meaningless..
+         *
+         * @todo should we save and restore current caps??
+         */
+        src_setcaps (pad, (GstCaps *)caps);
+
+        param.nPortIndex = omx_base->out_port->port_index;
+        err = OMX_GetParameter (omx_base->gomx->omx_handle,
+                OMX_IndexParamPortDefinition, &param);
+        g_assert (err == OMX_ErrorNone);
+
+        /**** BEGIN WORKAROUND **************************/
+        /* value calculated by ducati doesn't seem to be quite enough.. some
+         * tuning still required here..
+         */
+        param.nBufferCountMin += 1;
+        param.nBufferCountActual = param.nBufferCountMin;
+        err = OMX_SetParameter (omx_base->gomx->omx_handle,
+                OMX_IndexParamPortDefinition, &param);
+        g_assert (err == OMX_ErrorNone);
+        /**** END WORKAROUND ****************************/
+
+        GST_DEBUG_OBJECT (self, "Min buffers: %d", param.nBufferCountMin);
+
+        gst_query_set_buffers_count (query, param.nBufferCountMin);
+
+#ifdef USE_OMXTICORE
+        {
+            OMX_CONFIG_RECTTYPE rect;
+            _G_OMX_INIT_PARAM (&rect);
+
+            rect.nPortIndex = omx_base->out_port->port_index;
+            err = OMX_GetParameter (omx_base->gomx->omx_handle,
+                    OMX_TI_IndexParam2DBufferAllocDimension, &rect);
+            if (err == OMX_ErrorNone)
+            {
+                GST_DEBUG_OBJECT (self, "Min dimensions: %dx%d",
+                        rect.nWidth, rect.nHeight);
+
+                gst_query_set_buffers_dimensions (query,
+                        rect.nWidth, rect.nHeight);
+            }
+        }
+#endif
+
+        ret = TRUE;
+    }
+
+    GST_DEBUG_OBJECT (self, "End -> %d", ret);
+
+    return ret;
+}
 
 /* note.. maybe this should be moved somewhere common... GstOmxBaseVideoDec has
  * almost same logic..
@@ -1761,6 +1833,8 @@ type_instance_init (GTypeInstance *instance,
     self->imgsrcpad = gst_pad_new_from_template (pad_template, "imgsrc");
     gst_pad_set_setcaps_function (self->imgsrcpad,
             GST_DEBUG_FUNCPTR (imgsrc_setcaps));
+    gst_pad_set_query_function (basesrc->srcpad,
+            GST_DEBUG_FUNCPTR (src_query));
 #if 0
     /* disable all ports to begin with: */
     g_omx_port_disable (self->in_port);
