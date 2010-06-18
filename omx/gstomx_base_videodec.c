@@ -353,6 +353,10 @@ src_query (GstPad *pad, GstQuery *query)
             if (err == OMX_ErrorNone) {
                 GST_DEBUG_OBJECT (self, "min dimensions: %dx%d",
                         rect.nWidth, rect.nHeight);
+/******** BEGIN WORKAROUND FOR MPEG4 *******/
+		if (self->compression_format == OMX_VIDEO_CodingMPEG4)
+			rect.nTop = 16; rect.nLeft = 16;
+/********* END WORKAROUND ******/
                 gst_query_set_buffers_dimensions (query,
                         rect.nWidth, rect.nHeight);
                 gst_pad_push_event (omx_base->srcpad,
