@@ -38,6 +38,11 @@ static void init_interfaces (GType type);
 GSTOMX_BOILERPLATE_FULL (GstOmxBaseFilter, gst_omx_base_filter, GstElement, GST_TYPE_ELEMENT, init_interfaces);
 
 
+static GstFlowReturn push_buffer (GstOmxBaseFilter *self, GstBuffer *buf);
+static GstFlowReturn pad_chain (GstPad *pad, GstBuffer *buf);
+static gboolean pad_event (GstPad *pad, GstEvent *event);
+
+
 static void
 setup_ports (GstOmxBaseFilter *self)
 {
@@ -280,12 +285,17 @@ type_class_init (gpointer g_class,
 {
     GObjectClass *gobject_class;
     GstElementClass *gstelement_class;
+    GstOmxBaseFilterClass *bclass;
 
     gobject_class = G_OBJECT_CLASS (g_class);
     gstelement_class = GST_ELEMENT_CLASS (g_class);
+    bclass = GST_OMX_BASE_FILTER_CLASS (g_class);
 
     gobject_class->finalize = finalize;
     gstelement_class->change_state = change_state;
+    bclass->push_buffer = push_buffer;
+    bclass->pad_chain = pad_chain;
+    bclass->pad_event = pad_event;
 
     /* Properties stuff */
     {
@@ -327,7 +337,7 @@ type_class_init (gpointer g_class,
     }
 }
 
-static inline GstFlowReturn
+static GstFlowReturn
 push_buffer (GstOmxBaseFilter *self,
              GstBuffer *buf)
 {
@@ -353,10 +363,13 @@ output_loop (gpointer data)
     GOmxPort *out_port;
     GstOmxBaseFilter *self;
     GstFlowReturn ret = GST_FLOW_OK;
+    GstOmxBaseFilterClass *bclass;
 
     pad = data;
     self = GST_OMX_BASE_FILTER (gst_pad_get_parent (pad));
     gomx = self->gomx;
+
+    bclass = GST_OMX_BASE_FILTER_GET_CLASS (self);
 
     GST_LOG_OBJECT (self, "begin");
 
@@ -402,7 +415,7 @@ output_loop (gpointer data)
             else
             {
                 GstBuffer *buf = GST_BUFFER (obj);
-                ret = push_buffer (self, buf);
+                ret = bclass->push_buffer (self, buf);
                 GST_DEBUG_OBJECT (self, "ret=%s", gst_flow_get_name (ret));
             }
         }
@@ -753,8 +766,10 @@ type_instance_init (GTypeInstance *instance,
 {
     GstOmxBaseFilter *self;
     GstElementClass *element_class;
+    GstOmxBaseFilterClass *bclass;
 
     element_class = GST_ELEMENT_CLASS (g_class);
+    bclass = GST_OMX_BASE_FILTER_CLASS (g_class);
 
     self = GST_OMX_BASE_FILTER (instance);
 
@@ -777,8 +792,8 @@ type_instance_init (GTypeInstance *instance,
     self->sinkpad =
         gst_pad_new_from_template (gst_element_class_get_pad_template (element_class, "sink"), "sink");
 
-    gst_pad_set_chain_function (self->sinkpad, pad_chain);
-    gst_pad_set_event_function (self->sinkpad, pad_event);
+    gst_pad_set_chain_function (self->sinkpad, bclass->pad_chain);
+    gst_pad_set_event_function (self->sinkpad, bclass->pad_event);
 
     self->srcpad =
         gst_pad_new_from_template (gst_element_class_get_pad_template (element_class, "src"), "src");

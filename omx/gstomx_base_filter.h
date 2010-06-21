@@ -26,9 +26,10 @@
 
 G_BEGIN_DECLS
 
-#define GST_OMX_BASE_FILTER(obj) (GstOmxBaseFilter *) (obj)
+#define GST_OMX_BASE_FILTER(obj) ((GstOmxBaseFilter *) (obj))
 #define GST_OMX_BASE_FILTER_TYPE (gst_omx_base_filter_get_type ())
-#define GST_OMX_BASE_FILTER_CLASS(obj) (GstOmxBaseFilterClass *) (obj)
+#define GST_OMX_BASE_FILTER_CLASS(obj) ((GstOmxBaseFilterClass *) (obj))
+#define GST_OMX_BASE_FILTER_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), GST_OMX_BASE_FILTER_TYPE, GstOmxBaseFilterClass))
 
 typedef struct GstOmxBaseFilter GstOmxBaseFilter;
 typedef struct GstOmxBaseFilterClass GstOmxBaseFilterClass;
@@ -63,6 +64,10 @@ struct GstOmxBaseFilter
 struct GstOmxBaseFilterClass
 {
     GstElementClass parent_class;
+
+    GstFlowReturn (*push_buffer) (GstOmxBaseFilter *self, GstBuffer *buf);
+    GstFlowReturn (*pad_chain) (GstPad *pad, GstBuffer *buf);
+    gboolean (*pad_event) (GstPad *pad, GstEvent *event);
 };
 
 GType gst_omx_base_filter_get_type (void);
