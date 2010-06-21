@@ -820,9 +820,42 @@ set_capture (GstOmxCamera *self, gboolean capture_mode)
 #endif
 
 static void
-start_ports (GstOmxCamera *self)
+set_camera_operating_mode (GstOmxCamera *self)
 {
     GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    if ((self->next_mode == MODE_IMAGE) || (self->next_mode == MODE_IMAGE_HS))
+    {
+        /* Select Usecase -> remove from this part */
+        OMX_CONFIG_CAMOPERATINGMODETYPE mode;
+        GOmxCore *gomx;
+        OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+        gomx = (GOmxCore *) omx_base->gomx;
+        _G_OMX_INIT_PARAM (&mode);
+
+        if (self->next_mode == MODE_IMAGE)
+        {
+            mode.eCamOperatingMode =
+                OMX_CaptureImageProfileBase;
+        }
+        else if (self->next_mode == MODE_IMAGE_HS)
+        {
+            mode.eCamOperatingMode =
+                OMX_CaptureImageHighSpeedTemporalBracketing;
+        }
+        error_val = OMX_SetParameter (gomx->omx_handle,
+                        OMX_IndexCameraOperatingMode, &mode);
+        g_assert (error_val == OMX_ErrorNone);
+        GST_DEBUG_OBJECT (self, "OMX_CaptureImageMode: set = %d",
+                          mode.eCamOperatingMode);
+    }
+}
+
+static void
+start_ports (GstOmxCamera *self)
+{
+
 #if 0
     /* Not utilized  because we are setting the preview port enable since the beginning*/
 
@@ -850,33 +883,7 @@ start_ports (GstOmxCamera *self)
         gst_pad_set_active (self->imgsrcpad, TRUE);
         gst_element_add_pad (GST_ELEMENT_CAST (self), self->imgsrcpad);
 
-        if ((self->next_mode == MODE_IMAGE) || (self->next_mode == MODE_IMAGE_HS))
-        {
-            /* Select Usecase -> remove from this part */
-            OMX_CONFIG_CAMOPERATINGMODETYPE mode;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
-
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&mode);
-
-            if (self->next_mode == MODE_IMAGE)
-            {
-                mode.eCamOperatingMode =
-                    OMX_CaptureImageProfileBase;
-            }
-            else if (self->next_mode == MODE_IMAGE_HS)
-            {
-                mode.eCamOperatingMode =
-                    OMX_CaptureImageHighSpeedTemporalBracketing;
-            }
-            error_val = OMX_SetParameter (gomx->omx_handle,
-                            OMX_IndexCameraOperatingMode, &mode);
-            g_assert (error_val == OMX_ErrorNone);
-            GST_DEBUG_OBJECT (self, "OMX_CaptureImageMode: set = %d",
-                              mode.eCamOperatingMode);
-        }
-
+        set_camera_operating_mode (self);
         g_omx_port_enable (self->img_port);
 
         GST_DEBUG_OBJECT (self, "image port set_capture set to  %d", TRUE);
