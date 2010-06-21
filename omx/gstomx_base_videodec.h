@@ -44,6 +44,8 @@ struct GstOmxBaseVideoDec
     gint framerate_denom;
     gboolean inport_configured;
     GstPadSetCapsFunction sink_setcaps;
+
+    gint rowstride;     /**< rowstride of output buffer */
 };
 
 struct GstOmxBaseVideoDecClass

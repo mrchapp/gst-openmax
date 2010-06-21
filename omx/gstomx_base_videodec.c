@@ -49,6 +49,7 @@ static GstStaticPadTemplate src_template =
                         GSTOMX_ALL_FORMATS, "[ 0, max ]"))
         );
 
+static GstFlowReturn push_buffer (GstOmxBaseFilter *self, GstBuffer *buf);
 
 static void
 type_base_init (gpointer g_class)
@@ -65,6 +66,21 @@ static void
 type_class_init (gpointer g_class,
                  gpointer class_data)
 {
+    GST_OMX_BASE_FILTER_CLASS (g_class)->push_buffer = push_buffer;
+}
+
+static GstFlowReturn
+push_buffer (GstOmxBaseFilter *omx_base, GstBuffer *buf)
+{
+    GstOmxBaseVideoDec *self = GST_OMX_BASE_VIDEODEC (omx_base);
+    guint n_offset = omx_base->out_port->n_offset;
+    if (n_offset)
+    {
+        gst_pad_push_event (omx_base->srcpad,
+                gst_event_new_vstab (n_offset / self->rowstride, /* top */
+                        n_offset % self->rowstride)); /* left */
+    }
+    return parent_class->push_buffer (omx_base, buf);
 }
 
 static void
@@ -264,12 +280,14 @@ src_getcaps (GstPad *pad)
 static gboolean
 src_setcaps (GstPad *pad, GstCaps *caps)
 {
+    GstOmxBaseVideoDec *self;
     GstOmxBaseFilter *omx_base;
 
     GstVideoFormat format;
     gint width, height, rowstride;
 
-    omx_base = GST_OMX_BASE_FILTER (GST_PAD_PARENT (pad));
+    self = GST_OMX_BASE_VIDEODEC (GST_PAD_PARENT (pad));
+    omx_base = GST_OMX_BASE_FILTER (self);
 
     GST_INFO_OBJECT (omx_base, "setcaps (src): %" GST_PTR_FORMAT, caps);
 
@@ -288,7 +306,7 @@ src_setcaps (GstPad *pad, GstCaps *caps)
                 gst_video_format_to_fourcc (format));
         param.format.video.nFrameWidth  = width;
         param.format.video.nFrameHeight = height;
-        param.format.video.nStride      = rowstride;
+        param.format.video.nStride      = self->rowstride = rowstride;
 
         G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
         GST_INFO_OBJECT (omx_base,"G_OMX_PORT_SET_DEFINITION");
@@ -353,14 +371,8 @@ src_query (GstPad *pad, GstQuery *query)
             if (err == OMX_ErrorNone) {
                 GST_DEBUG_OBJECT (self, "min dimensions: %dx%d",
                         rect.nWidth, rect.nHeight);
-/******** BEGIN WORKAROUND FOR MPEG4 *******/
-		if (self->compression_format == OMX_VIDEO_CodingMPEG4)
-			rect.nTop = 16; rect.nLeft = 16;
-/********* END WORKAROUND ******/
                 gst_query_set_buffers_dimensions (query,
                         rect.nWidth, rect.nHeight);
-                gst_pad_push_event (omx_base->srcpad,
-                        gst_event_new_vstab (rect.nTop, rect.nLeft));
             }
         }
 #endif
