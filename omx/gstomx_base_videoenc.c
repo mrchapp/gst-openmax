@@ -45,16 +45,18 @@ static GstStaticPadTemplate sink_template =
                         GSTOMX_ALL_FORMATS, "[ 0, max ]"))
         );
 
+static gboolean pad_event (GstPad *pad, GstEvent *event);
+
 static void
 type_base_init (gpointer g_class)
 {
-    GstElementClass *element_class;
-
-    element_class = GST_ELEMENT_CLASS (g_class);
-
+    GstElementClass *element_class = GST_ELEMENT_CLASS (g_class);
+    GstOmxBaseFilterClass *bfilter_class = GST_OMX_BASE_FILTER_CLASS (g_class);
 
     gst_element_class_add_pad_template (element_class,
         gst_static_pad_template_get (&sink_template));
+
+    bfilter_class->pad_event = pad_event;
 }
 
 static void
@@ -163,7 +165,7 @@ sink_setcaps (GstPad *pad,
                 gst_video_format_to_fourcc (format));
         param.format.video.nFrameWidth  = width;
         param.format.video.nFrameHeight = height;
-        param.format.video.nStride      = rowstride;
+        param.format.video.nStride      = self->rowstride = rowstride;
 
         if (framerate)
         {
@@ -251,6 +253,35 @@ omx_setup (GstOmxBaseFilter *omx_base)
         self->omx_setup (GST_OMX_BASE_FILTER (self));
 
     GST_INFO_OBJECT (omx_base, "end");
+}
+
+static gboolean
+pad_event (GstPad *pad, GstEvent *event)
+{
+    GstOmxBaseVideoEnc *self;
+    GstOmxBaseFilter *omx_base;
+
+    self = GST_OMX_BASE_VIDEOENC (GST_OBJECT_PARENT (pad));
+    omx_base = GST_OMX_BASE_FILTER (self);
+
+    GST_INFO_OBJECT (self, "begin: event=%s", GST_EVENT_TYPE_NAME (event));
+
+    switch (GST_EVENT_TYPE (event))
+    {
+        case GST_EVENT_VSTAB:
+        {
+            gint top, left;
+            gst_event_parse_vstab (event, &top, &left);
+
+            omx_base->in_port->n_offset = (self->rowstride * top) + left;
+
+            return TRUE;
+        }
+        default:
+        {
+            return parent_class->pad_event (pad, event);
+        }
+    }
 }
 
 static void

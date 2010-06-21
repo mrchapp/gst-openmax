@@ -43,6 +43,8 @@ struct GstOmxBaseVideoEnc
     gint framerate_num;
     gint framerate_denom;
     GstOmxBaseFilterCb omx_setup;
+
+    gint rowstride;     /**< rowstride of input buffer */
 };
 
 struct GstOmxBaseVideoEncClass
