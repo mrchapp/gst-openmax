@@ -1799,6 +1799,13 @@ type_instance_init (GTypeInstance *instance,
             OMX_CAMERA_PORT_VIDEO_OUT_VIDEO);
     self->img_port = g_omx_core_get_port (omx_base->gomx, "img",
             OMX_CAMERA_PORT_IMAGE_OUT_IMAGE);
+    self->in_port = g_omx_core_get_port (omx_base->gomx, "in",
+            OMX_CAMERA_PORT_OTHER_IN);
+    self->in_vid_port = g_omx_core_get_port (omx_base->gomx, "in_vid",
+            OMX_CAMERA_PORT_VIDEO_IN_VIDEO);
+    self->msr_port = g_omx_core_get_port (omx_base->gomx, "msr",
+            OMX_CAMERA_PORT_VIDEO_OUT_MEASUREMENT);
+
     self->img_port->buffer_alloc = img_buffer_alloc;
 #if 0
     self->in_port = g_omx_core_get_port (omx_base->gomx, "in"
@@ -1842,5 +1849,9 @@ type_instance_init (GTypeInstance *instance,
 #endif
     g_omx_port_disable (self->vid_port);
     g_omx_port_disable (self->img_port);
+    g_omx_port_disable (self->in_port);
+    g_omx_port_disable (self->in_vid_port);
+    g_omx_port_disable (self->msr_port);
+
     GST_DEBUG_OBJECT (omx_base, "end");
 }

@@ -50,6 +50,9 @@ struct GstOmxCamera
 
     GOmxPort *vid_port;
     GOmxPort *img_port;
+    GOmxPort *in_vid_port;
+    GOmxPort *in_port;
+    GOmxPort *msr_port;
 #if 0
     GOmxPort *in_port;
 #endif
