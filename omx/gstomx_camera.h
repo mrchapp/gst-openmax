@@ -48,6 +48,8 @@ struct GstOmxCamera
     gint img_thumbnail_width;
     gint img_thumbnail_height;
 
+    gint rowstride;     /**< rowstride of preview/video buffer */
+
     GOmxPort *vid_port;
     GOmxPort *img_port;
     GOmxPort *in_vid_port;

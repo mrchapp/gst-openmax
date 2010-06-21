@@ -484,7 +484,7 @@ src_setcaps (GstPad *pad, GstCaps *caps)
         param.format.video.eColorFormat = g_omx_gstvformat_to_colorformat (format);
         param.format.video.nFrameWidth  = width;
         param.format.video.nFrameHeight = height;
-        param.format.video.nStride      = rowstride;
+        param.format.video.nStride      = self->rowstride = rowstride;
         param.nBufferSize = gst_video_format_get_size_strided (format, width, height, rowstride);
 
         /* special hack to work around OMX camera bug:
@@ -952,6 +952,8 @@ create (GstBaseSrc *gst_base,
     GstBuffer *img_buf = NULL;
     GstFlowReturn ret = GST_FLOW_NOT_NEGOTIATED;
     GstClockTime timestamp;
+    GstEvent *vstab_evt = NULL;
+    guint n_offset = 0;
     static guint cont;
 
     GST_DEBUG_OBJECT (self, "begin, mode=%d", self->mode);
@@ -985,6 +987,7 @@ create (GstBaseSrc *gst_base,
     {
         ret = gst_omx_base_src_create_from_port (omx_base,
                 omx_base->out_port, &preview_buf);
+        n_offset = omx_base->out_port->n_offset;
         if (ret != GST_FLOW_OK)
             goto fail;
     }
@@ -993,6 +996,7 @@ create (GstBaseSrc *gst_base,
     {
         ret = gst_omx_base_src_create_from_port (omx_base,
                 self->vid_port, &vid_buf);
+        n_offset = self->vid_port->n_offset;
         if (ret != GST_FLOW_OK)
             goto fail;
     }
@@ -1025,10 +1029,20 @@ create (GstBaseSrc *gst_base,
 
     *ret_buf = preview_buf;
 
+    if (n_offset)
+    {
+        vstab_evt = gst_event_new_vstab (n_offset / self->rowstride, /* top */
+                n_offset % self->rowstride); /* left */
+        gst_pad_push_event (GST_BASE_SRC (self)->srcpad,
+                gst_event_ref (vstab_evt));
+    }
+
     if (vid_buf)
     {
         GST_DEBUG_OBJECT (self, "pushing vid_buf");
         GST_BUFFER_TIMESTAMP (vid_buf) = timestamp;
+        if (vstab_evt)
+            gst_pad_push_event (self->vidsrcpad, gst_event_ref (vstab_evt));
         gst_pad_push (self->vidsrcpad, vid_buf);
     }
 
@@ -1037,6 +1051,11 @@ create (GstBaseSrc *gst_base,
         GST_DEBUG_OBJECT (self, "pushing img_buf");
         GST_BUFFER_TIMESTAMP (img_buf) = timestamp;
         gst_pad_push (self->imgsrcpad, img_buf);
+    }
+
+    if (vstab_evt)
+    {
+        gst_event_unref (vstab_evt);
     }
 
     GST_DEBUG_OBJECT (self, "end, ret=%d", ret);
