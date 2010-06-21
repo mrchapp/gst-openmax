@@ -883,7 +883,8 @@ start_ports (GstOmxCamera *self)
         gst_pad_set_active (self->imgsrcpad, TRUE);
         gst_element_add_pad (GST_ELEMENT_CAST (self), self->imgsrcpad);
 
-        set_camera_operating_mode (self);
+        /* WORKAROUND: Image capture set only in LOADED state */
+        /* set_camera_operating_mode (self); */
         g_omx_port_enable (self->img_port);
 
         GST_DEBUG_OBJECT (self, "image port set_capture set to  %d", TRUE);
@@ -1078,8 +1079,14 @@ set_property (GObject *obj,
         }
         case ARG_MODE:
         {
+            /* WORKAROUND: Image capture set only once (in LOADED state) */
+            static gboolean first_time = TRUE;
             self->next_mode = g_value_get_enum (value);
             GST_DEBUG_OBJECT (self, "mode: %d", self->next_mode);
+            /* WORKAROUND : Image capture set only once (in LOADED state) */
+            if (first_time)
+                set_camera_operating_mode (self);
+            first_time = FALSE;
             break;
         }
         case ARG_SHUTTER:
