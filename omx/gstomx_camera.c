@@ -823,33 +823,35 @@ static void
 set_camera_operating_mode (GstOmxCamera *self)
 {
     GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+    OMX_CONFIG_CAMOPERATINGMODETYPE mode;
+    GOmxCore *gomx;
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
 
-    if ((self->next_mode == MODE_IMAGE) || (self->next_mode == MODE_IMAGE_HS))
+    gomx = (GOmxCore *) omx_base->gomx;
+    _G_OMX_INIT_PARAM (&mode);
+
+    switch (self->next_mode)
     {
-        /* Select Usecase -> remove from this part */
-        OMX_CONFIG_CAMOPERATINGMODETYPE mode;
-        GOmxCore *gomx;
-        OMX_ERRORTYPE error_val = OMX_ErrorNone;
-
-        gomx = (GOmxCore *) omx_base->gomx;
-        _G_OMX_INIT_PARAM (&mode);
-
-        if (self->next_mode == MODE_IMAGE)
-        {
-            mode.eCamOperatingMode =
-                OMX_CaptureImageProfileBase;
-        }
-        else if (self->next_mode == MODE_IMAGE_HS)
-        {
+        case MODE_PREVIEW:
+        case MODE_VIDEO:
+            mode.eCamOperatingMode = OMX_CaptureVideo;
+            break;
+        case MODE_IMAGE:
+            mode.eCamOperatingMode = OMX_CaptureImageProfileBase;
+            break;
+        case MODE_VIDEO_IMAGE:     /* @todo check this */
+        case MODE_IMAGE_HS:
             mode.eCamOperatingMode =
                 OMX_CaptureImageHighSpeedTemporalBracketing;
-        }
-        error_val = OMX_SetParameter (gomx->omx_handle,
-                        OMX_IndexCameraOperatingMode, &mode);
-        g_assert (error_val == OMX_ErrorNone);
-        GST_DEBUG_OBJECT (self, "OMX_CaptureImageMode: set = %d",
-                          mode.eCamOperatingMode);
+            break;
+        default:
+            g_assert_not_reached ();
     }
+    GST_DEBUG_OBJECT (self, "OMX_CaptureImageMode: set = %d",
+            mode.eCamOperatingMode);
+    error_val = OMX_SetParameter (gomx->omx_handle,
+            OMX_IndexCameraOperatingMode, &mode);
+    g_assert (error_val == OMX_ErrorNone);
 }
 
 static void
