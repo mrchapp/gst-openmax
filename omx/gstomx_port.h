@@ -63,6 +63,9 @@ struct GOmxPort
     gboolean share_buffer;
 
     gint ignore_count;  /* XXX hack to work around seek bug w/ codec */
+
+    /** nOffset value of the last received (input) or next sent (output) port */
+    guint n_offset;     /* a bit ugly.. but..  */
 };
 
 /* Macros. */

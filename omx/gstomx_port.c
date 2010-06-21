@@ -66,6 +66,7 @@ g_omx_port_new (GOmxCore *core, const gchar *name, guint index)
     port->mutex = g_mutex_new ();
 
     port->ignore_count = 0;
+    port->n_offset = 0;
 
     return port;
 }
@@ -422,7 +423,7 @@ send_prep_buffer_data (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer, GstBuff
 {
     if (port->share_buffer)
     {
-        omx_buffer->nOffset     = 0;
+        omx_buffer->nOffset     = port->n_offset;
         omx_buffer->pBuffer     = GST_BUFFER_DATA (buf);
         omx_buffer->nFilledLen  = GST_BUFFER_SIZE (buf);
         omx_buffer->nAllocLen   = GST_BUFFER_SIZE (buf);
@@ -613,6 +614,8 @@ g_omx_port_recv (GOmxPort *port)
             {
                 GST_BUFFER_FLAG_SET (buf, GST_BUFFER_FLAG_IN_CAPS);
             }
+
+            port->n_offset = omx_buffer->nOffset;
 
             ret = buf;
         }
