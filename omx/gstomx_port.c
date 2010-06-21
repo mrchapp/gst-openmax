@@ -31,7 +31,9 @@
 
 GST_DEBUG_CATEGORY_EXTERN (gstomx_util_debug);
 
-#define CODEC_DATA_FLAG 0x00000080 /* special nFlags field to use to indicated codec-data */
+#ifndef OMX_BUFFERFLAG_CODECCONFIG
+#  define OMX_BUFFERFLAG_CODECCONFIG 0x00000080 /* special nFlags field to use to indicated codec-data */
+#endif
 
 static OMX_BUFFERHEADERTYPE * request_buffer (GOmxPort *port);
 static void release_buffer (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer);
@@ -402,7 +404,7 @@ typedef void (*SendPrep) (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer, gpoi
 static void
 send_prep_codec_data (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer, GstBuffer *buf)
 {
-    omx_buffer->nFlags |= CODEC_DATA_FLAG;
+    omx_buffer->nFlags |= OMX_BUFFERFLAG_CODECCONFIG;
     omx_buffer->nFilledLen = GST_BUFFER_SIZE (buf);
 
     if (port->share_buffer)
@@ -582,7 +584,7 @@ g_omx_port_recv (GOmxPort *port)
              * the codec-data buffer.. this is how the original code worked,
              * so I kept the behavior
              */
-            if (!buf || (omx_buffer->nFlags & CODEC_DATA_FLAG))
+            if (!buf || (omx_buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG))
             {
                 if (buf)
                     gst_buffer_unref (buf);
@@ -607,7 +609,7 @@ g_omx_port_recv (GOmxPort *port)
                         GST_SECOND, OMX_TICKS_PER_SECOND);
             }
 
-            if (G_UNLIKELY (omx_buffer->nFlags & CODEC_DATA_FLAG))
+            if (G_UNLIKELY (omx_buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG))
             {
                 GST_BUFFER_FLAG_SET (buf, GST_BUFFER_FLAG_IN_CAPS);
             }
