@@ -30,9 +30,74 @@ enum
 {
     ARG_0,
     ARG_BYTESTREAM,
+    ARG_PROFILE,
+    ARG_LEVEL,
 };
 
 #define DEFAULT_BYTESTREAM FALSE
+#define DEFAULT_PROFILE OMX_VIDEO_AVCProfileHigh
+#define DEFAULT_LEVEL OMX_VIDEO_AVCLevel4
+
+#define GST_TYPE_OMX_VIDEO_AVCPROFILETYPE (gst_omx_video_avcprofiletype_get_type ())
+static GType
+gst_omx_video_avcprofiletype_get_type ()
+{
+    static GType type = 0;
+
+    if (!type)
+    {
+        static const GEnumValue vals[] =
+        {
+            {OMX_VIDEO_AVCProfileBaseline,       "Base Profile",          "Base Profile"},
+            {OMX_VIDEO_AVCProfileMain,           "Main Profile",          "Main Profile"},
+            {OMX_VIDEO_AVCProfileExtended,       "Extended Profile",      "Extended Profile"},
+            {OMX_VIDEO_AVCProfileHigh,           "High Profile",          "High Profile"},
+            {OMX_VIDEO_AVCProfileHigh10,         "High 10 Profile",       "High 10 Profile"},
+            {OMX_VIDEO_AVCProfileHigh422,        "High 4:2:2 Profile",    "High 4:2:2 Profile"},
+            {OMX_VIDEO_AVCProfileHigh444,        "High 4:4:4 Profile",    "High 4:4:4 Profile"},
+            {0, NULL, NULL },
+        };
+
+        type = g_enum_register_static ("GstOmxVideoAVCProfile", vals);
+    }
+
+    return type;
+}
+
+#define GST_TYPE_OMX_VIDEO_AVCLEVELTYPE (gst_omx_video_avcleveltype_get_type ())
+static GType
+gst_omx_video_avcleveltype_get_type ()
+{
+    static GType type = 0;
+
+    if (!type)
+    {
+        static const GEnumValue vals[] =
+        {
+            {OMX_VIDEO_AVCLevel1,        "Level 1",         "Level 1"},
+            {OMX_VIDEO_AVCLevel1b,       "Level 1b",        "Level 1b"},
+            {OMX_VIDEO_AVCLevel11,       "Level 11",        "Level 11"},
+            {OMX_VIDEO_AVCLevel12,       "Level 12",        "Level 12"},
+            {OMX_VIDEO_AVCLevel13,       "Level 13",        "Level 13"},
+            {OMX_VIDEO_AVCLevel2,        "Level 2",         "Level 2"},
+            {OMX_VIDEO_AVCLevel21,       "Level 21",        "Level 21"},
+            {OMX_VIDEO_AVCLevel22,       "Level 22",        "Level 22"},
+            {OMX_VIDEO_AVCLevel3,        "Level 3",         "Level 3"},
+            {OMX_VIDEO_AVCLevel31,       "Level 31",        "Level 31"},
+            {OMX_VIDEO_AVCLevel32,       "Level 32",        "Level 32"},
+            {OMX_VIDEO_AVCLevel4,        "Level 4",         "Level 4"},
+            {OMX_VIDEO_AVCLevel41,       "Level 41",        "Level 41"},
+            {OMX_VIDEO_AVCLevel42,       "Level 42",        "Level 42"},
+            {OMX_VIDEO_AVCLevel5,        "Level 5",         "Level 5"},
+            {OMX_VIDEO_AVCLevel51,       "Level 51",        "Level 51"},
+            {0, NULL, NULL },
+        };
+
+        type = g_enum_register_static ("GstOmxVideoAVCLevel", vals);
+    }
+
+    return type;
+}
 
 static GstCaps *
 generate_src_template (void)
@@ -96,6 +161,52 @@ set_property (GObject *obj,
         case ARG_BYTESTREAM:
             self->bytestream = g_value_get_boolean (value);
             break;
+        case ARG_PROFILE:
+        {
+            OMX_VIDEO_PARAM_PROFILELEVELTYPE tProfileLevel;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&tProfileLevel);
+            tProfileLevel.nPortIndex = omx_base->out_port->port_index;
+            error_val = OMX_GetParameter (gomx->omx_handle,
+                                          OMX_IndexParamVideoProfileLevelCurrent,
+                                          &tProfileLevel);
+            g_assert (error_val == OMX_ErrorNone);
+            tProfileLevel.eProfile = g_value_get_enum (value);
+            GST_DEBUG_OBJECT (self, "Profile: param=%d",
+                                    (gint)tProfileLevel.eProfile);
+
+            error_val = OMX_SetParameter (gomx->omx_handle,
+                                          OMX_IndexParamVideoProfileLevelCurrent,
+                                          &tProfileLevel);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
+        case ARG_LEVEL:
+        {
+            OMX_VIDEO_PARAM_PROFILELEVELTYPE tProfileLevel;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&tProfileLevel);
+            tProfileLevel.nPortIndex = omx_base->out_port->port_index;
+            error_val = OMX_GetParameter (gomx->omx_handle,
+                                          OMX_IndexParamVideoProfileLevelCurrent,
+                                          &tProfileLevel);
+            g_assert (error_val == OMX_ErrorNone);
+            tProfileLevel.eLevel = g_value_get_enum (value);
+            GST_DEBUG_OBJECT (self, "Level: param=%d",
+                                    (gint)tProfileLevel.eLevel);
+
+            error_val = OMX_SetParameter (gomx->omx_handle,
+                                          OMX_IndexParamVideoProfileLevelCurrent,
+                                          &tProfileLevel);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
             break;
@@ -109,7 +220,9 @@ get_property (GObject *obj,
               GParamSpec *pspec)
 {
     GstOmxH264Enc *self;
+    GstOmxBaseFilter *omx_base;
 
+    omx_base = GST_OMX_BASE_FILTER (obj);
     self = GST_OMX_H264ENC (obj);
 
     switch (prop_id)
@@ -117,6 +230,46 @@ get_property (GObject *obj,
         case ARG_BYTESTREAM:
             g_value_set_boolean (value, self->bytestream);
             break;
+        case ARG_PROFILE:
+        {
+            OMX_VIDEO_PARAM_PROFILELEVELTYPE tProfileLevel;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&tProfileLevel);
+            tProfileLevel.nPortIndex = omx_base->out_port->port_index;
+            error_val = OMX_GetParameter (gomx->omx_handle,
+                                          OMX_IndexParamVideoProfileLevelCurrent,
+                                          &tProfileLevel);
+            g_assert (error_val == OMX_ErrorNone);
+            g_value_set_enum (value, tProfileLevel.eProfile);
+
+            GST_DEBUG_OBJECT (self, "Profile: param=%d",
+                                    (gint)tProfileLevel.eProfile);
+
+            break;
+        }
+        case ARG_LEVEL:
+        {
+            OMX_VIDEO_PARAM_PROFILELEVELTYPE tProfileLevel;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&tProfileLevel);
+            tProfileLevel.nPortIndex = omx_base->out_port->port_index;
+            error_val = OMX_GetParameter (gomx->omx_handle,
+                                          OMX_IndexParamVideoProfileLevelCurrent,
+                                          &tProfileLevel);
+            g_assert (error_val == OMX_ErrorNone);
+            g_value_set_enum (value, tProfileLevel.eLevel);
+
+            GST_DEBUG_OBJECT (self, "Level: param=%d",
+                                    (gint)tProfileLevel.eLevel);
+
+            break;
+        }
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
             break;
@@ -139,6 +292,19 @@ type_class_init (gpointer g_class,
         g_object_class_install_property (gobject_class, ARG_BYTESTREAM,
                                          g_param_spec_boolean ("bytestream", "BYTESTREAM", "bytestream",
                                                                DEFAULT_BYTESTREAM, G_PARAM_READWRITE));
+	g_object_class_install_property (gobject_class, ARG_PROFILE,
+		    g_param_spec_enum ("profile", "H.264 Profile",
+                    "H.264 Profile",
+                    GST_TYPE_OMX_VIDEO_AVCPROFILETYPE,
+                    DEFAULT_PROFILE,
+                    G_PARAM_READWRITE));
+	g_object_class_install_property (gobject_class, ARG_LEVEL,
+		    g_param_spec_enum ("level", "H.264 Level",
+                    "H.264 Level",
+                    GST_TYPE_OMX_VIDEO_AVCLEVELTYPE,
+                    DEFAULT_LEVEL,
+                    G_PARAM_READWRITE));
+
     }
 }
 
