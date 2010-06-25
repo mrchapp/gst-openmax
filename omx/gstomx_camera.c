@@ -1297,6 +1297,7 @@ set_property (GObject *obj,
         {
             OMX_CONFIG_EXPOSUREVALUETYPE config;
             GOmxCore *gomx;
+            OMX_U32 iso_requested;
             OMX_ERRORTYPE error_val = OMX_ErrorNone;
 
             gomx = (GOmxCore *) omx_base->gomx;
@@ -1304,9 +1305,14 @@ set_property (GObject *obj,
             error_val = OMX_GetConfig (gomx->omx_handle,
                                        OMX_IndexConfigCommonExposureValue, &config);
             g_assert (error_val == OMX_ErrorNone);
-            config.nSensitivity = g_value_get_uint (value);
-            config.bAutoSensitivity = (config.nSensitivity == 0) ? OMX_TRUE : OMX_FALSE;
-            GST_DEBUG_OBJECT (self, "ISO Speed: param=%d", config.nSensitivity);
+            iso_requested = g_value_get_uint (value);
+            config.bAutoSensitivity = (iso_requested < 100) ? OMX_TRUE : OMX_FALSE;
+            if (config.bAutoSensitivity == OMX_FALSE)
+            {
+                config.nSensitivity = iso_requested;
+            }
+            GST_DEBUG_OBJECT (self, "ISO Speed: Auto=%d Sensitivity=%d",
+                              config.bAutoSensitivity, config.nSensitivity);
 
             error_val = OMX_SetConfig (gomx->omx_handle,
                                        OMX_IndexConfigCommonExposureValue, &config);
