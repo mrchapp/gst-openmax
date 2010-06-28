@@ -836,10 +836,10 @@ set_camera_operating_mode (GstOmxCamera *self)
 
     switch (self->next_mode)
     {
-        case MODE_PREVIEW:
         case MODE_VIDEO:
             mode.eCamOperatingMode = OMX_CaptureVideo;
             break;
+        case MODE_PREVIEW:
         case MODE_IMAGE:
             mode.eCamOperatingMode = OMX_CaptureImageProfileBase;
             break;
