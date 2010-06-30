@@ -183,6 +183,21 @@ sink_setcaps (GstPad *pad,
         GST_DEBUG_OBJECT (self, "G_OMX_PORT_SET_DEFINITION");
     }
 
+    /**** BEGIN WORKAROUND **************************/
+    if (self->compression_format == OMX_VIDEO_CodingMPEG4)
+    {
+        OMX_PARAM_PORTDEFINITIONTYPE param;
+
+        G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
+
+        param.format.video.nFrameWidth = width;
+        param.format.video.nFrameHeight = height;
+        param.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedSemiPlanar;
+
+        G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
+    }
+    /**** END WORKAROUND ****************************/
+
     self->inport_configured = TRUE;
 
     if (self->sink_setcaps)
