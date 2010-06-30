@@ -185,7 +185,7 @@ static const enum
     PORT_IMAGE    = 0x04,
 } config[] = {
     /* MODE_PREVIEW */            PORT_PREVIEW,
-    /* MODE_VIDEO */              PORT_VIDEO,
+    /* MODE_VIDEO */              PORT_PREVIEW,
     /* MODE_VIDEO_IMAGE */        PORT_VIDEO | PORT_IMAGE,
     /* MODE_IMAGE */              PORT_PREVIEW | PORT_IMAGE,
     /* MODE_IMAGE_HS */           PORT_PREVIEW | PORT_IMAGE,
