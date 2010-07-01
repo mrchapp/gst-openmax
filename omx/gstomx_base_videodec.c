@@ -364,7 +364,7 @@ src_query (GstPad *pad, GstQuery *query)
         /* value calculated by ducati doesn't seem to be quite enough.. some
          * tuning still required here..
          */
-        param.nBufferCountMin += 2;
+        param.nBufferCountMin = 17;
         param.nBufferCountActual = param.nBufferCountMin;
         err = OMX_SetParameter (omx_base->gomx->omx_handle,
                 OMX_IndexParamPortDefinition, &param);
