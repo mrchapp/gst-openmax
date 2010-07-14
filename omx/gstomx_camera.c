@@ -431,9 +431,11 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
 static GstStaticPadTemplate imgsrc_template = GST_STATIC_PAD_TEMPLATE ("imgsrc",
         GST_PAD_SRC,
         GST_PAD_SOMETIMES,
-        /* note: imgsrc pad supports jpg format, as well as non-strided YUV */
+        /* Note: imgsrc pad supports JPEG format, Bayer, as well as
+           non-strided YUV. */
         GST_STATIC_CAPS (
                 "image/jpeg, width=(int)[1,max], height=(int)[1,max]; "
+                "video/x-raw-bayer, width=(int)[1,max], height=(int)[1,max]; "
                 GST_VIDEO_CAPS_YUV (GSTOMX_ALL_FORMATS))
     );
 
@@ -593,6 +595,32 @@ imgsrc_setcaps (GstPad *pad, GstCaps *caps)
 
         GST_INFO_OBJECT (self, "Rowstride=%d, Width=%d, Height=%d, Buffersize=%d, num-buffer=%d",
             param.format.image.nStride, param.format.image.nFrameWidth, param.format.image.nFrameHeight, param.nBufferSize, param.nBufferCountActual);
+
+        G_OMX_PORT_SET_DEFINITION (self->img_port, &param);
+    }
+    else if (gst_structure_has_name (s=gst_caps_get_structure (caps, 0),
+                     "video/x-raw-bayer"))
+    {
+        /* Output port configuration for Bayer: */
+        OMX_PARAM_PORTDEFINITIONTYPE param;
+
+        GST_DEBUG_OBJECT (self, "set Raw-Bayer format");
+
+        G_OMX_PORT_GET_DEFINITION (self->img_port, &param);
+
+        gst_structure_get_int (s, "width", &width);
+        gst_structure_get_int (s, "height", &height);
+
+        param.format.image.eColorFormat = OMX_COLOR_FormatRawBayer10bit;
+        param.format.image.eCompressionFormat = OMX_IMAGE_CodingUnused;
+        param.format.image.nFrameWidth  = width;
+        param.format.image.nFrameHeight = height;
+        param.format.image.nStride      = 0;
+
+        GST_INFO_OBJECT (self, "Rowstride=%d, Width=%d, Height=%d, "
+            "Buffersize=%d, num-buffer=%d", param.format.image.nStride,
+            param.format.image.nFrameWidth, param.format.image.nFrameHeight,
+            param.nBufferSize, param.nBufferCountActual);
 
         G_OMX_PORT_SET_DEFINITION (self->img_port, &param);
     }
