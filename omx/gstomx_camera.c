@@ -98,6 +98,7 @@ enum
     ARG_FLICKER,
     ARG_EXPOSURE,
     ARG_ISO,
+    ARG_SCENE,
 #ifdef USE_OMXTICORE
     ARG_VNF,
     ARG_YUV_RANGE,
@@ -133,6 +134,8 @@ enum
 #define DEFAULT_ISO_LEVEL             0
 #define MIN_ISO_LEVEL                 0
 #define MAX_ISO_LEVEL                 1600
+
+#define DEFAULT_SCENE       OMX_Manual
 
 #ifdef USE_OMXTICORE
 #  define DEFAULT_VNF          OMX_VideoNoiseFilterModeOn
@@ -342,6 +345,45 @@ gst_omx_camera_exposure_get_type ()
         };
 
         type = g_enum_register_static ("GstOmxCameraExposureControl", vals);
+    }
+
+    return type;
+}
+
+#define GST_TYPE_OMX_CAMERA_SCENE (gst_omx_camera_scene_get_type ())
+static GType
+gst_omx_camera_scene_get_type ()
+{
+    static GType type = 0;
+
+    if (!type)
+    {
+        static const GEnumValue vals[] =
+        {
+            {OMX_Manual,         "Manual",         "Manual settings"},
+            {OMX_Closeup,        "Closeup",        "Closeup settings"},
+            {OMX_Portrait,       "Portrait",       "Portrait settings"},
+            {OMX_Landscape,      "Landscape",      "Landscape settings"},
+            {OMX_Underwater,     "Underwater",     "Underwater settings"},
+            {OMX_Sport,          "Sport",          "Sport settings"},
+            {OMX_SnowBeach,      "SnowBeach",      "SnowBeach settings"},
+            {OMX_Mood,           "Mood",           "Mood settings"},
+#if 0       /* The following options are not yet enabled at OMX level */
+            {OMX_NightPortrait,  "NightPortrait",  "NightPortrait settings"},
+            {OMX_NightIndoor,    "NightIndoor",    "NightIndoor settings"},
+            {OMX_Fireworks,      "Fireworks",      "Fireworks settings"},
+            /* for still image: */
+            {OMX_Document,       "Document",       "Document settings"},
+            {OMX_Barcode,        "Barcode",        "Barcode settings"},
+            /* for video: */
+            {OMX_SuperNight,     "SuperNight",     "SuperNight settings"},
+            {OMX_Cine,           "Cine",           "Cine settings"},
+            {OMX_OldFilm,        "OldFilm",        "OldFilm settings"},
+#endif
+            {0, NULL, NULL},
+        };
+
+        type = g_enum_register_static ("GstOmxCameraScene", vals);
     }
 
     return type;
@@ -1366,6 +1408,28 @@ set_property (GObject *obj,
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
+        case ARG_SCENE:
+        {
+            OMX_CONFIG_SCENEMODETYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetParameter (gomx->omx_handle,
+                                          OMX_IndexParamSceneMode,
+                                          &config);
+            g_assert (error_val == OMX_ErrorNone);
+            config.eSceneMode = g_value_get_enum (value);
+            GST_DEBUG_OBJECT (self, "Scene mode = %d",
+                              config.eSceneMode);
+
+            error_val = OMX_SetParameter (gomx->omx_handle,
+                                          OMX_IndexParamSceneMode,
+                                          &config);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
 #ifdef USE_OMXTICORE
         case ARG_VNF:
         {
@@ -1640,6 +1704,22 @@ get_property (GObject *obj,
 
             break;
         }
+        case ARG_SCENE:
+        {
+            OMX_CONFIG_SCENEMODETYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetParameter (gomx->omx_handle,
+                                          OMX_IndexParamSceneMode, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            GST_DEBUG_OBJECT (self, "Scene mode = %d", config.eSceneMode);
+            g_value_set_enum (value, config.eSceneMode);
+
+            break;
+        }
 #ifdef USE_OMXTICORE
         case ARG_VNF:
         {
@@ -1828,6 +1908,12 @@ type_class_init (gpointer g_class,
             g_param_spec_uint ("iso-speed", "ISO Speed",
                     "ISO speed level", MIN_ISO_LEVEL,
                     MAX_ISO_LEVEL, DEFAULT_ISO_LEVEL,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_SCENE,
+            g_param_spec_enum ("scene", "Scene Mode",
+                    "Scene mode",
+                    GST_TYPE_OMX_CAMERA_SCENE,
+                    DEFAULT_SCENE,
                     G_PARAM_READWRITE));
 #ifdef USE_OMXTICORE
     g_object_class_install_property (gobject_class, ARG_VNF,
