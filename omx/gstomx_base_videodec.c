@@ -183,21 +183,6 @@ sink_setcaps (GstPad *pad,
         GST_DEBUG_OBJECT (self, "G_OMX_PORT_SET_DEFINITION");
     }
 
-    /**** BEGIN WORKAROUND **************************/
-    if (self->compression_format == OMX_VIDEO_CodingMPEG4)
-    {
-        OMX_PARAM_PORTDEFINITIONTYPE param;
-
-        G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
-
-        param.format.video.nFrameWidth = width;
-        param.format.video.nFrameHeight = height;
-        param.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedSemiPlanar;
-
-        G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
-    }
-    /**** END WORKAROUND ****************************/
-
     self->inport_configured = TRUE;
 
     if (self->sink_setcaps)
@@ -363,16 +348,10 @@ src_query (GstPad *pad, GstQuery *query)
                 OMX_IndexParamPortDefinition, &param);
         g_assert (err == OMX_ErrorNone);
 
-        /**** BEGIN WORKAROUND **************************/
-        /* value calculated by ducati doesn't seem to be quite enough.. some
-         * tuning still required here..
-         */
-        param.nBufferCountMin = 16;
         param.nBufferCountActual = param.nBufferCountMin;
         err = OMX_SetParameter (omx_base->gomx->omx_handle,
                 OMX_IndexParamPortDefinition, &param);
         g_assert (err == OMX_ErrorNone);
-        /**** END WORKAROUND ****************************/
 
         GST_DEBUG_OBJECT (self, "min buffers: %d", param.nBufferCountMin);
 
