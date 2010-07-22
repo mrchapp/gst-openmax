@@ -21,7 +21,7 @@
 
 #include "gstomx_base_videoenc.h"
 #include "gstomx.h"
-
+#include <OMX_TI_Index.h>
 #include <gst/video/video.h>
 
 #include <string.h> /* for memset, strcmp */
@@ -128,6 +128,8 @@ sink_setcaps (GstPad *pad,
 {
     GstOmxBaseVideoEnc *self;
     GstOmxBaseFilter *omx_base;
+    GstQuery *query;
+    OMX_ERRORTYPE err;
 
     GstVideoFormat format;
     gint width, height, rowstride;
@@ -179,9 +181,42 @@ sink_setcaps (GstPad *pad,
         }
 
         G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
+
+        /* query to find if anyone upstream using these buffers has any
+         * minimum requirements:
+         */
+        query = gst_query_new_buffers (caps);
+
+        if (gst_element_query (GST_ELEMENT (omx_base), query))
+        {
+            gint  min_width, min_height;
+            gst_query_parse_buffers_dimensions (query, &min_width, &min_height);
+            if (min_width > width)
+                width = min_width;
+            if (min_height > height)
+                height = min_height;
+        }
+
+        gst_query_unref (query);
+
+#ifdef USE_OMXTICORE
+        {
+            OMX_CONFIG_RECTTYPE rect;
+            _G_OMX_INIT_PARAM (&rect);
+
+            rect.nPortIndex = omx_base->in_port->port_index;
+            rect.nWidth = width;
+            rect.nHeight = height;
+            err = OMX_SetParameter (omx_base->gomx->omx_handle,
+                OMX_TI_IndexParam2DBufferAllocDimension, &rect);
+            if (err == OMX_ErrorNone)
+            {
+                GST_DEBUG_OBJECT (self, "updated dimensions: %dx%d",
+                                  rect.nWidth, rect.nHeight);
+            }
+        }
+#endif
     }
-
-
 
     return TRUE;
 }
