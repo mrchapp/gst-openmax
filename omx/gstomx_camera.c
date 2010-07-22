@@ -701,20 +701,9 @@ src_query (GstPad *pad, GstQuery *query)
                 OMX_IndexParamPortDefinition, &param);
         g_assert (err == OMX_ErrorNone);
 
-        /**** BEGIN WORKAROUND **************************/
-        /* value calculated by ducati doesn't seem to be quite enough.. some
-         * tuning still required here..
-         */
-        param.nBufferCountMin += 1;
-        param.nBufferCountActual = param.nBufferCountMin;
-        err = OMX_SetParameter (omx_base->gomx->omx_handle,
-                OMX_IndexParamPortDefinition, &param);
-        g_assert (err == OMX_ErrorNone);
-        /**** END WORKAROUND ****************************/
+        GST_DEBUG_OBJECT (self, "Actual buffers: %d", param.nBufferCountActual);
 
-        GST_DEBUG_OBJECT (self, "Min buffers: %d", param.nBufferCountMin);
-
-        gst_query_set_buffers_count (query, param.nBufferCountMin);
+        gst_query_set_buffers_count (query, param.nBufferCountActual);
 
 #ifdef USE_OMXTICORE
         {
