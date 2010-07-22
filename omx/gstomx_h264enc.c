@@ -319,19 +319,6 @@ omx_setup (GstOmxBaseFilter *omx_base)
 
     GST_INFO_OBJECT (omx_base, "begin");
 
-    /* some workarounds required for TI components. */
-    /* the component should do this instead */
-    {
-        OMX_PARAM_PORTDEFINITIONTYPE param;
-
-        G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
-
-        /* this is against the standard; nBufferSize is read-only. */
-        param.nBufferSize = 300000;
-
-        G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
-    }
-
     {
         OMX_INDEXTYPE index;
 
@@ -371,14 +358,7 @@ settings_changed_cb (GOmxCore *core)
     {
         OMX_PARAM_PORTDEFINITIONTYPE param;
 
-        memset (&param, 0, sizeof (param));
-        param.nSize = sizeof (OMX_PARAM_PORTDEFINITIONTYPE);
-        param.nVersion.s.nVersionMajor = 1;
-        param.nVersion.s.nVersionMinor = 1;
-
-        param.nPortIndex = 1;
-        OMX_GetParameter (core->omx_handle, OMX_IndexParamPortDefinition, &param);
-
+        G_OMX_PORT_GET_DEFINITION (omx_base_filter->out_port, &param);
         width = param.format.video.nFrameWidth;
         height = param.format.video.nFrameHeight;
     }
