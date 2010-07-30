@@ -26,6 +26,63 @@
 
 GSTOMX_BOILERPLATE (GstOmxMpeg4Enc, gst_omx_mpeg4enc, GstOmxBaseVideoEnc, GST_OMX_BASE_VIDEOENC_TYPE);
 
+enum
+{
+    ARG_0,
+    ARG_PROFILE,
+    ARG_LEVEL,
+};
+
+#define DEFAULT_PROFILE OMX_VIDEO_MPEG4ProfileSimple
+#define DEFAULT_LEVEL OMX_VIDEO_MPEG4Level5
+
+#define GST_TYPE_OMX_VIDEO_MPEG4PROFILETYPE (gst_omx_video_mpeg4profiletype_get_type ())
+static GType
+gst_omx_video_mpeg4profiletype_get_type ()
+{
+    static GType type = 0;
+
+    if (!type)
+    {
+        static const GEnumValue vals[] =
+        {
+            {OMX_VIDEO_MPEG4ProfileSimple,  "Simple Profile",   "simple"},
+            {0, NULL, NULL },
+        };
+
+
+        type = g_enum_register_static ("GstOmxVideoMPEG4Profile", vals);
+    }
+
+    return type;
+}
+
+#define GST_TYPE_OMX_VIDEO_MPEG4LEVELTYPE (gst_omx_video_mpeg4leveltype_get_type ())
+static GType
+gst_omx_video_mpeg4leveltype_get_type ()
+{
+    static GType type = 0;
+
+    if (!type)
+    {
+        static const GEnumValue vals[] =
+        {
+            {OMX_VIDEO_MPEG4Level0,     "Level 0",  "level-0"},
+            {OMX_VIDEO_MPEG4Level1,     "Level 1",  "level-1"},
+            {OMX_VIDEO_MPEG4Level2,     "Level 2",  "level-2"},
+            {OMX_VIDEO_MPEG4Level3,     "Level 3",  "level-3"},
+            {OMX_VIDEO_MPEG4Level4,     "Level 4",  "level-4"},
+            {OMX_VIDEO_MPEG4Level4a,    "Level 4a", "level-4a"},
+            {OMX_VIDEO_MPEG4Level5,     "Level 5",  "level-5"},
+            {0, NULL, NULL },
+        };
+
+        type = g_enum_register_static ("GstOmxVideoMPEG4Level", vals);
+    }
+
+    return type;
+}
+
 static GstCaps *
 generate_src_template (void)
 {
@@ -72,9 +129,160 @@ type_base_init (gpointer g_class)
 }
 
 static void
+set_property (GObject *obj,
+              guint prop_id,
+              const GValue *value,
+              GParamSpec *pspec)
+{
+    GstOmxBaseFilter *omx_base;
+    GstOmxMpeg4Enc *self;
+    GOmxCore *gomx;
+
+    omx_base = GST_OMX_BASE_FILTER (obj);
+    self = GST_OMX_MPEG4ENC (obj);
+    gomx = (GOmxCore*) omx_base->gomx;
+
+    switch (prop_id)
+    {
+        case ARG_PROFILE:
+        {
+            OMX_VIDEO_PARAM_PROFILELEVELTYPE tProfileLevel;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&tProfileLevel);
+            tProfileLevel.nPortIndex = omx_base->out_port->port_index;
+            error_val = OMX_GetParameter (g_omx_core_get_handle (gomx),
+                                          OMX_IndexParamVideoProfileLevelCurrent,
+                                          &tProfileLevel);
+            g_assert (error_val == OMX_ErrorNone);
+            tProfileLevel.eProfile = g_value_get_enum (value);
+            GST_DEBUG_OBJECT (self, "Profile: param=%d",
+                              (gint)tProfileLevel.eProfile);
+
+            error_val = OMX_SetParameter (g_omx_core_get_handle (gomx),
+                                          OMX_IndexParamVideoProfileLevelCurrent,
+                                          &tProfileLevel);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
+        case ARG_LEVEL:
+        {
+            OMX_VIDEO_PARAM_PROFILELEVELTYPE tProfileLevel;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&tProfileLevel);
+            tProfileLevel.nPortIndex = omx_base->out_port->port_index;
+            error_val = OMX_GetParameter (g_omx_core_get_handle (gomx),
+                                          OMX_IndexParamVideoProfileLevelCurrent,
+                                          &tProfileLevel);
+            g_assert (error_val == OMX_ErrorNone);
+            tProfileLevel.eLevel = g_value_get_enum (value);
+            GST_DEBUG_OBJECT (self, "Level: param=%d",
+                              (gint)tProfileLevel.eLevel);
+
+            error_val = OMX_SetParameter (g_omx_core_get_handle (gomx),
+                                          OMX_IndexParamVideoProfileLevelCurrent,
+                                          &tProfileLevel);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
+            break;
+    }
+}
+
+static void
+get_property (GObject *obj,
+              guint prop_id,
+              GValue *value,
+              GParamSpec *pspec)
+{
+    GstOmxMpeg4Enc *self;
+    GstOmxBaseFilter *omx_base;
+
+    omx_base = GST_OMX_BASE_FILTER (obj);
+    self = GST_OMX_MPEG4ENC (obj);
+
+    switch (prop_id)
+    {
+        case ARG_PROFILE:
+        {
+            OMX_VIDEO_PARAM_PROFILELEVELTYPE tProfileLevel;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&tProfileLevel);
+            tProfileLevel.nPortIndex = omx_base->out_port->port_index;
+            error_val = OMX_GetParameter (g_omx_core_get_handle (gomx),
+                                          OMX_IndexParamVideoProfileLevelCurrent,
+                                          &tProfileLevel);
+            g_assert (error_val == OMX_ErrorNone);
+            g_value_set_enum (value, tProfileLevel.eProfile);
+
+            GST_DEBUG_OBJECT (self, "Profile: param=%d",
+                              (gint)tProfileLevel.eProfile);
+
+            break;
+        }
+        case ARG_LEVEL:
+        {
+            OMX_VIDEO_PARAM_PROFILELEVELTYPE tProfileLevel;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&tProfileLevel);
+            tProfileLevel.nPortIndex = omx_base->out_port->port_index;
+            error_val = OMX_GetParameter (g_omx_core_get_handle (gomx),
+                                          OMX_IndexParamVideoProfileLevelCurrent,
+                                          &tProfileLevel);
+            g_assert (error_val == OMX_ErrorNone);
+            g_value_set_enum (value, tProfileLevel.eLevel);
+
+            GST_DEBUG_OBJECT (self, "Level: param=%d",
+                              (gint)tProfileLevel.eLevel);
+
+            break;
+        }
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
+            break;
+    }
+}
+
+static void
 type_class_init (gpointer g_class,
                  gpointer class_data)
 {
+    GObjectClass *gobject_class;
+
+    gobject_class = G_OBJECT_CLASS (g_class);
+
+    /* Properties stuff */
+    {
+        gobject_class->set_property = set_property;
+        gobject_class->get_property = get_property;
+
+        g_object_class_install_property (gobject_class, ARG_PROFILE,
+        g_param_spec_enum ("profile", "MPEG4 Profile",
+                    "MPEG4 Profile",
+                    GST_TYPE_OMX_VIDEO_MPEG4PROFILETYPE,
+                    DEFAULT_PROFILE,
+                    G_PARAM_READWRITE));
+
+        g_object_class_install_property (gobject_class, ARG_LEVEL,
+        g_param_spec_enum ("level", "MPEG4 Level",
+                    "MPEG4 Level",
+                    GST_TYPE_OMX_VIDEO_MPEG4LEVELTYPE,
+                    DEFAULT_LEVEL,
+                    G_PARAM_READWRITE));
+    }
 }
 
 static void
