@@ -24,6 +24,11 @@
 #include "gstomx_camera.h"
 #include "gstomx.h"
 
+/* These headers need to move to timer-32k.h */
+#include <stdint.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <linux/timer-32k.h>
 #include <gst/video/video.h>
 
 #ifdef USE_OMXTICORE
@@ -32,6 +37,9 @@
 #  include <OMX_Index.h>
 #  include <OMX_Component.h>
 #endif
+
+/* Convert 32k to nanoseconds */
+#define TIME_32K_TO_NANO(clocktick)  (((guint64)(clocktick) * 1000000000L) >> 15)
 
 /**
  * SECTION:element-omx_camerasrc
@@ -817,7 +825,7 @@ setup_ports (GstOmxBaseSrc *base_src)
 
 
 static GstClockTime
-get_timestamp (GstOmxCamera *self)
+get_timestamp (GstOmxCamera *self, GstClockTime timelag)
 {
     GstClock *clock;
     GstClockTime timestamp;
@@ -836,8 +844,9 @@ get_timestamp (GstOmxCamera *self)
 
     if (clock) {
       /* the time now is the time of the clock minus the base time */
-      /* Hack: Need to subtract the extra lag that is causing problems to AV sync */
-      timestamp = gst_clock_get_time (clock) - timestamp - (140 * GST_MSECOND);
+      /* Need to subtract the extra lag for buffer traverse from Ducati
+         to A9 for getting accurate AV sync */
+      timestamp = gst_clock_get_time (clock) - timestamp - timelag;
       gst_object_unref (clock);
 
       /* if we have a framerate adjust timestamp for frame latency */
@@ -1014,6 +1023,9 @@ create (GstBaseSrc *gst_base,
     GstEvent *vstab_evt = NULL;
     guint n_offset = 0;
     static guint cont;
+    guint32 mytime = 0;
+    GstClockTime starttime = 0;
+    GstClockTime lag = 0;
 
     GST_DEBUG_OBJECT (self, "begin, mode=%d", self->mode);
 
@@ -1081,7 +1093,10 @@ create (GstBaseSrc *gst_base,
         preview_buf = gst_buffer_ref (vid_buf);
     }
 
-    timestamp = get_timestamp (self);
+    starttime = GST_BUFFER_TIMESTAMP (preview_buf);
+    mytime = omap_32k_readraw ();
+    lag = TIME_32K_TO_NANO (mytime) - starttime;
+    timestamp = get_timestamp (self, lag);
     cont ++;
     GST_DEBUG_OBJECT (self, "******** preview buffers cont = %d", cont);
     GST_BUFFER_TIMESTAMP (preview_buf) = timestamp;
