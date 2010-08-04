@@ -48,13 +48,13 @@ gst_omx_video_avcprofiletype_get_type ()
     {
         static const GEnumValue vals[] =
         {
-            {OMX_VIDEO_AVCProfileBaseline,       "Base Profile",          "Base Profile"},
-            {OMX_VIDEO_AVCProfileMain,           "Main Profile",          "Main Profile"},
-            {OMX_VIDEO_AVCProfileExtended,       "Extended Profile",      "Extended Profile"},
-            {OMX_VIDEO_AVCProfileHigh,           "High Profile",          "High Profile"},
-            {OMX_VIDEO_AVCProfileHigh10,         "High 10 Profile",       "High 10 Profile"},
-            {OMX_VIDEO_AVCProfileHigh422,        "High 4:2:2 Profile",    "High 4:2:2 Profile"},
-            {OMX_VIDEO_AVCProfileHigh444,        "High 4:4:4 Profile",    "High 4:4:4 Profile"},
+            {OMX_VIDEO_AVCProfileBaseline,       "Base Profile",          "base"},
+            {OMX_VIDEO_AVCProfileMain,           "Main Profile",          "main"},
+            {OMX_VIDEO_AVCProfileExtended,       "Extended Profile",      "extended"},
+            {OMX_VIDEO_AVCProfileHigh,           "High Profile",          "high"},
+            {OMX_VIDEO_AVCProfileHigh10,         "High 10 Profile",       "high-10"},
+            {OMX_VIDEO_AVCProfileHigh422,        "High 4:2:2 Profile",    "high-422"},
+            {OMX_VIDEO_AVCProfileHigh444,        "High 4:4:4 Profile",    "high-444"},
             {0, NULL, NULL },
         };
 
@@ -74,22 +74,22 @@ gst_omx_video_avcleveltype_get_type ()
     {
         static const GEnumValue vals[] =
         {
-            {OMX_VIDEO_AVCLevel1,        "Level 1",         "Level 1"},
-            {OMX_VIDEO_AVCLevel1b,       "Level 1b",        "Level 1b"},
-            {OMX_VIDEO_AVCLevel11,       "Level 11",        "Level 11"},
-            {OMX_VIDEO_AVCLevel12,       "Level 12",        "Level 12"},
-            {OMX_VIDEO_AVCLevel13,       "Level 13",        "Level 13"},
-            {OMX_VIDEO_AVCLevel2,        "Level 2",         "Level 2"},
-            {OMX_VIDEO_AVCLevel21,       "Level 21",        "Level 21"},
-            {OMX_VIDEO_AVCLevel22,       "Level 22",        "Level 22"},
-            {OMX_VIDEO_AVCLevel3,        "Level 3",         "Level 3"},
-            {OMX_VIDEO_AVCLevel31,       "Level 31",        "Level 31"},
-            {OMX_VIDEO_AVCLevel32,       "Level 32",        "Level 32"},
-            {OMX_VIDEO_AVCLevel4,        "Level 4",         "Level 4"},
-            {OMX_VIDEO_AVCLevel41,       "Level 41",        "Level 41"},
-            {OMX_VIDEO_AVCLevel42,       "Level 42",        "Level 42"},
-            {OMX_VIDEO_AVCLevel5,        "Level 5",         "Level 5"},
-            {OMX_VIDEO_AVCLevel51,       "Level 51",        "Level 51"},
+            {OMX_VIDEO_AVCLevel1,        "Level 1",         "level-1"},
+            {OMX_VIDEO_AVCLevel1b,       "Level 1b",        "level-1b"},
+            {OMX_VIDEO_AVCLevel11,       "Level 11",        "level-11"},
+            {OMX_VIDEO_AVCLevel12,       "Level 12",        "level-12"},
+            {OMX_VIDEO_AVCLevel13,       "Level 13",        "level-13"},
+            {OMX_VIDEO_AVCLevel2,        "Level 2",         "level-2"},
+            {OMX_VIDEO_AVCLevel21,       "Level 21",        "level-21"},
+            {OMX_VIDEO_AVCLevel22,       "Level 22",        "level-22"},
+            {OMX_VIDEO_AVCLevel3,        "Level 3",         "level-3"},
+            {OMX_VIDEO_AVCLevel31,       "Level 31",        "level-31"},
+            {OMX_VIDEO_AVCLevel32,       "Level 32",        "level-32"},
+            {OMX_VIDEO_AVCLevel4,        "Level 4",         "level-4"},
+            {OMX_VIDEO_AVCLevel41,       "Level 41",        "level-41"},
+            {OMX_VIDEO_AVCLevel42,       "Level 42",        "level-42"},
+            {OMX_VIDEO_AVCLevel5,        "Level 5",         "level-5"},
+            {OMX_VIDEO_AVCLevel51,       "Level 51",        "level-51"},
             {0, NULL, NULL },
         };
 
