@@ -455,7 +455,7 @@ gst_omx_camera_mirror_get_type (void)
             {OMX_MirrorNone,        "off",              "off"},
             {OMX_MirrorVertical,    "Vertical",         "Vertical"},
             {OMX_MirrorHorizontal,  "Horizontal",       "Horizontal"},
-            {OMX_MirrorBoth,        "Both"              "Both"},
+            {OMX_MirrorBoth,        "Both",             "Both"},
             {0, NULL, NULL},
         };
 
