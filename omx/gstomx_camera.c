@@ -34,8 +34,6 @@
 #ifdef USE_OMXTICORE
 #  include <OMX_TI_IVCommon.h>
 #  include <OMX_TI_Index.h>
-#  include <OMX_Index.h>
-#  include <OMX_Component.h>
 #endif
 
 /* Convert 32k to nanoseconds */
@@ -99,57 +97,50 @@ enum
     ARG_ZOOM,
     ARG_FOCUS,
     ARG_AWB,
-    ARG_THUMBNAIL_WIDTH,
-    ARG_THUMBNAIL_HEIGHT,
     ARG_CONTRAST,
     ARG_BRIGHTNESS,
-    ARG_FLICKER,
     ARG_EXPOSURE,
     ARG_ISO,
-    ARG_SCENE,
+    ARG_ROTATION,
+    ARG_MIRROR,
 #ifdef USE_OMXTICORE
+    ARG_THUMBNAIL_WIDTH,
+    ARG_THUMBNAIL_HEIGHT,
+    ARG_FLICKER,
+    ARG_SCENE,
     ARG_VNF,
     ARG_YUV_RANGE,
     ARG_VSTAB,
-    ARG_ROTATION,
-    ARG_MIRROR,
 #endif
 };
-#define DEFAULT_ZOOM_LEVEL           100
-#define MIN_ZOOM_LEVEL               100
-#define MAX_ZOOM_LEVEL               600
-#define CAM_ZOOM_IN_STEP             0x10000
 
-#define DEFAULT_FOCUS       OMX_IMAGE_FocusControlOff
-#define DEFAULT_AWB         OMX_WhiteBalControlOff
-
-#define DEFAULT_THUMBNAIL_WIDTH       352
-#define DEFAULT_THUMBNAIL_HEIGHT      288
-#define MIN_THUMBNAIL_LEVEL           16
-#define MAX_THUMBNAIL_LEVEL           1920
-
-#define DEFAULT_CONTRAST_LEVEL        0
-#define MIN_CONTRAST_LEVEL            -100
-#define MAX_CONTRAST_LEVEL            100
-
-#define DEFAULT_BRIGHTNESS_LEVEL      50
-#define MIN_BRIGHTNESS_LEVEL          0
-#define MAX_BRIGHTNESS_LEVEL          100
-
-#define DEFAULT_FLICKER     OMX_FlickerCancelOff
-#define DEFAULT_EXPOSURE    OMX_ExposureControlOff
-
-#define DEFAULT_ISO_LEVEL             0
-#define MIN_ISO_LEVEL                 0
-#define MAX_ISO_LEVEL                 1600
-
-#define DEFAULT_SCENE       OMX_Manual
-
+#define DEFAULT_ZOOM_LEVEL          100
+#define MIN_ZOOM_LEVEL              100
+#define MAX_ZOOM_LEVEL              600
+#define CAM_ZOOM_IN_STEP            0x10000
+#define DEFAULT_FOCUS               OMX_IMAGE_FocusControlOff
+#define DEFAULT_AWB                 OMX_WhiteBalControlOff
+#define DEFAULT_EXPOSURE            OMX_ExposureControlOff
+#define DEFAULT_CONTRAST_LEVEL      0
+#define MIN_CONTRAST_LEVEL          -100
+#define MAX_CONTRAST_LEVEL          100
+#define DEFAULT_BRIGHTNESS_LEVEL    50
+#define MIN_BRIGHTNESS_LEVEL        0
+#define MAX_BRIGHTNESS_LEVEL        100
+#define DEFAULT_ISO_LEVEL           0
+#define MIN_ISO_LEVEL               0
+#define MAX_ISO_LEVEL               1600
+#define DEFAULT_ROTATION            180
+#define DEFAULT_MIRROR              OMX_MirrorNone
 #ifdef USE_OMXTICORE
-#  define DEFAULT_VNF          OMX_VideoNoiseFilterModeOn
-#  define DEFAULT_YUV_RANGE    OMX_ITURBT601
-#  define DEFAULT_ROTATION     180
-#  define DEFAULT_MIRROR       OMX_MirrorNone
+#  define DEFAULT_THUMBNAIL_WIDTH   352
+#  define DEFAULT_THUMBNAIL_HEIGHT  288
+#  define MIN_THUMBNAIL_LEVEL       16
+#  define MAX_THUMBNAIL_LEVEL       1920
+#  define DEFAULT_FLICKER           OMX_FlickerCancelOff
+#  define DEFAULT_SCENE             OMX_Manual
+#  define DEFAULT_VNF               OMX_VideoNoiseFilterModeOn
+#  define DEFAULT_YUV_RANGE         OMX_ITURBT601
 #endif
 
 
@@ -306,29 +297,6 @@ gst_omx_camera_awb_get_type ()
     return type;
 }
 
-#define GST_TYPE_OMX_CAMERA_FLICKER (gst_omx_camera_flicker_get_type ())
-static GType
-gst_omx_camera_flicker_get_type ()
-{
-    static GType type = 0;
-
-    if (!type)
-    {
-        static const GEnumValue vals[] =
-        {
-            {OMX_FlickerCancelOff,  "Off",           "No Flicker control"},
-            {OMX_FlickerCancelAuto, "Auto",          "Auto Flicker control"},
-            {OMX_FlickerCancel50,   "Flick-50Hz",    "Flicker control for 50Hz"},
-            {OMX_FlickerCancel60,   "Flick-60Hz",    "Flicker control for 60Hz"},
-            {0, NULL, NULL },
-        };
-
-        type = g_enum_register_static ("GstOmxCameraFlickerCancel", vals);
-    }
-
-    return type;
-}
-
 #define GST_TYPE_OMX_CAMERA_EXPOSURE (gst_omx_camera_exposure_get_type ())
 static GType
 gst_omx_camera_exposure_get_type ()
@@ -353,6 +321,53 @@ gst_omx_camera_exposure_get_type ()
         };
 
         type = g_enum_register_static ("GstOmxCameraExposureControl", vals);
+    }
+
+    return type;
+}
+
+#define GST_TYPE_OMX_CAMERA_MIRROR (gst_omx_camera_mirror_get_type ())
+static GType
+gst_omx_camera_mirror_get_type (void)
+{
+    static GType type = 0;
+
+    if (!type)
+    {
+        static GEnumValue vals[] =
+        {
+            {OMX_MirrorNone,        "off",              "off"},
+            {OMX_MirrorVertical,    "Vertical",         "Vertical"},
+            {OMX_MirrorHorizontal,  "Horizontal",       "Horizontal"},
+            {OMX_MirrorBoth,        "Both",             "Both"},
+            {0, NULL, NULL},
+        };
+
+        type = g_enum_register_static ("GstOmxCameraMirror", vals);
+    }
+
+    return type;
+}
+
+#ifdef USE_OMXTICORE
+#define GST_TYPE_OMX_CAMERA_FLICKER (gst_omx_camera_flicker_get_type ())
+static GType
+gst_omx_camera_flicker_get_type ()
+{
+    static GType type = 0;
+
+    if (!type)
+    {
+        static const GEnumValue vals[] =
+        {
+            {OMX_FlickerCancelOff,  "Off",           "No Flicker control"},
+            {OMX_FlickerCancelAuto, "Auto",          "Auto Flicker control"},
+            {OMX_FlickerCancel50,   "Flick-50Hz",    "Flicker control for 50Hz"},
+            {OMX_FlickerCancel60,   "Flick-60Hz",    "Flicker control for 60Hz"},
+            {0, NULL, NULL },
+        };
+
+        type = g_enum_register_static ("GstOmxCameraFlickerCancel", vals);
     }
 
     return type;
@@ -397,7 +412,6 @@ gst_omx_camera_scene_get_type ()
     return type;
 }
 
-#ifdef USE_OMXTICORE
 #define GST_TYPE_OMX_CAMERA_VNF (gst_omx_camera_vnf_get_type ())
 static GType
 gst_omx_camera_vnf_get_type (void)
@@ -420,7 +434,6 @@ gst_omx_camera_vnf_get_type (void)
     return type;
 }
 
-
 #define GST_TYPE_OMX_CAMERA_YUV_RANGE (gst_omx_camera_yuv_range_get_type ())
 static GType
 gst_omx_camera_yuv_range_get_type (void)
@@ -437,29 +450,6 @@ gst_omx_camera_yuv_range_get_type (void)
         };
 
         type = g_enum_register_static ("GstOmxCameraYuvRange", vals);
-    }
-
-    return type;
-}
-
-#define GST_TYPE_OMX_CAMERA_MIRROR (gst_omx_camera_mirror_get_type ())
-static GType
-gst_omx_camera_mirror_get_type (void)
-{
-    static GType type = 0;
-
-    if (!type)
-    {
-        static GEnumValue vals[] =
-        {
-            {OMX_MirrorNone,        "off",              "off"},
-            {OMX_MirrorVertical,    "Vertical",         "Vertical"},
-            {OMX_MirrorHorizontal,  "Horizontal",       "Horizontal"},
-            {OMX_MirrorBoth,        "Both",             "Both"},
-            {0, NULL, NULL},
-        };
-
-        type = g_enum_register_static ("GstOmxCameraMirror", vals);
     }
 
     return type;
@@ -1265,46 +1255,6 @@ set_property (GObject *obj,
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
-        case ARG_THUMBNAIL_WIDTH:
-        {
-            OMX_PARAM_THUMBNAILTYPE param;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
-
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&param);
-            error_val = OMX_GetParameter (gomx->omx_handle,
-                                          OMX_IndexParamThumbnail,
-                                          &param);
-            g_assert (error_val == OMX_ErrorNone);
-            self->img_thumbnail_width = g_value_get_int (value);
-            param.nWidth = self->img_thumbnail_width;
-            GST_DEBUG_OBJECT (self, "Thumbnail width=%d", param.nWidth);
-            error_val = OMX_SetParameter (gomx->omx_handle,
-                    OMX_IndexParamThumbnail,&param);
-            g_assert (error_val == OMX_ErrorNone);
-            break;
-        }
-        case ARG_THUMBNAIL_HEIGHT:
-        {
-            OMX_PARAM_THUMBNAILTYPE param;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
-
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&param);
-            error_val = OMX_GetParameter (gomx->omx_handle,
-                                          OMX_IndexParamThumbnail,
-                                          &param);
-            g_assert (error_val == OMX_ErrorNone);
-            self->img_thumbnail_height = g_value_get_int (value);
-            param.nHeight = self->img_thumbnail_height;
-            GST_DEBUG_OBJECT (self, "Thumbnail height=%d", param.nHeight);
-            error_val = OMX_SetParameter (gomx->omx_handle,
-                    OMX_IndexParamThumbnail,&param);
-            g_assert (error_val == OMX_ErrorNone);
-            break;
-        }
         case ARG_CONTRAST:
         {
             OMX_CONFIG_CONTRASTTYPE config;
@@ -1340,27 +1290,6 @@ set_property (GObject *obj,
 
             error_val = OMX_SetConfig (gomx->omx_handle,
                                        OMX_IndexConfigCommonBrightness, &config);
-            g_assert (error_val == OMX_ErrorNone);
-            break;
-        }
-        case ARG_FLICKER:
-        {
-            OMX_CONFIG_FLICKERCANCELTYPE config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
-
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigFlickerCancel,
-                                       &config);
-            g_assert (error_val == OMX_ErrorNone);
-            config.eFlickerCancel = g_value_get_enum (value);
-            GST_DEBUG_OBJECT (self, "Flicker control = %d", config.eFlickerCancel);
-
-            error_val = OMX_SetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigFlickerCancel,
-                                       &config);
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
@@ -1412,6 +1341,91 @@ set_property (GObject *obj,
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
+        case ARG_ROTATION:
+        {
+            OMX_CONFIG_ROTATIONTYPE  config;
+
+            G_OMX_PORT_GET_CONFIG (self->img_port, OMX_IndexConfigCommonRotate, &config);
+
+            config.nRotation = g_value_get_uint (value);
+            GST_DEBUG_OBJECT (self, "Rotation: param=%d", config.nRotation);
+
+            G_OMX_PORT_SET_CONFIG (self->img_port, OMX_IndexConfigCommonRotate, &config);
+            break;
+        }
+        case ARG_MIRROR:
+        {
+            OMX_CONFIG_MIRRORTYPE  config;
+            G_OMX_PORT_GET_CONFIG (self->img_port, OMX_IndexConfigCommonMirror, &config);
+
+            config.eMirror = g_value_get_enum (value);
+            GST_DEBUG_OBJECT (self, "Mirror: param=%d", config.eMirror);
+
+            G_OMX_PORT_SET_CONFIG (self->img_port, OMX_IndexConfigCommonMirror, &config);
+            break;
+        }
+#ifdef USE_OMXTICORE
+        case ARG_THUMBNAIL_WIDTH:
+        {
+            OMX_PARAM_THUMBNAILTYPE param;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&param);
+            error_val = OMX_GetParameter (gomx->omx_handle,
+                                          OMX_IndexParamThumbnail,
+                                          &param);
+            g_assert (error_val == OMX_ErrorNone);
+            self->img_thumbnail_width = g_value_get_int (value);
+            param.nWidth = self->img_thumbnail_width;
+            GST_DEBUG_OBJECT (self, "Thumbnail width=%d", param.nWidth);
+            error_val = OMX_SetParameter (gomx->omx_handle,
+                    OMX_IndexParamThumbnail,&param);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
+        case ARG_THUMBNAIL_HEIGHT:
+        {
+            OMX_PARAM_THUMBNAILTYPE param;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&param);
+            error_val = OMX_GetParameter (gomx->omx_handle,
+                                          OMX_IndexParamThumbnail,
+                                          &param);
+            g_assert (error_val == OMX_ErrorNone);
+            self->img_thumbnail_height = g_value_get_int (value);
+            param.nHeight = self->img_thumbnail_height;
+            GST_DEBUG_OBJECT (self, "Thumbnail height=%d", param.nHeight);
+            error_val = OMX_SetParameter (gomx->omx_handle,
+                    OMX_IndexParamThumbnail,&param);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
+        case ARG_FLICKER:
+        {
+            OMX_CONFIG_FLICKERCANCELTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigFlickerCancel,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            config.eFlickerCancel = g_value_get_enum (value);
+            GST_DEBUG_OBJECT (self, "Flicker control = %d", config.eFlickerCancel);
+
+            error_val = OMX_SetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigFlickerCancel,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
         case ARG_SCENE:
         {
             OMX_CONFIG_SCENEMODETYPE config;
@@ -1434,7 +1448,6 @@ set_property (GObject *obj,
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
-#ifdef USE_OMXTICORE
         case ARG_VNF:
         {
             OMX_PARAM_VIDEONOISEFILTERTYPE param;
@@ -1475,29 +1488,6 @@ set_property (GObject *obj,
             G_OMX_CORE_SET_PARAM (omx_base->gomx, OMX_IndexParamFrameStabilisation, &param);
             G_OMX_CORE_SET_CONFIG (omx_base->gomx, OMX_IndexConfigCommonFrameStabilisation, &config);
 
-            break;
-        }
-        case ARG_ROTATION:
-        {
-            OMX_CONFIG_ROTATIONTYPE  config;
-
-            G_OMX_PORT_GET_CONFIG (self->img_port, OMX_IndexConfigCommonRotate, &config);
-
-            config.nRotation = g_value_get_uint (value);
-            GST_DEBUG_OBJECT (self, "Rotation: param=%d", config.nRotation);
-
-            G_OMX_PORT_SET_CONFIG (self->img_port, OMX_IndexConfigCommonRotate, &config);
-            break;
-        }
-        case ARG_MIRROR:
-        {
-            OMX_CONFIG_MIRRORTYPE  config;
-            G_OMX_PORT_GET_CONFIG (self->img_port, OMX_IndexConfigCommonMirror, &config);
-
-            config.eMirror = g_value_get_enum (value);
-            GST_DEBUG_OBJECT (self, "Mirror: param=%d", config.eMirror);
-
-            G_OMX_PORT_SET_CONFIG (self->img_port, OMX_IndexConfigCommonMirror, &config);
             break;
         }
 #endif
@@ -1595,40 +1585,6 @@ get_property (GObject *obj,
 
             break;
         }
-        case ARG_THUMBNAIL_WIDTH:
-        {
-            OMX_PARAM_THUMBNAILTYPE param;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
-
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&param);
-            error_val = OMX_GetParameter(gomx->omx_handle,
-                                       OMX_IndexParamThumbnail,
-                                       &param);
-            g_assert (error_val == OMX_ErrorNone);
-            self->img_thumbnail_width = param.nWidth;
-            GST_DEBUG_OBJECT (self, "Thumbnail width=%d",
-                                    self->img_thumbnail_width);
-            break;
-        }
-        case ARG_THUMBNAIL_HEIGHT:
-        {
-            OMX_PARAM_THUMBNAILTYPE param;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
-
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&param);
-            error_val = OMX_GetParameter(gomx->omx_handle,
-                                       OMX_IndexParamThumbnail,
-                                       &param);
-            g_assert (error_val == OMX_ErrorNone);
-            self->img_thumbnail_height = param.nHeight;
-            GST_DEBUG_OBJECT (self, "Thumbnail height=%d",
-                                    self->img_thumbnail_height);
-            break;
-        }
         case ARG_CONTRAST:
         {
             OMX_CONFIG_CONTRASTTYPE config;
@@ -1655,23 +1611,6 @@ get_property (GObject *obj,
                                        OMX_IndexConfigCommonBrightness, &config);
             g_assert (error_val == OMX_ErrorNone);
             GST_DEBUG_OBJECT (self, "Brightness=%d", config.nBrightness);
-            break;
-        }
-        case ARG_FLICKER:
-        {
-            OMX_CONFIG_FLICKERCANCELTYPE config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
-            gomx = (GOmxCore *) omx_base->gomx;
-
-            _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigFlickerCancel,
-                                       &config);
-            g_assert (error_val == OMX_ErrorNone);
-            GST_DEBUG_OBJECT (self, "Flicker control = %d", config.eFlickerCancel);
-            g_value_set_enum (value, config.eFlickerCancel);
-
             break;
         }
         case ARG_EXPOSURE:
@@ -1708,6 +1647,77 @@ get_property (GObject *obj,
 
             break;
         }
+        case ARG_ROTATION:
+        {
+            OMX_CONFIG_ROTATIONTYPE  config;
+
+            G_OMX_PORT_GET_CONFIG (self->img_port, OMX_IndexConfigCommonRotate, &config);
+
+            GST_DEBUG_OBJECT (self, "Rotation: param=%d", config.nRotation);
+            g_value_set_uint (value, config.nRotation);
+            break;
+        }
+        case ARG_MIRROR:
+        {
+            OMX_CONFIG_MIRRORTYPE  config;
+            G_OMX_PORT_GET_CONFIG (self->img_port, OMX_IndexConfigCommonMirror, &config);
+
+            GST_DEBUG_OBJECT (self, "Mirror: param=%d", config.eMirror);
+            g_value_set_enum (value, config.eMirror);
+            break;
+        }
+#ifdef USE_OMXTICORE
+        case ARG_THUMBNAIL_WIDTH:
+        {
+            OMX_PARAM_THUMBNAILTYPE param;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&param);
+            error_val = OMX_GetParameter(gomx->omx_handle,
+                                       OMX_IndexParamThumbnail,
+                                       &param);
+            g_assert (error_val == OMX_ErrorNone);
+            self->img_thumbnail_width = param.nWidth;
+            GST_DEBUG_OBJECT (self, "Thumbnail width=%d",
+                                    self->img_thumbnail_width);
+            break;
+        }
+        case ARG_THUMBNAIL_HEIGHT:
+        {
+            OMX_PARAM_THUMBNAILTYPE param;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&param);
+            error_val = OMX_GetParameter(gomx->omx_handle,
+                                       OMX_IndexParamThumbnail,
+                                       &param);
+            g_assert (error_val == OMX_ErrorNone);
+            self->img_thumbnail_height = param.nHeight;
+            GST_DEBUG_OBJECT (self, "Thumbnail height=%d",
+                                    self->img_thumbnail_height);
+            break;
+        }
+        case ARG_FLICKER:
+        {
+            OMX_CONFIG_FLICKERCANCELTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+            gomx = (GOmxCore *) omx_base->gomx;
+
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigFlickerCancel,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            GST_DEBUG_OBJECT (self, "Flicker control = %d", config.eFlickerCancel);
+            g_value_set_enum (value, config.eFlickerCancel);
+
+            break;
+        }
         case ARG_SCENE:
         {
             OMX_CONFIG_SCENEMODETYPE config;
@@ -1724,7 +1734,6 @@ get_property (GObject *obj,
 
             break;
         }
-#ifdef USE_OMXTICORE
         case ARG_VNF:
         {
             OMX_PARAM_VIDEONOISEFILTERTYPE param;
@@ -1758,25 +1767,6 @@ get_property (GObject *obj,
             GST_DEBUG_OBJECT (self, "vstab: param=%d, config=%d", param.bEnabled, config.bStab);
             g_value_set_boolean (value, param.bEnabled && config.bStab);
 
-            break;
-        }
-        case ARG_ROTATION:
-        {
-            OMX_CONFIG_ROTATIONTYPE  config;
-
-            G_OMX_PORT_GET_CONFIG (self->img_port, OMX_IndexConfigCommonRotate, &config);
-
-            GST_DEBUG_OBJECT (self, "Rotation: param=%d", config.nRotation);
-            g_value_set_uint (value, config.nRotation);
-            break;
-        }
-        case ARG_MIRROR:
-        {
-            OMX_CONFIG_MIRRORTYPE  config;
-            G_OMX_PORT_GET_CONFIG (self->img_port, OMX_IndexConfigCommonMirror, &config);
-
-            GST_DEBUG_OBJECT (self, "Mirror: param=%d", config.eMirror);
-            g_value_set_enum (value, config.eMirror);
             break;
         }
 #endif
@@ -1876,16 +1866,6 @@ type_class_init (gpointer g_class,
                     GST_TYPE_OMX_CAMERA_AWB,
                     DEFAULT_AWB,
                     G_PARAM_READWRITE));
-    g_object_class_install_property (gobject_class, ARG_THUMBNAIL_WIDTH,
-            g_param_spec_int ("thumb-width", "Thumbnail width",
-                    "Thumbnail width in pixels", MIN_THUMBNAIL_LEVEL,
-                    MAX_THUMBNAIL_LEVEL, DEFAULT_THUMBNAIL_WIDTH,
-                    G_PARAM_READWRITE));
-    g_object_class_install_property (gobject_class, ARG_THUMBNAIL_HEIGHT,
-            g_param_spec_int ("thumb-height", "Thumbnail height",
-                    "Thumbnail height in pixels", MIN_THUMBNAIL_LEVEL,
-                    MAX_THUMBNAIL_LEVEL, DEFAULT_THUMBNAIL_HEIGHT,
-                    G_PARAM_READWRITE));
     g_object_class_install_property (gobject_class, ARG_CONTRAST,
             g_param_spec_int ("contrast", "Contrast",
                     "contrast level", MIN_CONTRAST_LEVEL,
@@ -1895,12 +1875,6 @@ type_class_init (gpointer g_class,
             g_param_spec_int ("brightness", "Brightness",
                     "brightness level", MIN_BRIGHTNESS_LEVEL,
                     MAX_BRIGHTNESS_LEVEL, DEFAULT_BRIGHTNESS_LEVEL,
-                    G_PARAM_READWRITE));
-    g_object_class_install_property (gobject_class, ARG_FLICKER,
-            g_param_spec_enum ("flicker", "Flicker Control",
-                    "flicker control state",
-                    GST_TYPE_OMX_CAMERA_FLICKER,
-                    DEFAULT_FLICKER,
                     G_PARAM_READWRITE));
     g_object_class_install_property (gobject_class, ARG_EXPOSURE,
             g_param_spec_enum ("exposure", "Exposure Control",
@@ -1913,13 +1887,39 @@ type_class_init (gpointer g_class,
                     "ISO speed level", MIN_ISO_LEVEL,
                     MAX_ISO_LEVEL, DEFAULT_ISO_LEVEL,
                     G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_ROTATION,
+            g_param_spec_uint ("rotation", "Rotation",
+                    "Image rotation",
+                    0, 270, DEFAULT_ROTATION , G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_MIRROR,
+            g_param_spec_enum ("mirror", "Mirror",
+                    "Mirror image",
+                    GST_TYPE_OMX_CAMERA_MIRROR,
+                    DEFAULT_MIRROR,
+                    G_PARAM_READWRITE));
+#ifdef USE_OMXTICORE
+    g_object_class_install_property (gobject_class, ARG_THUMBNAIL_WIDTH,
+            g_param_spec_int ("thumb-width", "Thumbnail width",
+                    "Thumbnail width in pixels", MIN_THUMBNAIL_LEVEL,
+                    MAX_THUMBNAIL_LEVEL, DEFAULT_THUMBNAIL_WIDTH,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_THUMBNAIL_HEIGHT,
+            g_param_spec_int ("thumb-height", "Thumbnail height",
+                    "Thumbnail height in pixels", MIN_THUMBNAIL_LEVEL,
+                    MAX_THUMBNAIL_LEVEL, DEFAULT_THUMBNAIL_HEIGHT,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_FLICKER,
+            g_param_spec_enum ("flicker", "Flicker Control",
+                    "flicker control state",
+                    GST_TYPE_OMX_CAMERA_FLICKER,
+                    DEFAULT_FLICKER,
+                    G_PARAM_READWRITE));
     g_object_class_install_property (gobject_class, ARG_SCENE,
             g_param_spec_enum ("scene", "Scene Mode",
                     "Scene mode",
                     GST_TYPE_OMX_CAMERA_SCENE,
                     DEFAULT_SCENE,
                     G_PARAM_READWRITE));
-#ifdef USE_OMXTICORE
     g_object_class_install_property (gobject_class, ARG_VNF,
             g_param_spec_enum ("vnf", "Video Noise Filter",
                     "is video noise filter algorithm enabled?",
@@ -1936,17 +1936,6 @@ type_class_init (gpointer g_class,
             g_param_spec_boolean ("vstab", "Video Frame Stabilization",
                     "is video stabilization algorithm enabled?",
                     TRUE,
-                    G_PARAM_READWRITE));
-
-    g_object_class_install_property (gobject_class, ARG_ROTATION,
-            g_param_spec_uint ("rotation", "Rotation",
-                    "Image rotation",
-                    0, 270, DEFAULT_ROTATION , G_PARAM_READWRITE));
-    g_object_class_install_property (gobject_class, ARG_MIRROR,
-            g_param_spec_enum ("mirror", "Mirror",
-                    "Mirror image",
-                    GST_TYPE_OMX_CAMERA_MIRROR,
-                    DEFAULT_MIRROR,
                     G_PARAM_READWRITE));
 #endif
 }
