@@ -111,6 +111,7 @@ enum
     ARG_VNF,
     ARG_YUV_RANGE,
     ARG_VSTAB,
+    ARG_DEVICE,
 #endif
 };
 
@@ -141,6 +142,7 @@ enum
 #  define DEFAULT_SCENE             OMX_Manual
 #  define DEFAULT_VNF               OMX_VideoNoiseFilterModeOn
 #  define DEFAULT_YUV_RANGE         OMX_ITURBT601
+#  define DEFAULT_DEVICE            OMX_PrimarySensor
 #endif
 
 
@@ -450,6 +452,27 @@ gst_omx_camera_yuv_range_get_type (void)
         };
 
         type = g_enum_register_static ("GstOmxCameraYuvRange", vals);
+    }
+
+    return type;
+}
+
+#define GST_TYPE_OMX_CAMERA_DEVICE (gst_omx_camera_device_get_type ())
+static GType
+gst_omx_camera_device_get_type (void)
+{
+    static GType type = 0;
+
+    if (!type)
+    {
+        static GEnumValue vals[] =
+        {
+            {OMX_PrimarySensor,     "Primary",          "primary"},
+            {OMX_SecondarySensor,   "Secondary",        "secondary"},
+            {0, NULL, NULL},
+        };
+
+        type = g_enum_register_static ("GstOmxCameraDevice", vals);
     }
 
     return type;
@@ -1490,6 +1513,26 @@ set_property (GObject *obj,
 
             break;
         }
+        case ARG_DEVICE:
+        {
+            OMX_CONFIG_SENSORSELECTTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetParameter(gomx->omx_handle,
+                                         OMX_IndexParamSensorSelect, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            config.nPortIndex = omx_base->out_port->port_index;
+            config.eSensor = g_value_get_enum (value);
+            GST_DEBUG_OBJECT (self, "Device src=%d, port=%d", config.eSensor,
+                              config.nPortIndex);
+            error_val = OMX_SetParameter (gomx->omx_handle,
+                                          OMX_IndexParamSensorSelect, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
 #endif
         default:
         {
@@ -1769,6 +1812,22 @@ get_property (GObject *obj,
 
             break;
         }
+        case ARG_DEVICE:
+        {
+            OMX_CONFIG_SENSORSELECTTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetParameter(gomx->omx_handle,
+                                         OMX_IndexParamSensorSelect, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            GST_DEBUG_OBJECT (self, "Device src=%d", config.eSensor);
+            g_value_set_enum (value, config.eSensor);
+
+            break;
+        }
 #endif
         default:
         {
@@ -1936,6 +1995,12 @@ type_class_init (gpointer g_class,
             g_param_spec_boolean ("vstab", "Video Frame Stabilization",
                     "is video stabilization algorithm enabled?",
                     TRUE,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_DEVICE,
+            g_param_spec_enum ("device", "Camera sensor",
+                    "Image and video stream source",
+                    GST_TYPE_OMX_CAMERA_DEVICE,
+                    DEFAULT_DEVICE,
                     G_PARAM_READWRITE));
 #endif
 }
