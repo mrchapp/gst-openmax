@@ -118,7 +118,7 @@ enum
 #define DEFAULT_ZOOM_LEVEL          100
 #define MIN_ZOOM_LEVEL              100
 #define MAX_ZOOM_LEVEL              600
-#define CAM_ZOOM_IN_STEP            0x10000
+#define CAM_ZOOM_IN_STEP            65536
 #define DEFAULT_FOCUS               OMX_IMAGE_FocusControlOff
 #define DEFAULT_AWB                 OMX_WhiteBalControlOff
 #define DEFAULT_EXPOSURE            OMX_ExposureControlOff
@@ -1216,17 +1216,17 @@ set_property (GObject *obj,
             gint32 zoom_value;
             zoom_value = g_value_get_int (value);
             gomx = (GOmxCore *) omx_base->gomx;
-            zoom_factor = (OMX_U32)(zoom_value / 100);
-            GST_DEBUG_OBJECT (self, "Set Property for zoom factor = %d", zoom_factor);
+            zoom_factor = (OMX_U32)((CAM_ZOOM_IN_STEP * zoom_value) / 100);
+            GST_DEBUG_OBJECT (self, "Set Property for zoom factor = %d", zoom_value);
 
             _G_OMX_INIT_PARAM (&zoom_scalefactor);
             error_val = OMX_GetConfig (gomx->omx_handle, OMX_IndexConfigCommonDigitalZoom,
                                        &zoom_scalefactor);
             g_assert (error_val == OMX_ErrorNone);
             GST_DEBUG_OBJECT (self, "OMX_GetConfig Successful for zoom");
-            zoom_scalefactor.xWidth = (CAM_ZOOM_IN_STEP * zoom_factor);
-            zoom_scalefactor.xHeight = (CAM_ZOOM_IN_STEP * zoom_factor);
-            GST_DEBUG_OBJECT (self, "zoom = x%d", zoom_scalefactor.xWidth / CAM_ZOOM_IN_STEP);
+            zoom_scalefactor.xWidth = (zoom_factor);
+            zoom_scalefactor.xHeight = (zoom_factor);
+            GST_DEBUG_OBJECT (self, "zoom_scalefactor = %d", zoom_scalefactor.xHeight);
             error_val = OMX_SetConfig (gomx->omx_handle, OMX_IndexConfigCommonDigitalZoom,
                                        &zoom_scalefactor);
             g_assert (error_val == OMX_ErrorNone);
