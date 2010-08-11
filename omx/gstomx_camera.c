@@ -283,16 +283,16 @@ gst_omx_camera_awb_get_type ()
     {
         static const GEnumValue vals[] =
         {
-            {OMX_WhiteBalControlOff,           "Off",           "No balance"},
-            {OMX_WhiteBalControlAuto,          "Auto",          "Auto balance"},
-            {OMX_WhiteBalControlSunLight,      "Sunlight",      "Sun light"},
-            {OMX_WhiteBalControlCloudy,        "Cloudy",        "Cloudy"},
-            {OMX_WhiteBalControlShade,         "Shade",         "Shade"},
-            {OMX_WhiteBalControlTungsten,      "Tungsten",      "Tungsten"},
-            {OMX_WhiteBalControlFluorescent,   "Fluorescent",   "Fluorescent"},
-            {OMX_WhiteBalControlIncandescent,  "Incandescent",  "Incandescent"},
-            {OMX_WhiteBalControlFlash,         "Flash",         "Flash" },
-            {OMX_WhiteBalControlHorizon,       "Horizon",       "Horizon" },
+            {OMX_WhiteBalControlOff,           "Balance off",    "off"},
+            {OMX_WhiteBalControlAuto,          "Auto balance",   "auto"},
+            {OMX_WhiteBalControlSunLight,      "Sun light",      "sunlight"},
+            {OMX_WhiteBalControlCloudy,        "Cloudy",         "cloudy"},
+            {OMX_WhiteBalControlShade,         "Shade",          "shade"},
+            {OMX_WhiteBalControlTungsten,      "Tungsten",       "tungsten"},
+            {OMX_WhiteBalControlFluorescent,   "Fluorescent",    "fluorescent"},
+            {OMX_WhiteBalControlIncandescent,  "Incandescent",   "incandescent"},
+            {OMX_WhiteBalControlFlash,         "Flash",          "flash" },
+            {OMX_WhiteBalControlHorizon,       "Horizon",        "horizon" },
             {0, NULL, NULL },
         };
 
@@ -312,16 +312,16 @@ gst_omx_camera_exposure_get_type ()
     {
         static const GEnumValue vals[] =
         {
-            {OMX_ExposureControlOff,             "Off",            "No exposure control"},
-            {OMX_ExposureControlAuto,            "Auto",           "Auto exposure"},
-            {OMX_ExposureControlNight,           "Night",          "Night exposure"},
-            {OMX_ExposureControlBackLight,       "Backlight",      "Backlight exposure"},
-            {OMX_ExposureControlSpotLight,       "SportLight",     "SportLight exposure"},
-            {OMX_ExposureControlSports,          "Sports",         "Sports exposure"},
-            {OMX_ExposureControlSnow,            "Snow",           "Snow exposure"},
-            {OMX_ExposureControlBeach,           "Beach",          "Beach exposure"},
-            {OMX_ExposureControlLargeAperture,   "LargeAperture",  "LargeAperture exposure"},
-            {OMX_ExposureControlSmallApperture,  "SmallAperture",  "SmallAperture exposure"},
+            {OMX_ExposureControlOff,             "Exposure control off",     "off"},
+            {OMX_ExposureControlAuto,            "Auto exposure",            "auto"},
+            {OMX_ExposureControlNight,           "Night exposure",           "night"},
+            {OMX_ExposureControlBackLight,       "Backlight exposure",       "backlight"},
+            {OMX_ExposureControlSpotLight,       "SportLight exposure",      "sportlight"},
+            {OMX_ExposureControlSports,          "Sports exposure",          "sports"},
+            {OMX_ExposureControlSnow,            "Snow exposure",            "snow"},
+            {OMX_ExposureControlBeach,           "Beach exposure",           "beach"},
+            {OMX_ExposureControlLargeAperture,   "Large aperture exposure",  "large-aperture"},
+            {OMX_ExposureControlSmallApperture,  "Small aperture exposure",  "small-aperture"},
             {0, NULL, NULL },
         };
 
@@ -341,10 +341,10 @@ gst_omx_camera_mirror_get_type (void)
     {
         static GEnumValue vals[] =
         {
-            {OMX_MirrorNone,        "off",              "off"},
-            {OMX_MirrorVertical,    "Vertical",         "Vertical"},
-            {OMX_MirrorHorizontal,  "Horizontal",       "Horizontal"},
-            {OMX_MirrorBoth,        "Both",             "Both"},
+            {OMX_MirrorNone,        "Off",              "off"},
+            {OMX_MirrorVertical,    "Vertical",         "vertical"},
+            {OMX_MirrorHorizontal,  "Horizontal",       "horizontal"},
+            {OMX_MirrorBoth,        "Both",             "both"},
             {0, NULL, NULL},
         };
 
@@ -365,10 +365,10 @@ gst_omx_camera_flicker_get_type ()
     {
         static const GEnumValue vals[] =
         {
-            {OMX_FlickerCancelOff,  "Off",           "No Flicker control"},
-            {OMX_FlickerCancelAuto, "Auto",          "Auto Flicker control"},
-            {OMX_FlickerCancel50,   "Flick-50Hz",    "Flicker control for 50Hz"},
-            {OMX_FlickerCancel60,   "Flick-60Hz",    "Flicker control for 60Hz"},
+            {OMX_FlickerCancelOff,  "Flicker control off",       "off"},
+            {OMX_FlickerCancelAuto, "Auto flicker control",      "auto"},
+            {OMX_FlickerCancel50,   "Flicker control for 50Hz",  "flick-50hz"},
+            {OMX_FlickerCancel60,   "Flicker control for 60Hz",  "flick-60hz"},
             {0, NULL, NULL },
         };
 
@@ -388,25 +388,25 @@ gst_omx_camera_scene_get_type ()
     {
         static const GEnumValue vals[] =
         {
-            {OMX_Manual,         "Manual",         "Manual settings"},
-            {OMX_Closeup,        "Closeup",        "Closeup settings"},
-            {OMX_Portrait,       "Portrait",       "Portrait settings"},
-            {OMX_Landscape,      "Landscape",      "Landscape settings"},
-            {OMX_Underwater,     "Underwater",     "Underwater settings"},
-            {OMX_Sport,          "Sport",          "Sport settings"},
-            {OMX_SnowBeach,      "SnowBeach",      "SnowBeach settings"},
-            {OMX_Mood,           "Mood",           "Mood settings"},
+            {OMX_Manual,         "Manual settings",         "manual"},
+            {OMX_Closeup,        "Closeup settings",        "closeup"},
+            {OMX_Portrait,       "Portrait settings",       "portrait"},
+            {OMX_Landscape,      "Landscape settings",      "landscape"},
+            {OMX_Underwater,     "Underwater settings",     "underwater"},
+            {OMX_Sport,          "Sport settings",          "sport"},
+            {OMX_SnowBeach,      "SnowBeach settings",      "snowbeach"},
+            {OMX_Mood,           "Mood settings",           "mood"},
 #if 0       /* The following options are not yet enabled at OMX level */
-            {OMX_NightPortrait,  "NightPortrait",  "NightPortrait settings"},
-            {OMX_NightIndoor,    "NightIndoor",    "NightIndoor settings"},
-            {OMX_Fireworks,      "Fireworks",      "Fireworks settings"},
+            {OMX_NightPortrait,  "NightPortrait settings",  "night-portrait"},
+            {OMX_NightIndoor,    "NightIndoor settings",    "night-indoor"},
+            {OMX_Fireworks,      "Fireworks settings",      "fireworks"},
             /* for still image: */
-            {OMX_Document,       "Document",       "Document settings"},
-            {OMX_Barcode,        "Barcode",        "Barcode settings"},
+            {OMX_Document,       "Document settings",       "document"},
+            {OMX_Barcode,        "Barcode settings",        "barcode"},
             /* for video: */
-            {OMX_SuperNight,     "SuperNight",     "SuperNight settings"},
-            {OMX_Cine,           "Cine",           "Cine settings"},
-            {OMX_OldFilm,        "OldFilm",        "OldFilm settings"},
+            {OMX_SuperNight,     "SuperNight settings",     "supernight"},
+            {OMX_Cine,           "Cine settings",           "cine"},
+            {OMX_OldFilm,        "OldFilm settings",        "oldfilm"},
 #endif
             {0, NULL, NULL},
         };
