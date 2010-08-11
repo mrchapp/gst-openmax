@@ -112,6 +112,7 @@ enum
     ARG_YUV_RANGE,
     ARG_VSTAB,
     ARG_DEVICE,
+    ARG_LDC,
 #endif
 };
 
@@ -1533,6 +1534,20 @@ set_property (GObject *obj,
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
+        case ARG_LDC:
+        {
+            OMX_CONFIG_BOOLEANTYPE param;
+
+            G_OMX_CORE_GET_PARAM (omx_base->gomx,
+                                  OMX_IndexParamLensDistortionCorrection, &param);
+
+            param.bEnabled = g_value_get_boolean (value);
+            GST_DEBUG_OBJECT (self, "Lens Distortion Correction: param=%d",
+                              param.bEnabled);
+            G_OMX_CORE_SET_PARAM (omx_base->gomx,
+                                  OMX_IndexParamLensDistortionCorrection, &param);
+            break;
+        }
 #endif
         default:
         {
@@ -1828,6 +1843,17 @@ get_property (GObject *obj,
 
             break;
         }
+        case ARG_LDC:
+        {
+            OMX_CONFIG_BOOLEANTYPE param;
+
+            G_OMX_CORE_GET_PARAM (omx_base->gomx,
+                                  OMX_IndexParamLensDistortionCorrection, &param);
+            GST_DEBUG_OBJECT (self, "Lens Distortion Correction: param=%d",
+                              param.bEnabled);
+            g_value_set_boolean (value, param.bEnabled);
+            break;
+        }
 #endif
         default:
         {
@@ -2001,6 +2027,11 @@ type_class_init (gpointer g_class,
                     "Image and video stream source",
                     GST_TYPE_OMX_CAMERA_DEVICE,
                     DEFAULT_DEVICE,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_LDC,
+            g_param_spec_boolean ("ldc", "Lens Distortion Correction",
+                    "Lens Distortion Correction state",
+                    FALSE,
                     G_PARAM_READWRITE));
 #endif
 }
