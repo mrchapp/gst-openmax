@@ -113,6 +113,7 @@ enum
     ARG_VSTAB,
     ARG_DEVICE,
     ARG_LDC,
+    ARG_NSF,
 #endif
 };
 
@@ -144,6 +145,7 @@ enum
 #  define DEFAULT_VNF               OMX_VideoNoiseFilterModeOn
 #  define DEFAULT_YUV_RANGE         OMX_ITURBT601
 #  define DEFAULT_DEVICE            OMX_PrimarySensor
+#  define DEFAULT_NSF               OMX_ISONoiseFilterModeOff
 #endif
 
 
@@ -474,6 +476,28 @@ gst_omx_camera_device_get_type (void)
         };
 
         type = g_enum_register_static ("GstOmxCameraDevice", vals);
+    }
+
+    return type;
+}
+
+#define GST_TYPE_OMX_CAMERA_NSF (gst_omx_camera_nsf_get_type ())
+static GType
+gst_omx_camera_nsf_get_type ()
+{
+    static GType type = 0;
+
+    if (!type)
+    {
+        static const GEnumValue vals[] =
+        {
+            {OMX_ISONoiseFilterModeOff,     "nsf control off",    "off"},
+            {OMX_ISONoiseFilterModeOn,      "nsf control on",     "on"},
+            {OMX_ISONoiseFilterModeAuto,    "nsf control auto",   "auto"},
+            {0, NULL, NULL },
+        };
+
+        type = g_enum_register_static ("GstOmxCameraISONoiseFilter", vals);
     }
 
     return type;
@@ -1548,6 +1572,26 @@ set_property (GObject *obj,
                                   OMX_IndexParamLensDistortionCorrection, &param);
             break;
         }
+        case ARG_NSF:
+        {
+            OMX_PARAM_ISONOISEFILTERTYPE param;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&param);
+            error_val = OMX_GetParameter (gomx->omx_handle,
+                                          OMX_IndexParamHighISONoiseFiler,
+                                          &param);
+            g_assert (error_val == OMX_ErrorNone);
+            param.eMode = g_value_get_enum (value);
+            GST_DEBUG_OBJECT (self, "ISO Noise Filter (NSF)=%d", param.eMode);
+            error_val = OMX_SetParameter (gomx->omx_handle,
+                                          OMX_IndexParamHighISONoiseFiler,
+                                          &param);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
 #endif
         default:
         {
@@ -1854,6 +1898,23 @@ get_property (GObject *obj,
             g_value_set_boolean (value, param.bEnabled);
             break;
         }
+        case ARG_NSF:
+        {
+            OMX_PARAM_ISONOISEFILTERTYPE param;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&param);
+            error_val = OMX_GetParameter (gomx->omx_handle,
+                                          OMX_IndexParamHighISONoiseFiler,
+                                          &param);
+            g_assert (error_val == OMX_ErrorNone);
+            GST_DEBUG_OBJECT (self, "ISO Noise Filter (NSF)=%d", param.eMode);
+            g_value_set_enum (value, param.eMode);
+
+            break;
+        }
 #endif
         default:
         {
@@ -2032,6 +2093,12 @@ type_class_init (gpointer g_class,
             g_param_spec_boolean ("ldc", "Lens Distortion Correction",
                     "Lens Distortion Correction state",
                     FALSE,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_NSF,
+            g_param_spec_enum ("nsf", "ISO noise suppression filter",
+                    "low light environment noise filter",
+                    GST_TYPE_OMX_CAMERA_NSF,
+                    DEFAULT_NSF,
                     G_PARAM_READWRITE));
 #endif
 }
