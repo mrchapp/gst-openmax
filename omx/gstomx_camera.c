@@ -103,6 +103,7 @@ enum
     ARG_ISO,
     ARG_ROTATION,
     ARG_MIRROR,
+    ARG_SATURATION,
 #ifdef USE_OMXTICORE
     ARG_THUMBNAIL_WIDTH,
     ARG_THUMBNAIL_HEIGHT,
@@ -135,6 +136,9 @@ enum
 #define MAX_ISO_LEVEL               1600
 #define DEFAULT_ROTATION            180
 #define DEFAULT_MIRROR              OMX_MirrorNone
+#define MIN_SATURATION_VALUE        -100
+#define MAX_SATURATION_VALUE        100
+#define DEFAULT_SATURATION_VALUE    0
 #ifdef USE_OMXTICORE
 #  define DEFAULT_THUMBNAIL_WIDTH   352
 #  define DEFAULT_THUMBNAIL_HEIGHT  288
@@ -1412,6 +1416,25 @@ set_property (GObject *obj,
             G_OMX_PORT_SET_CONFIG (self->img_port, OMX_IndexConfigCommonMirror, &config);
             break;
         }
+        case ARG_SATURATION:
+        {
+            OMX_CONFIG_SATURATIONTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigCommonSaturation, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            config.nSaturation = g_value_get_int (value);
+            GST_DEBUG_OBJECT (self, "Saturation: param=%d", config.nSaturation);
+
+            error_val = OMX_SetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigCommonSaturation, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
 #ifdef USE_OMXTICORE
         case ARG_THUMBNAIL_WIDTH:
         {
@@ -1768,6 +1791,20 @@ get_property (GObject *obj,
             g_value_set_enum (value, config.eMirror);
             break;
         }
+        case ARG_SATURATION:
+        {
+            OMX_CONFIG_SATURATIONTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigCommonSaturation, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            GST_DEBUG_OBJECT (self, "Saturation=%d", config.nSaturation);
+            break;
+        }
 #ifdef USE_OMXTICORE
         case ARG_THUMBNAIL_WIDTH:
         {
@@ -2042,6 +2079,11 @@ type_class_init (gpointer g_class,
                     "Mirror image",
                     GST_TYPE_OMX_CAMERA_MIRROR,
                     DEFAULT_MIRROR,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_SATURATION,
+            g_param_spec_int ("saturation", "Saturation",
+                    "Saturation level", MIN_SATURATION_VALUE,
+                    MAX_SATURATION_VALUE, DEFAULT_SATURATION_VALUE,
                     G_PARAM_READWRITE));
 #ifdef USE_OMXTICORE
     g_object_class_install_property (gobject_class, ARG_THUMBNAIL_WIDTH,
