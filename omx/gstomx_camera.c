@@ -104,6 +104,7 @@ enum
     ARG_ROTATION,
     ARG_MIRROR,
     ARG_SATURATION,
+    ARG_EXPOSUREVALUE,
 #ifdef USE_OMXTICORE
     ARG_THUMBNAIL_WIDTH,
     ARG_THUMBNAIL_HEIGHT,
@@ -139,6 +140,9 @@ enum
 #define MIN_SATURATION_VALUE        -100
 #define MAX_SATURATION_VALUE        100
 #define DEFAULT_SATURATION_VALUE    0
+#define MIN_EXPOSURE_VALUE          -3.0
+#define MAX_EXPOSURE_VALUE          3.0
+#define DEFAULT_EXPOSURE_VALUE      0.0
 #ifdef USE_OMXTICORE
 #  define DEFAULT_THUMBNAIL_WIDTH   352
 #  define DEFAULT_THUMBNAIL_HEIGHT  288
@@ -1435,6 +1439,29 @@ set_property (GObject *obj,
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
+        case ARG_EXPOSUREVALUE:
+        {
+            OMX_CONFIG_EXPOSUREVALUETYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+            gfloat exposure_float_value;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigCommonExposureValue, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            exposure_float_value = g_value_get_float (value);
+            /* Converting into Q16 ( X << 16  = X*65536 ) */
+            config.xEVCompensation = (OMX_S32) (exposure_float_value * 65536);
+            GST_DEBUG_OBJECT (self, "xEVCompensation: value=%f EVCompensation=%d",
+                              exposure_float_value, config.xEVCompensation);
+
+            error_val = OMX_SetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigCommonExposureValue, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
 #ifdef USE_OMXTICORE
         case ARG_THUMBNAIL_WIDTH:
         {
@@ -1805,6 +1832,21 @@ get_property (GObject *obj,
             GST_DEBUG_OBJECT (self, "Saturation=%d", config.nSaturation);
             break;
         }
+        case ARG_EXPOSUREVALUE:
+        {
+            OMX_CONFIG_EXPOSUREVALUETYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigCommonExposureValue, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            GST_DEBUG_OBJECT (self, "xEVCompensation: EVCompensation=%d",
+                              config.xEVCompensation);
+            break;
+        }
 #ifdef USE_OMXTICORE
         case ARG_THUMBNAIL_WIDTH:
         {
@@ -2084,6 +2126,11 @@ type_class_init (gpointer g_class,
             g_param_spec_int ("saturation", "Saturation",
                     "Saturation level", MIN_SATURATION_VALUE,
                     MAX_SATURATION_VALUE, DEFAULT_SATURATION_VALUE,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_EXPOSUREVALUE,
+            g_param_spec_float ("exposure-value", "Exposure value",
+                    "EVCompensation level", MIN_EXPOSURE_VALUE,
+                    MAX_EXPOSURE_VALUE, DEFAULT_EXPOSURE_VALUE,
                     G_PARAM_READWRITE));
 #ifdef USE_OMXTICORE
     g_object_class_install_property (gobject_class, ARG_THUMBNAIL_WIDTH,
