@@ -1058,10 +1058,13 @@ create (GstBaseSrc *gst_base,
     GstFlowReturn ret = GST_FLOW_NOT_NEGOTIATED;
     GstClockTime timestamp;
     GstEvent *vstab_evt = NULL;
+    gboolean pending_eos;
     guint n_offset = 0;
     static guint cont;
 
-    GST_DEBUG_OBJECT (self, "begin, mode=%d", self->mode);
+    pending_eos = g_atomic_int_compare_and_exchange (&self->pending_eos, TRUE, FALSE);
+
+    GST_DEBUG_OBJECT (self, "begin, mode=%d, pending_eos=%d", self->mode, pending_eos);
 
     GST_LOG_OBJECT (self, "state: %d", omx_base->gomx->omx_state);
 
@@ -1149,6 +1152,8 @@ create (GstBaseSrc *gst_base,
         if (vstab_evt)
             gst_pad_push_event (self->vidsrcpad, gst_event_ref (vstab_evt));
         gst_pad_push (self->vidsrcpad, vid_buf);
+        if (G_UNLIKELY (pending_eos))
+            gst_pad_push_event (self->vidsrcpad, gst_event_new_eos ());
     }
 
     if (img_buf)
@@ -1156,11 +1161,25 @@ create (GstBaseSrc *gst_base,
         GST_DEBUG_OBJECT (self, "pushing img_buf");
         GST_BUFFER_TIMESTAMP (img_buf) = timestamp;
         gst_pad_push (self->imgsrcpad, img_buf);
+        if (G_UNLIKELY (pending_eos))
+            gst_pad_push_event (self->imgsrcpad, gst_event_new_eos ());
     }
 
     if (vstab_evt)
     {
         gst_event_unref (vstab_evt);
+    }
+
+    if (G_UNLIKELY (pending_eos))
+    {
+         /* now send eos event, which was previously deferred, to parent
+          * class this will trigger basesrc's eos logic.  Unfortunately we
+          * can't call parent->send_event() directly from here to pass along
+          * the eos, which would be a more obvious approach, because that
+          * would deadlock when it tries to acquire live-lock.. but live-
+          * lock is already held when calling create().
+          */
+          return GST_FLOW_UNEXPECTED;
     }
 
     GST_DEBUG_OBJECT (self, "end, ret=%d", ret);
@@ -1173,6 +1192,27 @@ fail:
     if (img_buf)     gst_buffer_unref (img_buf);
 
     return ret;
+}
+
+static gboolean
+send_event (GstElement * element, GstEvent * event)
+{
+    GstOmxCamera *self = GST_OMX_CAMERA (element);
+
+    GST_DEBUG_OBJECT (self, "received %s event", GST_EVENT_TYPE_NAME (event));
+
+    switch (GST_EVENT_TYPE (event))
+    {
+        case GST_EVENT_EOS:
+            /* note: we don't pass the eos event on to basesrc until
+             * we have a chance to handle it ourselves..
+             */
+            g_atomic_int_set (&self->pending_eos, TRUE);
+            gst_event_unref (event);
+            return TRUE;
+        default:
+            return GST_ELEMENT_CLASS (parent_class)->send_event (element, event);
+    }
 }
 
 /*
@@ -2021,17 +2061,21 @@ type_class_init (gpointer g_class,
                  gpointer class_data)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS (g_class);
+    GstElementClass *gst_element_class = GST_ELEMENT_CLASS (g_class);
     GstBaseSrcClass *gst_base_src_class = GST_BASE_SRC_CLASS (g_class);
     GstOmxBaseSrcClass *omx_base_class = GST_OMX_BASE_SRC_CLASS (g_class);
 
     omx_base_class->out_port_index = OMX_CAMERA_PORT_VIDEO_OUT_PREVIEW;
 
     /* GstBaseSrc methods: */
-    gst_base_src_class->create = create;
+    gst_base_src_class->create = GST_DEBUG_FUNCPTR (create);
+
+    /* GstElement methods: */
+    gst_element_class->send_event = GST_DEBUG_FUNCPTR (send_event);
 
     /* GObject methods: */
-    gobject_class->set_property = set_property;
-    gobject_class->get_property = get_property;
+    gobject_class->set_property = GST_DEBUG_FUNCPTR (set_property);
+    gobject_class->get_property = GST_DEBUG_FUNCPTR (get_property);
 
     /* install properties: */
     g_object_class_install_property (gobject_class, ARG_NUM_IMAGE_OUTPUT_BUFFERS,
