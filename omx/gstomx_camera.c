@@ -152,7 +152,8 @@ enum
 GSTOMX_BOILERPLATE (GstOmxCamera, gst_omx_camera, GstOmxBaseSrc, GST_OMX_BASE_SRC_TYPE);
 
 #define USE_GSTOMXCAM_IMGSRCPAD
-//#define USE_GSTOMXCAM_VIDSRCPAD
+#define USE_GSTOMXCAM_VIDSRCPAD
+//#define USE_VIDEO_PORT
 //#define USE_GSTOMXCAM_IN_PORT
 
 /*
@@ -599,7 +600,7 @@ src_setcaps (GstPad *pad, GstCaps *caps)
          */
         G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
 
-#ifdef USE_GSTOMXCAM_VIDSRCPAD
+#ifdef USE_VIDEO_PORT
         G_OMX_PORT_SET_DEFINITION (self->vid_port, &param);
 #endif
 
@@ -832,7 +833,7 @@ setup_ports (GstOmxBaseSrc *base_src)
     GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
     OMX_PARAM_PORTDEFINITIONTYPE param;
 
-#ifdef USE_GSTOMXCAM_VIDSRCPAD
+#ifdef USE_VIDEO_PORT
     G_OMX_PORT_GET_DEFINITION (self->vid_port, &param);
     g_omx_port_setup (self->vid_port, &param);
 #endif
@@ -985,6 +986,12 @@ start_ports (GstOmxCamera *self)
         gst_element_add_pad (GST_ELEMENT_CAST (self), self->vidsrcpad);
         g_omx_port_enable (self->vid_port);
     }
+    else if (self->mode == MODE_VIDEO)
+    {
+        GST_DEBUG_OBJECT (self, "enable video srcpad");
+        gst_pad_set_active (self->vidsrcpad, TRUE);
+        gst_element_add_pad (GST_ELEMENT_CAST (self), self->vidsrcpad);
+    }
 #endif
 
 #ifdef USE_GSTOMXCAM_IMGSRCPAD
@@ -1025,6 +1032,11 @@ stop_ports (GstOmxCamera *self)
         gst_pad_set_active (self->vidsrcpad, FALSE);
         //gst_element_remove_pad (GST_ELEMENT_CAST (self), self->vidsrcpad);
         g_omx_port_disable (self->vid_port);
+    }
+    else if (self->mode == MODE_VIDEO)
+    {
+        GST_DEBUG_OBJECT (self, "disable video src pad");
+        gst_pad_set_active (self->vidsrcpad, FALSE);
     }
 #endif
 
@@ -1107,6 +1119,10 @@ create (GstBaseSrc *gst_base,
         n_offset = self->vid_port->n_offset;
         if (ret != GST_FLOW_OK)
             goto fail;
+    }
+    else if (self->mode == MODE_VIDEO)
+    {
+        vid_buf = gst_buffer_ref (preview_buf);
     }
 
     if (config[self->mode] & PORT_IMAGE)
