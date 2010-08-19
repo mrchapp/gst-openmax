@@ -704,7 +704,7 @@ imgsrc_setcaps (GstPad *pad, GstCaps *caps)
         param.format.image.eCompressionFormat = OMX_IMAGE_CodingUnused;
         param.format.image.nFrameWidth  = width;
         param.format.image.nFrameHeight = height;
-        param.format.image.nStride      = 0;
+        param.format.image.nStride      = width * 2;
 
         GST_INFO_OBJECT (self, "Rowstride=%d, Width=%d, Height=%d, "
             "Buffersize=%d, num-buffer=%d", param.format.image.nStride,
