@@ -23,6 +23,11 @@
 #include "gstomx_util.h"
 #include "gstomx.h"
 
+#ifdef USE_OMXTICORE
+#  include <OMX_TI_Common.h>
+#  include <OMX_TI_Index.h>
+#endif
+
 GST_DEBUG_CATEGORY_EXTERN (gstomx_util_debug);
 
 /*
@@ -628,6 +633,23 @@ EventHandler (OMX_HANDLETYPE omx_handle,
                 g_mutex_unlock (core->omx_state_mutex);
                 break;
             }
+#ifdef USE_OMXTICORE
+        case OMX_TI_EventBufferRefCount:
+            {
+                OMX_BUFFERHEADERTYPE *omx_buffer = (OMX_BUFFERHEADERTYPE *)data_1;
+                GOmxPort *port = get_port (core, omx_buffer->nOutputPortIndex);
+
+                GST_DEBUG_OBJECT (core->object, "unref: omx_buffer=%p, pAppPrivate=%p, pBuffer=%p",
+                        omx_buffer, omx_buffer->pAppPrivate, omx_buffer->pBuffer);
+
+                g_mutex_lock (core->omx_state_mutex);
+                omx_buffer->nFlags |= GST_BUFFERFLAG_UNREF_CHECK;
+                g_mutex_unlock (core->omx_state_mutex);
+
+                g_omx_port_push_buffer (port, omx_buffer);
+                break;
+            }
+#endif
         default:
             GST_WARNING_OBJECT (core->object, "unhandled event: %d", event);
             break;

@@ -26,8 +26,10 @@
 #include "gstomx_port.h"
 #include "gstomx.h"
 
-#include <OMX_TI_Common.h>
-#include <OMX_TI_Index.h>
+#ifdef USE_OMXTICORE
+#  include <OMX_TI_Common.h>
+#  include <OMX_TI_Index.h>
+#endif
 
 GST_DEBUG_CATEGORY_EXTERN (gstomx_util_debug);
 
@@ -167,6 +169,7 @@ g_omx_port_prepare (GOmxPort *port)
 
     gst_buffer_unref (buf);
 
+#ifdef USE_OMXTICORE
     if (port->share_buffer)
     {
         OMX_TI_PARAM_BUFFERPREANNOUNCE param;
@@ -178,10 +181,11 @@ g_omx_port_prepare (GOmxPort *port)
 
         G_OMX_PORT_GET_CONFIG (port, OMX_TI_IndexConfigBufferRefCountNotification, &config);
         config.bNotifyOnDecrease = TRUE;
-        config.bNotifyOnIncrease = TRUE;
+        config.bNotifyOnIncrease = FALSE;
         config.nCountForNotification = 1;
         G_OMX_PORT_SET_CONFIG (port, OMX_TI_IndexConfigBufferRefCountNotification, &config);
     }
+#endif
 
     DEBUG (port, "end");
 }
@@ -560,9 +564,13 @@ g_omx_port_recv (GOmxPort *port)
             return NULL;
         }
 
-        DEBUG (port, "omx_buffer: size=%lu, len=%lu, flags=%lu, offset=%lu, timestamp=%lld",
-                omx_buffer->nAllocLen, omx_buffer->nFilledLen, omx_buffer->nFlags,
+        DEBUG (port, "omx_buffer=%p size=%lu, len=%lu, flags=%lu, offset=%lu, timestamp=%lld",
+                omx_buffer, omx_buffer->nAllocLen, omx_buffer->nFilledLen, omx_buffer->nFlags,
                 omx_buffer->nOffset, omx_buffer->nTimeStamp);
+
+        /* XXX this ignore_count workaround might play badly w/ refcnting
+         * in OMX component..
+         */
 
         if (port->ignore_count)
         {
@@ -624,14 +632,56 @@ g_omx_port_recv (GOmxPort *port)
             GstBuffer *buf = omx_buffer->pAppPrivate;
 
             if (buf)
+            {
                 gst_buffer_unref (buf);
+                omx_buffer->pAppPrivate = NULL;
+            }
 
-            DEBUG (port, "empty buffer"); /* keep looping */
+            DEBUG (port, "empty buffer %p", omx_buffer); /* keep looping */
         }
 
-        setup_shared_buffer (port, omx_buffer);
+#ifdef USE_OMXTICORE
+        if (omx_buffer->nFlags & OMX_TI_BUFFERFLAG_READONLY)
+        {
+            GstBuffer *buf = omx_buffer->pAppPrivate;
 
-        release_buffer (port, omx_buffer);
+            if (buf)
+            {
+                /* if using buffer sharing, create an extra ref to the buffer
+                 * to account for the fact that the OMX component is still
+                 * holding a reference.  (This prevents the buffer from being
+                 * free'd while the component is still using it as, for ex, a
+                 * reference frame.)
+                 */
+                gst_buffer_ref (buf);
+            }
+
+            DEBUG (port, "dup'd buffer %p", omx_buffer);
+
+            g_mutex_lock (port->core->omx_state_mutex);
+            omx_buffer->nFlags &= ~OMX_TI_BUFFERFLAG_READONLY;
+            g_mutex_unlock (port->core->omx_state_mutex);
+        }
+        else if (omx_buffer->nFlags & GST_BUFFERFLAG_UNREF_CHECK)
+        {
+            /* buffer has already been handled under READONLY case.. so
+             * don't return it to gst.  Just unref it, and release the omx
+             * buffer which was previously not released.
+             */
+            gst_buffer_unref(ret);
+            ret = NULL;
+
+            DEBUG (port, "unref'd buffer %p", omx_buffer);
+
+            setup_shared_buffer (port, omx_buffer);
+            release_buffer (port, omx_buffer);
+        }
+        else
+#endif
+        {
+            setup_shared_buffer (port, omx_buffer);
+            release_buffer (port, omx_buffer);
+        }
     }
 
 

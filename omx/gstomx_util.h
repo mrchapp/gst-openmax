@@ -33,6 +33,8 @@
 
 G_BEGIN_DECLS
 
+#define GST_BUFFERFLAG_UNREF_CHECK 0x10000000
+
 /* Typedefs. */
 
 typedef struct GOmxCore GOmxCore;
