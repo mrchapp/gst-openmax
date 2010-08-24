@@ -108,6 +108,7 @@ enum
     ARG_DEVICE,
     ARG_LDC,
     ARG_NSF,
+    ARG_MTIS,
 #endif
 };
 
@@ -1683,6 +1684,28 @@ set_property (GObject *obj,
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
+        case ARG_MTIS:
+        {
+            OMX_CONFIG_BOOLEANTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigMotionTriggeredImageStabilisation,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+
+            config.bEnabled = g_value_get_boolean (value);
+            GST_DEBUG_OBJECT (self, "Motion Triggered Image Stabilisation = %d",
+                              config.bEnabled);
+            error_val = OMX_SetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigMotionTriggeredImageStabilisation,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
 #endif
         default:
         {
@@ -2035,6 +2058,23 @@ get_property (GObject *obj,
 
             break;
         }
+        case ARG_MTIS:
+        {
+            OMX_CONFIG_BOOLEANTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigMotionTriggeredImageStabilisation,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            GST_DEBUG_OBJECT (self, "Motion Triggered Image Stabilisation = %d",
+                              config.bEnabled);
+            g_value_set_boolean (value, config.bEnabled);
+            break;
+        }
 #endif
         default:
         {
@@ -2233,6 +2273,11 @@ type_class_init (gpointer g_class,
                     "low light environment noise filter",
                     GST_TYPE_OMX_CAMERA_NSF,
                     DEFAULT_NSF,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_MTIS,
+            g_param_spec_boolean ("mtis", "Motion triggered image stabilisation mode",
+                    "Motion triggered image stabilisation mode",
+                    FALSE,
                     G_PARAM_READWRITE));
 #endif
 }
