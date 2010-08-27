@@ -176,7 +176,7 @@ g_omx_port_prepare (GOmxPort *port)
         OMX_TI_CONFIG_BUFFERREFCOUNTNOTIFYTYPE config;
 
         G_OMX_PORT_GET_PARAM (port, OMX_TI_IndexParamBufferPreAnnouncement, &param);
-        param.bEnabled = TRUE;
+        param.bEnabled = FALSE;
         G_OMX_PORT_SET_PARAM (port, OMX_TI_IndexParamBufferPreAnnouncement, &param);
 
         G_OMX_PORT_GET_CONFIG (port, OMX_TI_IndexConfigBufferRefCountNotification, &config);
