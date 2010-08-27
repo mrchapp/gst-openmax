@@ -26,6 +26,7 @@
 #ifdef USE_OMXTICORE
 #  include <OMX_TI_Common.h>
 #  include <OMX_TI_Index.h>
+#  include <OMX_TI_Core.h>
 #endif
 
 GST_DEBUG_CATEGORY_EXTERN (gstomx_util_debug);
