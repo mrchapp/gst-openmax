@@ -1836,7 +1836,7 @@ get_property (GObject *obj,
                                        OMX_IndexConfigCommonExposureValue, &config);
             g_assert (error_val == OMX_ErrorNone);
             GST_DEBUG_OBJECT (self, "ISO Speed: param=%d", config.nSensitivity);
-            g_value_set_enum (value, config.nSensitivity);
+            g_value_set_uint (value, config.nSensitivity);
 
             break;
         }
