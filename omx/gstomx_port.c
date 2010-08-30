@@ -716,7 +716,23 @@ g_omx_port_flush (GOmxPort *port)
         while ((omx_buffer = async_queue_pop_full (port->queue, FALSE, TRUE)))
         {
             omx_buffer->nFilledLen = 0;
-            release_buffer (port, omx_buffer);
+
+#ifdef USE_OMXTICORE
+            if (omx_buffer->nFlags & OMX_TI_BUFFERFLAG_READONLY)
+            {
+                /* For output buffer that is marked with READONLY, we
+                   cannot release until EventHandler OMX_TI_EventBufferRefCount
+                   come. So, reset the nFlags to be released later. */
+                DEBUG (port, "During flush encounter ReadOnly buffer %p", omx_buffer);
+                g_mutex_lock (port->core->omx_state_mutex);
+                omx_buffer->nFlags &= ~OMX_TI_BUFFERFLAG_READONLY;
+                g_mutex_unlock (port->core->omx_state_mutex);
+            }
+            else
+#endif
+            {
+                release_buffer (port, omx_buffer);
+            }
         }
     }
 
