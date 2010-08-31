@@ -137,8 +137,13 @@ sink_setcaps (GstPad *pad,
 
     g_return_val_if_fail (structure, FALSE);
 
-    gst_structure_get_int (structure, "width", &width);
-    gst_structure_get_int (structure, "height", &height);
+    if (!(gst_structure_get_int (structure, "width", &width) &&
+            gst_structure_get_int (structure, "height", &height)))
+    {
+        GST_WARNING_OBJECT (self, "width and/or height not set in caps: %dx%d",
+                width, height);
+        return FALSE;
+    }
 
     {
         const GValue *framerate = NULL;
