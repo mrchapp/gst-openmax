@@ -61,6 +61,7 @@ struct GstOmxCamera
 
     GstPad   *vidsrcpad;
     GstPad   *imgsrcpad;
+    GstPad   *thumbsrcpad;
 
     /* if EOS is pending (atomic) */
     gint pending_eos;
