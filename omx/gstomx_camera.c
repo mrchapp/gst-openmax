@@ -111,6 +111,7 @@ enum
     ARG_NSF,
     ARG_MTIS,
     ARG_SENSOR_OVERCLOCK,
+    ARG_WB_COLORTEMP,
 #endif
 };
 
@@ -152,6 +153,9 @@ enum
 #  define DEFAULT_YUV_RANGE         OMX_ITURBT601
 #  define DEFAULT_DEVICE            OMX_PrimarySensor
 #  define DEFAULT_NSF               OMX_ISONoiseFilterModeOff
+#  define DEFAULT_WB_COLORTEMP_VALUE  5000
+#  define MIN_WB_COLORTEMP_VALUE    2020
+#  define MAX_WB_COLORTEMP_VALUE    7100
 #endif
 
 
@@ -1847,6 +1851,28 @@ set_property (GObject *obj,
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
+        case ARG_WB_COLORTEMP:
+        {
+            OMX_TI_CONFIG_WHITEBALANCECOLORTEMPTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_TI_IndexConfigWhiteBalanceManualColorTemp,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            config.nColorTemperature = g_value_get_uint (value);
+            GST_DEBUG_OBJECT (self, "White balance color temperature = %d",
+                              config.nColorTemperature);
+
+            error_val = OMX_SetConfig (gomx->omx_handle,
+                                       OMX_TI_IndexConfigWhiteBalanceManualColorTemp,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
 #endif
         default:
         {
@@ -2251,6 +2277,23 @@ get_property (GObject *obj,
             g_value_set_boolean (value, param.bEnabled);
             break;
         }
+        case ARG_WB_COLORTEMP:
+        {
+            OMX_TI_CONFIG_WHITEBALANCECOLORTEMPTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_TI_IndexConfigWhiteBalanceManualColorTemp,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            GST_DEBUG_OBJECT (self, "White balance color temperature = %d",
+                              config.nColorTemperature);
+            g_value_set_uint (value, config.nColorTemperature);
+            break;
+        }
 #endif
         default:
         {
@@ -2467,6 +2510,12 @@ type_class_init (gpointer g_class,
             g_param_spec_boolean ("overclock", "Sensor over-clock mode",
                     "Sensor over-clock mode",
                     FALSE,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_WB_COLORTEMP,
+            g_param_spec_uint ("wb-colortemp",
+                    "White Balance Color Temperature",
+                    "White balance color temperature", MIN_WB_COLORTEMP_VALUE,
+                    MAX_WB_COLORTEMP_VALUE, DEFAULT_WB_COLORTEMP_VALUE,
                     G_PARAM_READWRITE));
 #endif
 }
