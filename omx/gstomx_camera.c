@@ -112,6 +112,7 @@ enum
     ARG_MTIS,
     ARG_SENSOR_OVERCLOCK,
     ARG_WB_COLORTEMP,
+    ARG_FOCUSSPOT_WEIGHT,
 #endif
 };
 
@@ -156,6 +157,7 @@ enum
 #  define DEFAULT_WB_COLORTEMP_VALUE  5000
 #  define MIN_WB_COLORTEMP_VALUE    2020
 #  define MAX_WB_COLORTEMP_VALUE    7100
+#  define DEFAULT_FOCUSSPOT_WEIGHT  OMX_FocusSpotDefault
 #endif
 
 
@@ -514,8 +516,31 @@ gst_omx_camera_nsf_get_type ()
 
     return type;
 }
-#endif
 
+#define GST_TYPE_OMX_CAMERA_FOCUSSPOT_WEIGHT (gst_omx_camera_focusspot_weight_get_type ())
+static GType
+gst_omx_camera_focusspot_weight_get_type ()
+{
+    static GType type = 0;
+
+    if (!type)
+    {
+        static const GEnumValue vals[] =
+        {
+            {OMX_FocusSpotDefault,        "Common focus region",  "default"},
+            {OMX_FocusSpotSinglecenter,   "Single center",        "center"},
+            {OMX_FocusSpotMultiNormal,    "Multi normal",         "multinormal"},
+            {OMX_FocusSpotMultiAverage,   "Multi average",        "multiaverage"},
+            {OMX_FocusSpotMultiCenter,    "Multi center",         "multicenter"},
+            {0, NULL, NULL },
+        };
+
+        type = g_enum_register_static ("GstOmxCameraFocusSpotWeight", vals);
+    }
+
+    return type;
+}
+#endif
 
 /*
  * Caps:
@@ -1873,6 +1898,27 @@ set_property (GObject *obj,
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
+        case ARG_FOCUSSPOT_WEIGHT:
+        {
+            OMX_TI_CONFIG_FOCUSSPOTWEIGHTINGTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_TI_IndexConfigFocusSpotWeighting,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            config.eMode = g_value_get_enum (value);
+            GST_DEBUG_OBJECT (self, "Focus spot weighting = %d", config.eMode);
+
+            error_val = OMX_SetConfig (gomx->omx_handle,
+                                       OMX_TI_IndexConfigFocusSpotWeighting,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
 #endif
         default:
         {
@@ -2294,6 +2340,22 @@ get_property (GObject *obj,
             g_value_set_uint (value, config.nColorTemperature);
             break;
         }
+        case ARG_FOCUSSPOT_WEIGHT:
+        {
+            OMX_TI_CONFIG_FOCUSSPOTWEIGHTINGTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_TI_IndexConfigFocusSpotWeighting,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            GST_DEBUG_OBJECT (self, "Focus spot weighting = %d", config.eMode);
+            g_value_set_enum (value, config.eMode);
+            break;
+        }
 #endif
         default:
         {
@@ -2516,6 +2578,12 @@ type_class_init (gpointer g_class,
                     "White Balance Color Temperature",
                     "White balance color temperature", MIN_WB_COLORTEMP_VALUE,
                     MAX_WB_COLORTEMP_VALUE, DEFAULT_WB_COLORTEMP_VALUE,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_FOCUSSPOT_WEIGHT,
+            g_param_spec_enum ("focusweight", "Focus Spot Weight mode",
+                    "Focus spot weight mode",
+                    GST_TYPE_OMX_CAMERA_FOCUSSPOT_WEIGHT,
+                    DEFAULT_FOCUSSPOT_WEIGHT,
                     G_PARAM_READWRITE));
 #endif
 }
