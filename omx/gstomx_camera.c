@@ -110,6 +110,7 @@ enum
     ARG_LDC,
     ARG_NSF,
     ARG_MTIS,
+    ARG_SENSOR_OVERCLOCK,
 #endif
 };
 
@@ -1824,6 +1825,28 @@ set_property (GObject *obj,
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
+        case ARG_SENSOR_OVERCLOCK:
+        {
+            OMX_CONFIG_BOOLEANTYPE param;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&param);
+            error_val = OMX_GetParameter (gomx->omx_handle,
+                                          OMX_TI_IndexParamSensorOverClockMode,
+                                          &param);
+            g_assert (error_val == OMX_ErrorNone);
+
+            param.bEnabled = g_value_get_boolean (value);
+            GST_DEBUG_OBJECT (self, "Sensor OverClock Mode: param=%d",
+                              param.bEnabled);
+            error_val = OMX_SetParameter (gomx->omx_handle,
+                                          OMX_TI_IndexParamSensorOverClockMode,
+                                          &param);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
 #endif
         default:
         {
@@ -2211,6 +2234,23 @@ get_property (GObject *obj,
             g_value_set_boolean (value, config.bEnabled);
             break;
         }
+        case ARG_SENSOR_OVERCLOCK:
+        {
+            OMX_CONFIG_BOOLEANTYPE param;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&param);
+            error_val = OMX_GetParameter (gomx->omx_handle,
+                                          OMX_TI_IndexParamSensorOverClockMode,
+                                          &param);
+            g_assert (error_val == OMX_ErrorNone);
+            GST_DEBUG_OBJECT (self, "Sensor OverClock Mode: param=%d",
+                              param.bEnabled);
+            g_value_set_boolean (value, param.bEnabled);
+            break;
+        }
 #endif
         default:
         {
@@ -2421,6 +2461,11 @@ type_class_init (gpointer g_class,
     g_object_class_install_property (gobject_class, ARG_MTIS,
             g_param_spec_boolean ("mtis", "Motion triggered image stabilisation mode",
                     "Motion triggered image stabilisation mode",
+                    FALSE,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_SENSOR_OVERCLOCK,
+            g_param_spec_boolean ("overclock", "Sensor over-clock mode",
+                    "Sensor over-clock mode",
                     FALSE,
                     G_PARAM_READWRITE));
 #endif
