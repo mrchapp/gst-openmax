@@ -2429,6 +2429,8 @@ type_instance_init (GTypeInstance *instance,
             GST_DEBUG_FUNCPTR (imgsrc_setcaps));
     gst_pad_set_query_function (basesrc->srcpad,
             GST_DEBUG_FUNCPTR (src_query));
+    gst_pad_set_query_function (self->vidsrcpad,
+            GST_DEBUG_FUNCPTR (src_query));
 #if 0
     /* disable all ports to begin with: */
     g_omx_port_disable (self->in_port);
