@@ -474,6 +474,7 @@ gst_omx_camera_device_get_type (void)
         {
             {OMX_PrimarySensor,     "Primary",          "primary"},
             {OMX_SecondarySensor,   "Secondary",        "secondary"},
+            {OMX_TI_StereoSensor,   "Stereo",           "stereo"},
             {0, NULL, NULL},
         };
 
@@ -1638,15 +1639,15 @@ set_property (GObject *obj,
 
             gomx = (GOmxCore *) omx_base->gomx;
             _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetParameter(gomx->omx_handle,
-                                         OMX_IndexParamSensorSelect, &config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_TI_IndexConfigSensorSelect, &config);
             g_assert (error_val == OMX_ErrorNone);
             config.nPortIndex = omx_base->out_port->port_index;
             config.eSensor = g_value_get_enum (value);
             GST_DEBUG_OBJECT (self, "Device src=%d, port=%d", config.eSensor,
                               config.nPortIndex);
-            error_val = OMX_SetParameter (gomx->omx_handle,
-                                          OMX_IndexParamSensorSelect, &config);
+            error_val = OMX_SetConfig (gomx->omx_handle,
+                                       OMX_TI_IndexConfigSensorSelect, &config);
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
@@ -2022,8 +2023,8 @@ get_property (GObject *obj,
 
             gomx = (GOmxCore *) omx_base->gomx;
             _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetParameter(gomx->omx_handle,
-                                         OMX_IndexParamSensorSelect, &config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_TI_IndexConfigSensorSelect, &config);
             g_assert (error_val == OMX_ErrorNone);
             GST_DEBUG_OBJECT (self, "Device src=%d", config.eSensor);
             g_value_set_enum (value, config.eSensor);
