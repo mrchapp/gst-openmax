@@ -97,6 +97,7 @@ enum
     ARG_MIRROR,
     ARG_SATURATION,
     ARG_EXPOSUREVALUE,
+    ARG_MANUALFOCUS,
 #ifdef USE_OMXTICORE
     ARG_THUMBNAIL_WIDTH,
     ARG_THUMBNAIL_HEIGHT,
@@ -136,6 +137,9 @@ enum
 #define MIN_EXPOSURE_VALUE          -3.0
 #define MAX_EXPOSURE_VALUE          3.0
 #define DEFAULT_EXPOSURE_VALUE      0.0
+#define MIN_MANUALFOCUS             0
+#define MAX_MANUALFOCUS             100
+#define DEFAULT_MANUALFOCUS         50
 #ifdef USE_OMXTICORE
 #  define DEFAULT_THUMBNAIL_WIDTH   352
 #  define DEFAULT_THUMBNAIL_HEIGHT  288
@@ -1505,6 +1509,30 @@ set_property (GObject *obj,
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
+        case ARG_MANUALFOCUS:
+        {
+            OMX_IMAGE_CONFIG_FOCUSCONTROLTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigFocusControl, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            config.nPortIndex = omx_base->out_port->port_index;
+            config.eFocusControl = OMX_IMAGE_FocusControlOn;
+            config.nFocusSteps = g_value_get_uint (value);
+            GST_DEBUG_OBJECT (self, "Manual AF: param=%d port=%d value=%d",
+                              config.eFocusControl,
+                              config.nPortIndex,
+                              config.nFocusSteps);
+
+            error_val = OMX_SetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigFocusControl, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
 #ifdef USE_OMXTICORE
         case ARG_THUMBNAIL_WIDTH:
         {
@@ -1912,6 +1940,24 @@ get_property (GObject *obj,
                               config.xEVCompensation);
             break;
         }
+        case ARG_MANUALFOCUS:
+        {
+            OMX_IMAGE_CONFIG_FOCUSCONTROLTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigFocusControl, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            GST_DEBUG_OBJECT (self, "Manual AF: param=%d port=%d value=%d",
+                              config.eFocusControl,
+                              config.nPortIndex,
+                              config.nFocusSteps);
+            g_value_set_uint (value, config.nFocusSteps);
+            break;
+        }
 #ifdef USE_OMXTICORE
         case ARG_THUMBNAIL_WIDTH:
         {
@@ -2217,6 +2263,11 @@ type_class_init (gpointer g_class,
             g_param_spec_float ("exposure-value", "Exposure value",
                     "EVCompensation level", MIN_EXPOSURE_VALUE,
                     MAX_EXPOSURE_VALUE, DEFAULT_EXPOSURE_VALUE,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_MANUALFOCUS,
+            g_param_spec_uint ("manual-focus", "Manual Focus",
+                    "Manual focus level, 0:Infinity  100:Macro",
+                    MIN_MANUALFOCUS, MAX_MANUALFOCUS, DEFAULT_MANUALFOCUS,
                     G_PARAM_READWRITE));
 #ifdef USE_OMXTICORE
     g_object_class_install_property (gobject_class, ARG_THUMBNAIL_WIDTH,
