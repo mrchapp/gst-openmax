@@ -76,7 +76,7 @@ static TableItem element_table[] =
     { "omx_wmvdec",         "libOMX_Core.so",           "OMX.TI.Video.Decoder",         NULL,                   GST_RANK_NONE,      gst_omx_wmvdec_get_type },
     { "omx_mpeg4enc",       "libOMX_Core.so",           "OMX.TI.DUCATI1.VIDEO.MPEG4E",  NULL,                   GST_RANK_PRIMARY,   gst_omx_mpeg4enc_get_type },
     { "omx_h264enc",        "libOMX_Core.so",           "OMX.TI.DUCATI1.VIDEO.H264E",   NULL,                   GST_RANK_PRIMARY,   gst_omx_h264enc_get_type },
-    { "omx_h263enc",        "libOMX_Core.so",           "OMX.TI.Video.encoder",         NULL,                   GST_RANK_NONE,   gst_omx_h263enc_get_type },
+    { "omx_h263enc",        "libOMX_Core.so",           "OMX.TI.DUCATI1.VIDEO.MPEG4E",  NULL,                   GST_RANK_PRIMARY,   gst_omx_h263enc_get_type },
     { "omx_vorbisdec",      "libomxil-bellagio.so.0",   "OMX.st.audio_decoder.ogg.single", NULL,                GST_RANK_NONE,   gst_omx_vorbisdec_get_type },
     { "omx_mp3dec",         "libOMX_Core.so",           "OMX.TI.AUDIO.DECODE",          "audio_decode.dsp.mp3", GST_RANK_NONE,   gst_omx_mp3dec_get_type },
     { "omx_mp2dec",         "libomxil-bellagio.so.0",   "OMX.st.audio_decoder.mp3.mad", NULL,                   GST_RANK_NONE,   gst_omx_mp2dec_get_type },
