@@ -26,6 +26,71 @@
 
 GSTOMX_BOILERPLATE (GstOmxH263Enc, gst_omx_h263enc, GstOmxBaseVideoEnc, GST_OMX_BASE_VIDEOENC_TYPE);
 
+enum
+{
+    ARG_0,
+    ARG_PROFILE,
+    ARG_LEVEL,
+};
+
+#define DEFAULT_PROFILE OMX_VIDEO_H263ProfileBaseline
+#define DEFAULT_LEVEL OMX_VIDEO_H263Level40
+
+#define GST_TYPE_OMX_VIDEO_H263PROFILETYPE (gst_omx_video_h263profiletype_get_type ())
+static GType
+gst_omx_video_h263profiletype_get_type ()
+{
+    static GType type = 0;
+
+    if (!type)
+    {
+        static const GEnumValue vals[] =
+        {
+            {OMX_VIDEO_H263ProfileBaseline,           "Base Profile",        "base"},
+            {OMX_VIDEO_H263ProfileH320Coding,         "H.320 Coding",        "h320"},
+            {OMX_VIDEO_H263ProfileBackwardCompatible, "Backward Compatible", "backward"},
+            {OMX_VIDEO_H263ProfileISWV2,              "ISWV2",               "isw2"},
+            {OMX_VIDEO_H263ProfileISWV3,              "ISWV3",               "isw3"},
+            {OMX_VIDEO_H263ProfileHighCompression,    "High Compression",    "high-compression"},
+            {OMX_VIDEO_H263ProfileInternet,           "Internet",            "internet"},
+            {OMX_VIDEO_H263ProfileInterlace,          "Interlace",           "interlace"},
+            {OMX_VIDEO_H263ProfileHighLatency,        "High Latency",        "high-latency"},
+            {0, NULL, NULL},
+        };
+
+        type = g_enum_register_static ("GstOmxVideoH263Profile", vals);
+    }
+
+    return type;
+}
+
+#define GST_TYPE_OMX_VIDEO_H263LEVELTYPE (gst_omx_video_h263leveltype_get_type ())
+static GType
+gst_omx_video_h263leveltype_get_type ()
+{
+    static GType type = 0;
+
+    if (!type)
+    {
+        static const GEnumValue vals[] =
+        {
+            {OMX_VIDEO_H263Level10,       "Level 10",        "level-10"},
+            {OMX_VIDEO_H263Level20,       "Level 20",        "level-20"},
+            {OMX_VIDEO_H263Level30,       "Level 30",        "level-30"},
+            {OMX_VIDEO_H263Level40,       "Level 40",        "level-40"},
+            {OMX_VIDEO_H263Level45,       "Level 45",        "level-45"},
+            {OMX_VIDEO_H263Level50,       "Level 50",        "level-50"},
+            {OMX_VIDEO_H263Level60,       "Level 60",        "level-60"},
+            {OMX_VIDEO_H263Level70,       "Level 70",        "level-70"},
+            {0, NULL, NULL},
+        };
+
+        type = g_enum_register_static ("GstOmxVideoH263Level", vals);
+    }
+
+    return type;
+}
+
 static GstCaps *
 generate_src_template (void)
 {
@@ -71,9 +136,129 @@ type_base_init (gpointer g_class)
 }
 
 static void
+set_property (GObject *obj,
+              guint prop_id,
+              const GValue *value,
+              GParamSpec *pspec)
+{
+    GstOmxBaseFilter *omx_base;
+    GstOmxH263Enc *self;
+
+    omx_base = GST_OMX_BASE_FILTER (obj);
+    self = GST_OMX_H263ENC (obj);
+
+    switch (prop_id)
+    {
+        case ARG_PROFILE:
+        {
+            self->profile = g_value_get_enum (value);
+            break;
+        }
+        case ARG_LEVEL:
+        {
+            self->level = g_value_get_enum (value);
+            break;
+        }
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
+            break;
+    }
+}
+
+static void
+get_property (GObject *obj,
+              guint prop_id,
+              GValue *value,
+              GParamSpec *pspec)
+{
+    GstOmxBaseFilter *omx_base;
+    GstOmxH263Enc *self;
+
+    omx_base = GST_OMX_BASE_FILTER (obj);
+    self = GST_OMX_H263ENC (obj);
+
+    switch (prop_id)
+    {
+        case ARG_PROFILE:
+        {
+            g_value_set_enum (value, self->profile);
+            break;
+        }
+        case ARG_LEVEL:
+        {
+            g_value_set_enum (value, self->level);
+            break;
+        }
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
+            break;
+    }
+}
+
+static void
 type_class_init (gpointer g_class,
                  gpointer class_data)
 {
+    GObjectClass *gobject_class;
+
+    gobject_class = G_OBJECT_CLASS (g_class);
+    /* Properties stuff */
+    {
+        gobject_class->set_property = set_property;
+        gobject_class->get_property = get_property;
+
+        g_object_class_install_property (gobject_class, ARG_PROFILE,
+                    g_param_spec_enum ("profile", "H.263 Profile",
+                    "H.263 Profile",
+                    GST_TYPE_OMX_VIDEO_H263PROFILETYPE,
+                    DEFAULT_PROFILE,
+                    G_PARAM_READWRITE));
+        g_object_class_install_property (gobject_class, ARG_LEVEL,
+                    g_param_spec_enum ("level", "H.263 Level",
+                    "H.263 Level",
+                    GST_TYPE_OMX_VIDEO_H263LEVELTYPE,
+                    DEFAULT_LEVEL,
+                    G_PARAM_READWRITE));
+    }
+}
+
+static void
+omx_setup (GstOmxBaseFilter *omx_base)
+{
+    GstOmxH263Enc *self;
+    GOmxCore *gomx;
+
+    self = GST_OMX_H263ENC (omx_base);
+    gomx = (GOmxCore *) omx_base->gomx;
+
+    GST_INFO_OBJECT (omx_base, "begin");
+    {
+        OMX_VIDEO_PARAM_H263TYPE tParamH263Type;
+        OMX_ERRORTYPE error_val = OMX_ErrorNone;
+        _G_OMX_INIT_PARAM (&tParamH263Type);
+        tParamH263Type.nPortIndex = omx_base->out_port->port_index;
+        error_val = OMX_GetParameter (gomx->omx_handle,
+                                      OMX_IndexParamVideoH263,
+                                      &tParamH263Type);
+        g_assert (error_val == OMX_ErrorNone);
+        if (self->profile != 0)
+            tParamH263Type.eProfile = self->profile;
+        else
+            tParamH263Type.eProfile = DEFAULT_PROFILE;
+        GST_DEBUG_OBJECT (self, "Profile: param=%d",
+                          (gint)tParamH263Type.eProfile);
+        if (self->level != 0)
+            tParamH263Type.eLevel = self->level;
+        else
+            tParamH263Type.eLevel = DEFAULT_LEVEL;
+        GST_DEBUG_OBJECT (self, "Level: param=%d",
+                          (gint)tParamH263Type.eLevel);
+        error_val = OMX_SetParameter (gomx->omx_handle,
+                                      OMX_IndexParamVideoH263,
+                                      &tParamH263Type);
+        g_assert (error_val == OMX_ErrorNone);
+    }
+    GST_INFO_OBJECT (omx_base, "end");
 }
 
 static void
@@ -129,6 +314,8 @@ type_instance_init (GTypeInstance *instance,
 
     omx_base_filter = GST_OMX_BASE_FILTER (instance);
     omx_base = GST_OMX_BASE_VIDEOENC (instance);
+
+    omx_base->omx_setup = omx_setup;
 
     omx_base->compression_format = OMX_VIDEO_CodingH263;
 

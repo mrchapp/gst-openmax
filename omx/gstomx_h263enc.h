@@ -37,6 +37,8 @@ typedef struct GstOmxH263EncClass GstOmxH263EncClass;
 struct GstOmxH263Enc
 {
     GstOmxBaseVideoEnc omx_base;
+    OMX_VIDEO_H263PROFILETYPE profile;
+    OMX_VIDEO_H263LEVELTYPE level;
 };
 
 struct GstOmxH263EncClass
