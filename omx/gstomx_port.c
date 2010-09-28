@@ -489,7 +489,10 @@ send_prep_eos_event (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer, GstEvent 
          * if they do something stupid like read from the empty buffer:
          */
         omx_buffer->pBuffer    = (OMX_U8 *)1;
-        omx_buffer->nAllocLen  = 0;
+        /* TODO: Temporary hack as OMX currently complains about
+         * non-zero nAllocLen. Need to be removed once aligned with OMX.
+         */
+        /* omx_buffer->nAllocLen  = 0; */
     }
 }
 
