@@ -45,8 +45,16 @@ struct GstOmxCamera
     gint mode, next_mode;
     gint shutter;
     gint img_count;
+#ifdef USE_OMXTICORE
     gint img_thumbnail_width;
     gint img_thumbnail_height;
+    gint img_focusregion_width;
+    gint img_focusregion_height;
+    gint img_regioncenter_x;
+    gint img_regioncenter_y;
+    gdouble click_x;
+    gdouble click_y;
+#endif
 
     gint rowstride;     /**< rowstride of preview/video buffer */
 
