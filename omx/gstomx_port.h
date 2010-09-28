@@ -66,6 +66,9 @@ struct GOmxPort
 
     /** nOffset value of the last received (input) or next sent (output) port */
     guint n_offset;     /* a bit ugly.. but..  */
+
+    /** variable to indicate if the conversion from elementary to intermediate video data is done */
+    gboolean vp6_hack;  /* only needed for vp6 */
 };
 
 /* Macros. */
