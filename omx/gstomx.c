@@ -57,6 +57,7 @@
 #include "config.h"
 
 GST_DEBUG_CATEGORY (gstomx_debug);
+GST_DEBUG_CATEGORY (gstomx_ppm);
 
 typedef struct TableItem
 {
@@ -114,6 +115,8 @@ plugin_init (GstPlugin *plugin)
     GQuark component_role_quark;
     GST_DEBUG_CATEGORY_INIT (gstomx_debug, "omx", 0, "gst-openmax");
     GST_DEBUG_CATEGORY_INIT (gstomx_util_debug, "omx_util", 0, "gst-openmax utility");
+    GST_DEBUG_CATEGORY_INIT (gstomx_ppm, "omx_ppm", 0,
+                             "gst-openmax performance");
 
     library_name_quark = g_quark_from_static_string ("library-name");
     component_name_quark = g_quark_from_static_string ("component-name");

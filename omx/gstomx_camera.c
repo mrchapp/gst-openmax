@@ -31,6 +31,11 @@
 #  include <OMX_TI_Index.h>
 #endif
 
+#include <stdint.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <linux/timer-32k.h>
+
 /**
  * SECTION:element-omx_camerasrc
  *
@@ -1125,6 +1130,8 @@ start_ports (GstOmxCamera *self)
 #ifdef USE_GSTOMXCAM_IMGSRCPAD
     if (config[self->mode] & PORT_IMAGE)
     {
+        guint32 capture_start_time;
+
         GST_DEBUG_OBJECT (self, "enable image port");
         gst_pad_set_active (self->imgsrcpad, TRUE);
         gst_element_add_pad (GST_ELEMENT_CAST (self), self->imgsrcpad);
@@ -1134,6 +1141,11 @@ start_ports (GstOmxCamera *self)
         g_omx_port_enable (self->img_port);
 
         GST_DEBUG_OBJECT (self, "image port set_capture set to  %d", TRUE);
+
+        capture_start_time = omap_32k_readraw();
+        GST_CAT_INFO_OBJECT (gstomx_ppm, self, "%d Start Image Capture",
+                             capture_start_time);
+
         set_capture (self, TRUE);
     }
 #endif

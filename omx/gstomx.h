@@ -28,6 +28,7 @@ G_BEGIN_DECLS
 
 GST_DEBUG_CATEGORY_EXTERN (gstomx_debug);
 GST_DEBUG_CATEGORY_EXTERN (gstomx_util_debug);
+GST_DEBUG_CATEGORY_EXTERN (gstomx_ppm);
 #define GST_CAT_DEFAULT gstomx_debug
 
 G_END_DECLS
