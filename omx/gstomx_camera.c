@@ -219,8 +219,8 @@ static const enum
     /* MODE_PREVIEW */            PORT_PREVIEW,
     /* MODE_VIDEO */              PORT_PREVIEW,
     /* MODE_VIDEO_IMAGE */        PORT_PREVIEW | PORT_IMAGE,
-    /* MODE_IMAGE */              PORT_PREVIEW | PORT_VIDEO | PORT_IMAGE,
-    /* MODE_IMAGE_HS */           PORT_PREVIEW | PORT_VIDEO | PORT_IMAGE,
+    /* MODE_IMAGE */              PORT_PREVIEW | PORT_IMAGE,
+    /* MODE_IMAGE_HS */           PORT_PREVIEW | PORT_IMAGE,
 };
 
 
