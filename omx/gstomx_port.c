@@ -431,7 +431,9 @@ send_prep_buffer_data (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer, GstBuff
         omx_buffer->nOffset     = port->n_offset;
         omx_buffer->pBuffer     = GST_BUFFER_DATA (buf);
         omx_buffer->nFilledLen  = GST_BUFFER_SIZE (buf);
-        omx_buffer->nAllocLen   = GST_BUFFER_SIZE (buf);
+        /* Temp hack to not update nAllocLen for each ETB/FTB till we
+         * find a cleaner solution to get padded width and height */
+        /* omx_buffer->nAllocLen   = GST_BUFFER_SIZE (buf); */
         omx_buffer->pAppPrivate = gst_buffer_ref (buf);
 
         /* special hack.. this should be removed: */
