@@ -125,7 +125,7 @@ enum
 
 #define DEFAULT_ZOOM_LEVEL          100
 #define MIN_ZOOM_LEVEL              100
-#define MAX_ZOOM_LEVEL              600
+#define MAX_ZOOM_LEVEL              800
 #define CAM_ZOOM_IN_STEP            65536
 #define DEFAULT_FOCUS               OMX_IMAGE_FocusControlOff
 #define DEFAULT_AWB                 OMX_WhiteBalControlOff
