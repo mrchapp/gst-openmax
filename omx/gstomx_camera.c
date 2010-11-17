@@ -1298,7 +1298,7 @@ gst_camera_handle_src_event (GstPad * pad, GstEvent * event)
                                    OMX_IndexConfigFocusControl, &config);
         g_assert (error_val == OMX_ErrorNone);
         config.nPortIndex = omx_base->out_port->port_index;
-        config.eFocusControl = OMX_TI_IMAGE_FocusRegionPriorityMode;
+        config.eFocusControl = OMX_IMAGE_FocusRegionPriorityMode;
 
         GST_DEBUG_OBJECT (self, "FocusRegion: Mode=%d Left=%d Top=%d "
                           "Width=%d Height=%d", config.eFocusControl,
@@ -2101,7 +2101,7 @@ set_property (GObject *obj,
                                        OMX_IndexConfigFocusControl, &config);
             g_assert (error_val == OMX_ErrorNone);
             config.nPortIndex = omx_base->out_port->port_index;
-            config.eFocusControl = OMX_TI_IMAGE_FocusRegionPriorityMode;
+            config.eFocusControl = OMX_IMAGE_FocusRegionPriorityMode;
 
             GST_DEBUG_OBJECT (self, "FocusRegion: Mode=%d Left=%d Top=%d "
                               "Width=%d Height=%d", config.eFocusControl,
@@ -2152,7 +2152,7 @@ set_property (GObject *obj,
                                        OMX_IndexConfigFocusControl, &config);
             g_assert (error_val == OMX_ErrorNone);
             config.nPortIndex = omx_base->out_port->port_index;
-            config.eFocusControl = OMX_TI_IMAGE_FocusRegionPriorityMode;
+            config.eFocusControl = OMX_IMAGE_FocusRegionPriorityMode;
 
             GST_DEBUG_OBJECT (self, "FocusRegion: Mode=%d Left=%d Top=%d "
                               "Width=%d Height=%d", config.eFocusControl,
