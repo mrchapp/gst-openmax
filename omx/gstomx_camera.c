@@ -120,6 +120,7 @@ enum
     ARG_FOCUSSPOT_WEIGHT,
     ARG_WIDTHFOCUSREGION,
     ARG_HEIGHTFOCUSREGION,
+    ARG_SHARPNESS,
 #endif
 };
 
@@ -170,6 +171,9 @@ enum
 #  define DEFAULT_FOCUSREGION       1
 #  define DEFAULT_FOCUSREGIONWIDTH  176
 #  define DEFAULT_FOCUSREGIONHEIGHT 144
+#  define MIN_SHARPNESS_VALUE       -100
+#  define MAX_SHARPNESS_VALUE       100
+#  define DEFAULT_SHARPNESS_VALUE   0
 #endif
 
 
@@ -2168,6 +2172,30 @@ set_property (GObject *obj,
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
+        case ARG_SHARPNESS:
+        {
+            OMX_IMAGE_CONFIG_PROCESSINGLEVELTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigSharpeningLevel, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            config.nPortIndex = omx_base->out_port->port_index;
+            config.nLevel = g_value_get_int (value);
+            if (config.nLevel == 0)
+                config.bAuto = OMX_TRUE;
+            else
+                config.bAuto = OMX_FALSE;
+            GST_DEBUG_OBJECT (self, "Sharpness: value=%d", config.nLevel);
+
+            error_val = OMX_SetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigSharpeningLevel, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
 #endif
         default:
         {
@@ -2643,6 +2671,23 @@ get_property (GObject *obj,
             g_value_set_uint (value, ext_config.nHeight);
             break;
         }
+        case ARG_SHARPNESS:
+        {
+            OMX_IMAGE_CONFIG_PROCESSINGLEVELTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_IndexConfigSharpeningLevel, &config);
+            g_assert (error_val == OMX_ErrorNone);
+            GST_DEBUG_OBJECT (self, "Sharpness: value=%d  bAuto=%d",
+                              config.nLevel, config.bAuto);
+            g_value_set_int (value, config.nLevel);
+            break;
+        }
 #endif
         default:
         {
@@ -2881,6 +2926,11 @@ type_class_init (gpointer g_class,
             g_param_spec_uint ("focusregion-height", "Height Focus Region",
                     "Height focus region", MIN_FOCUSREGION,
                     MAX_FOCUSREGION, DEFAULT_FOCUSREGION,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_SHARPNESS,
+            g_param_spec_int ("sharpness", "Sharpness value",
+                    "Sharpness value, 0:automatic mode)", MIN_SHARPNESS_VALUE,
+                    MAX_SHARPNESS_VALUE, DEFAULT_SHARPNESS_VALUE,
                     G_PARAM_READWRITE));
 #endif
 }
