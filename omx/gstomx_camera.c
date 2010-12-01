@@ -103,6 +103,7 @@ enum
     ARG_SATURATION,
     ARG_EXPOSUREVALUE,
     ARG_MANUALFOCUS,
+    ARG_QFACTORJPEG,
 #ifdef USE_OMXTICORE
     ARG_THUMBNAIL_WIDTH,
     ARG_THUMBNAIL_HEIGHT,
@@ -151,6 +152,9 @@ enum
 #define MIN_MANUALFOCUS             0
 #define MAX_MANUALFOCUS             100
 #define DEFAULT_MANUALFOCUS         50
+#define MIN_QFACTORJPEG             1
+#define MAX_QFACTORJPEG             100
+#define DEFAULT_QFACTORJPEG         75
 #ifdef USE_OMXTICORE
 #  define DEFAULT_THUMBNAIL_WIDTH   352
 #  define DEFAULT_THUMBNAIL_HEIGHT  288
@@ -1803,6 +1807,31 @@ set_property (GObject *obj,
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
+        case ARG_QFACTORJPEG:
+        {
+            OMX_IMAGE_PARAM_QFACTORTYPE param;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&param);
+            param.nPortIndex = self->img_port->port_index;
+            error_val = OMX_GetParameter (gomx->omx_handle,
+                                          OMX_IndexParamQFactor, &param);
+            GST_DEBUG_OBJECT (self, "Q Factor JPEG Error = %lu", error_val);
+            g_assert (error_val == OMX_ErrorNone);
+            param.nPortIndex = self->img_port->port_index;
+            param.nQFactor = g_value_get_uint (value);
+            GST_DEBUG_OBJECT (self, "Q Factor JPEG: port=%d value=%d",
+                              param.nPortIndex,
+                              param.nQFactor);
+
+            error_val = OMX_SetParameter (gomx->omx_handle,
+                                          OMX_IndexParamQFactor, &param);
+            GST_DEBUG_OBJECT (self, "Q Factor JPEG Error = %lu", error_val);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
 #ifdef USE_OMXTICORE
         case ARG_THUMBNAIL_WIDTH:
         {
@@ -2419,6 +2448,25 @@ get_property (GObject *obj,
             g_value_set_uint (value, config.nFocusSteps);
             break;
         }
+        case ARG_QFACTORJPEG:
+        {
+            OMX_IMAGE_PARAM_QFACTORTYPE param;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&param);
+            param.nPortIndex = self->img_port->port_index;
+            error_val = OMX_GetParameter (gomx->omx_handle,
+                                          OMX_IndexParamQFactor, &param);
+            GST_DEBUG_OBJECT (self, "Q Factor JPEG Error: port=%lu", error_val);
+            g_assert (error_val == OMX_ErrorNone);
+            GST_DEBUG_OBJECT (self, "Q Factor JPEG: port=%d value=%d",
+                              param.nPortIndex,
+                              param.nQFactor);
+            g_value_set_uint (value, param.nQFactor);
+            break;
+        }
 #ifdef USE_OMXTICORE
         case ARG_THUMBNAIL_WIDTH:
         {
@@ -2837,6 +2885,11 @@ type_class_init (gpointer g_class,
             g_param_spec_uint ("manual-focus", "Manual Focus",
                     "Manual focus level, 0:Infinity  100:Macro",
                     MIN_MANUALFOCUS, MAX_MANUALFOCUS, DEFAULT_MANUALFOCUS,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_QFACTORJPEG,
+            g_param_spec_uint ("qfactor", "Q Factor JPEG",
+                    "JPEG Q Factor level, 1:Highest compression  100:Best quality",
+                    MIN_QFACTORJPEG, MAX_QFACTORJPEG, DEFAULT_QFACTORJPEG,
                     G_PARAM_READWRITE));
 #ifdef USE_OMXTICORE
     g_object_class_install_property (gobject_class, ARG_THUMBNAIL_WIDTH,
