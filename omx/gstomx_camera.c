@@ -618,6 +618,7 @@ src_setcaps (GstPad *pad, GstCaps *caps)
     gint width, height, rowstride;
     gint framerate_num, framerate_denom;
     const GValue *framerate = NULL;
+    OMX_ERRORTYPE err;
 
     if (!self)
     {
@@ -635,36 +636,81 @@ src_setcaps (GstPad *pad, GstCaps *caps)
     {
         /* Output port configuration: */
         OMX_PARAM_PORTDEFINITIONTYPE param;
+        gboolean configure_port = FALSE;
 
         G_OMX_PORT_GET_DEFINITION (omx_base->out_port, &param);
 
-        param.format.video.eColorFormat = g_omx_gstvformat_to_colorformat (format);
-        param.format.video.nFrameWidth  = width;
-        param.format.video.nFrameHeight = height;
-        param.format.video.nStride      = self->rowstride = rowstride;
+        if ((param.format.video.nFrameWidth != width) ||
+           (param.format.video.nFrameHeight != height) ||
+           (param.format.video.nStride != rowstride))
+        {
+            param.format.video.nFrameWidth  = width;
+            param.format.video.nFrameHeight = height;
+            param.format.video.nStride      = self->rowstride = rowstride;
+            configure_port = TRUE;
+        }
+
         param.nBufferSize = gst_video_format_get_size_strided (format, width, height, rowstride);
 
         /* special hack to work around OMX camera bug:
          */
-        if (param.format.video.eColorFormat == OMX_COLOR_FormatYUV420PackedSemiPlanar)
-            param.format.video.eColorFormat = OMX_COLOR_FormatYUV420SemiPlanar;
+        if (param.format.video.eColorFormat != g_omx_gstvformat_to_colorformat (format))
+        {
+            if (g_omx_gstvformat_to_colorformat (format) == OMX_COLOR_FormatYUV420PackedSemiPlanar)
+            {
+                if (param.format.video.eColorFormat != OMX_COLOR_FormatYUV420SemiPlanar)
+                {
+                    param.format.video.eColorFormat = OMX_COLOR_FormatYUV420SemiPlanar;
+                    configure_port = TRUE;
+                }
+            }
+            else
+            {
+                param.format.video.eColorFormat = g_omx_gstvformat_to_colorformat (format);
+                configure_port = TRUE;
+            }
+        }
 
         framerate = gst_structure_get_value (
                 gst_caps_get_structure (caps, 0), "framerate");
 
         if (framerate)
         {
+            guint32 xFramerate;
             framerate_num = gst_value_get_fraction_numerator (framerate);
             framerate_denom = gst_value_get_fraction_denominator (framerate);
 
-            param.format.video.xFramerate = (framerate_num << 16) / framerate_denom;
-        }
+            xFramerate = (framerate_num << 16) / framerate_denom;
+
+            if (param.format.video.xFramerate != xFramerate)
+            {
+                param.format.video.xFramerate = xFramerate;
+                configure_port = TRUE;
+            }
+         }
 
         /* At the moment we are only using preview port and not vid_port
          * From omx camera desing document we are missing
          * SetParam CommonSensormode -> bOneShot = FALSE ?
          */
-        G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
+
+        if (configure_port)
+        {
+            gboolean port_enabled = FALSE;
+
+            if (omx_base->out_port->enabled && (omx_base->gomx->omx_state != OMX_StateLoaded))
+            {
+                g_omx_port_disable (omx_base->out_port);
+                port_enabled = TRUE;
+            }
+
+            err = G_OMX_PORT_SET_DEFINITION (omx_base->out_port, &param);
+            if (err != OMX_ErrorNone)
+                return FALSE;
+
+            if (port_enabled)
+                g_omx_port_enable (omx_base->out_port);
+        }
 
         GST_INFO_OBJECT (omx_base, " Rowstride=%d, Width=%d, Height=%d, Color=%d, Buffersize=%d, framerate=%d",
             param.format.video.nStride, param.format.video.nFrameWidth, param.format.video.nFrameHeight, param.format.video.eColorFormat, param.nBufferSize,param.format.video.xFramerate );
@@ -674,7 +720,9 @@ src_setcaps (GstPad *pad, GstCaps *caps)
         self->img_regioncenter_y = (param.format.video.nFrameHeight / 2);
 #endif
 
-        gst_pad_set_caps (GST_BASE_SRC (self)->srcpad, caps);
+        if  (!gst_pad_set_caps (GST_BASE_SRC (self)->srcpad, caps))
+            return FALSE;
+
 #if 0
         /* force the src pad and vidsrc pad to use the same caps: */
         if (pad == self->vidsrcpad)
@@ -930,6 +978,12 @@ settings_changed (GstElement *self, GstPad *pad)
     if (!gst_caps_is_fixed (new_caps))
     {
         gst_caps_do_simplify (new_caps);
+
+        if (gst_caps_is_subset (GST_PAD_CAPS(pad), new_caps))
+        {
+            gst_caps_replace (&new_caps, GST_PAD_CAPS(pad));
+        }
+
         GST_INFO_OBJECT (self, "%"GST_PTR_FORMAT": pre-fixated caps: %" GST_PTR_FORMAT, pad, new_caps);
         gst_pad_fixate_caps (pad, new_caps);
     }
@@ -938,6 +992,7 @@ settings_changed (GstElement *self, GstPad *pad)
     GST_INFO_OBJECT (self, "%"GST_PTR_FORMAT": old caps are: %" GST_PTR_FORMAT, pad, GST_PAD_CAPS (pad));
 
     gst_pad_set_caps (pad, new_caps);
+    gst_caps_unref (new_caps);
 }
 
 static void
