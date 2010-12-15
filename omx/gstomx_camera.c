@@ -124,6 +124,7 @@ enum
     ARG_WIDTHFOCUSREGION,
     ARG_HEIGHTFOCUSREGION,
     ARG_SHARPNESS,
+    ARG_CAC,
 #endif
 };
 
@@ -2347,6 +2348,22 @@ set_property (GObject *obj,
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
+        case ARG_CAC:
+        {
+            OMX_CONFIG_BOOLEANTYPE param;
+
+            G_OMX_CORE_GET_PARAM (omx_base->gomx,
+                                  OMX_IndexConfigChromaticAberrationCorrection,
+                                  &param);
+
+            param.bEnabled = g_value_get_boolean (value);
+            GST_DEBUG_OBJECT (self, "Chromatic Aberration Correction: param=%d",
+                              param.bEnabled);
+            G_OMX_CORE_SET_PARAM (omx_base->gomx,
+                                  OMX_IndexConfigChromaticAberrationCorrection,
+                                  &param);
+            break;
+        }
 #endif
         default:
         {
@@ -2858,6 +2875,18 @@ get_property (GObject *obj,
             g_value_set_int (value, config.nLevel);
             break;
         }
+        case ARG_CAC:
+        {
+            OMX_CONFIG_BOOLEANTYPE param;
+
+            G_OMX_CORE_GET_PARAM (omx_base->gomx,
+                                  OMX_IndexConfigChromaticAberrationCorrection,
+                                  &param);
+            GST_DEBUG_OBJECT (self, "Chromatic Aberration Correction: param=%d",
+                              param.bEnabled);
+            g_value_set_boolean (value, param.bEnabled);
+            break;
+        }
 #endif
         default:
         {
@@ -3106,6 +3135,11 @@ type_class_init (gpointer g_class,
             g_param_spec_int ("sharpness", "Sharpness value",
                     "Sharpness value, 0:automatic mode)", MIN_SHARPNESS_VALUE,
                     MAX_SHARPNESS_VALUE, DEFAULT_SHARPNESS_VALUE,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_CAC,
+            g_param_spec_boolean ("cac", "Chromatic Aberration Correction",
+                    "Chromatic Aberration Correction state",
+                    FALSE,
                     G_PARAM_READWRITE));
 #endif
 }
