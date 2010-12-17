@@ -35,6 +35,8 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <linux/timer-32k.h>
+#include <OMX_CoreExt.h>
+#include <OMX_IndexExt.h>
 
 /**
  * SECTION:element-omx_camerasrc
@@ -1016,6 +1018,33 @@ settings_changed_cb (GOmxCore *core)
 }
 
 static void
+autofocus_cb (GstOmxCamera *self)
+{
+    guint32 autofocus_cb_time;
+
+    GstStructure *structure = gst_structure_new ("omx_camera",
+            "auto-focus", G_TYPE_BOOLEAN, TRUE, NULL);
+
+    GstMessage *message = gst_message_new_element (GST_OBJECT (self),
+            structure);
+
+    gst_element_post_message (GST_ELEMENT (self), message);
+
+    autofocus_cb_time = omap_32k_readraw ();
+    GST_CAT_INFO_OBJECT (gstomx_ppm, GST_OBJECT (self), "%d Autofocus locked",
+                         autofocus_cb_time);
+}
+
+static void
+index_settings_changed_cb (GOmxCore *core, gint data1, gint data2)
+{
+    GstOmxCamera *self = core->object;
+
+    if (data2 == OMX_IndexConfigCommonFocusStatus)
+        autofocus_cb (self);
+}
+
+static void
 setup_ports (GstOmxBaseSrc *base_src)
 {
     GstOmxCamera *self = GST_OMX_CAMERA (base_src);
@@ -1645,11 +1674,13 @@ set_property (GObject *obj,
         case ARG_FOCUS:
         {
             OMX_IMAGE_CONFIG_FOCUSCONTROLTYPE config;
+            OMX_CONFIG_CALLBACKREQUESTTYPE focusreq_cb;
             GOmxCore *gomx;
             OMX_ERRORTYPE error_val = OMX_ErrorNone;
 
             gomx = (GOmxCore *) omx_base->gomx;
             _G_OMX_INIT_PARAM (&config);
+            _G_OMX_INIT_PARAM (&focusreq_cb);
             error_val = OMX_GetConfig(gomx->omx_handle,
                                        OMX_IndexConfigFocusControl, &config);
             g_assert (error_val == OMX_ErrorNone);
@@ -1661,6 +1692,41 @@ set_property (GObject *obj,
             error_val = OMX_SetConfig (gomx->omx_handle,
                                        OMX_IndexConfigFocusControl, &config);
             g_assert (error_val == OMX_ErrorNone);
+
+            if (config.eFocusControl == OMX_IMAGE_FocusControlAutoLock)
+                focusreq_cb.bEnable = OMX_TRUE;
+            else
+                focusreq_cb.bEnable = OMX_FALSE;
+
+            if (omx_base->gomx->omx_state == OMX_StateExecuting)
+            {
+                guint32 autofocus_start_time;
+
+                focusreq_cb.nPortIndex = OMX_ALL;
+                focusreq_cb.nIndex = OMX_IndexConfigCommonFocusStatus;
+
+                error_val = OMX_SetConfig (gomx->omx_handle,
+                                           OMX_IndexConfigCallbackRequest,
+                                           &focusreq_cb);
+                g_assert (error_val == OMX_ErrorNone);
+                GST_DEBUG_OBJECT (self, "AF_cb: enable=%d port=%d",
+                                  focusreq_cb.bEnable, focusreq_cb.nPortIndex);
+
+                if (config.eFocusControl == OMX_IMAGE_FocusControlAutoLock)
+                {
+                    GstStructure *structure = gst_structure_new ("omx_camera",
+                            "auto-focus", G_TYPE_BOOLEAN, FALSE, NULL);
+
+                    GstMessage *message = gst_message_new_element (
+                            GST_OBJECT (self), structure);
+
+                    gst_element_post_message (GST_ELEMENT (self), message);
+
+                    autofocus_start_time = omap_32k_readraw ();
+                    GST_CAT_INFO_OBJECT (gstomx_ppm, self,
+                            "%d Autofocus started", autofocus_start_time);
+                }
+            }
             break;
         }
         case ARG_AWB:
@@ -3121,6 +3187,7 @@ type_instance_init (GTypeInstance *instance,
     omx_base->setup_ports = setup_ports;
 
     omx_base->gomx->settings_changed_cb = settings_changed_cb;
+    omx_base->gomx->index_settings_changed_cb = index_settings_changed_cb;
 
     omx_base->gomx->use_timestamps = TRUE;
 

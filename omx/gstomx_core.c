@@ -29,6 +29,8 @@
 #  include <OMX_TI_Core.h>
 #endif
 
+#include <OMX_CoreExt.h>
+
 GST_DEBUG_CATEGORY_EXTERN (gstomx_util_debug);
 
 /*
@@ -618,6 +620,16 @@ EventHandler (OMX_HANDLETYPE omx_handle,
                 if (core->settings_changed_cb)
                 {
                     core->settings_changed_cb (core);
+                }
+                break;
+            }
+        case OMX_EventIndexSettingChanged:
+            {
+                GST_DEBUG_OBJECT (core->object,
+                        "OMX_EventIndexSettingsChanged");
+                if (core->index_settings_changed_cb)
+                {
+                    core->index_settings_changed_cb (core, data_1, data_2);
                 }
                 break;
             }

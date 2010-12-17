@@ -30,6 +30,7 @@ G_BEGIN_DECLS
 /* Typedefs. */
 
 typedef void (*GOmxCb) (GOmxCore *core);
+typedef void (*GOmxCbargs2) (GOmxCore *core, gint data1, gint data2);
 
 /* Structures. */
 
@@ -51,6 +52,8 @@ struct GOmxCore
     GSem *port_sem;
 
     GOmxCb settings_changed_cb;
+    GOmxCbargs2 index_settings_changed_cb;
+
     GOmxImp *imp;
 
     gboolean done;
