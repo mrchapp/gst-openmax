@@ -74,6 +74,7 @@ gst_omx_video_mpeg4leveltype_get_type ()
             {OMX_VIDEO_MPEG4Level4,     "Level 4",  "level-4"},
             {OMX_VIDEO_MPEG4Level4a,    "Level 4a", "level-4a"},
             {OMX_VIDEO_MPEG4Level5,     "Level 5",  "level-5"},
+            {OMX_TI_VIDEO_MPEG4Level6,  "Level 6",  "level-6"},
             {0, NULL, NULL },
         };
 
