@@ -1509,8 +1509,9 @@ create (GstBaseSrc *gst_base,
 
     if (n_offset)
     {
-        vstab_evt = gst_event_new_vstab (n_offset / self->rowstride, /* top */
-                n_offset % self->rowstride); /* left */
+        vstab_evt = gst_event_new_crop (n_offset / self->rowstride, /* top */
+                n_offset % self->rowstride, /* left */
+                -1, -1); /* width/height: we can just give invalid for now */
         gst_pad_push_event (GST_BASE_SRC (self)->srcpad,
                 gst_event_ref (vstab_evt));
     }

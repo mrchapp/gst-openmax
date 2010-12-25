@@ -303,10 +303,10 @@ pad_event (GstPad *pad, GstEvent *event)
 
     switch (GST_EVENT_TYPE (event))
     {
-        case GST_EVENT_VSTAB:
+        case GST_EVENT_CROP:
         {
             gint top, left;
-            gst_event_parse_vstab (event, &top, &left);
+            gst_event_parse_crop (event, &top, &left, NULL, NULL);
 
             omx_base->in_port->n_offset = (self->rowstride * top) + left;
 

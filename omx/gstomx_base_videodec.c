@@ -77,8 +77,9 @@ push_buffer (GstOmxBaseFilter *omx_base, GstBuffer *buf)
     if (n_offset)
     {
         gst_pad_push_event (omx_base->srcpad,
-                gst_event_new_vstab (n_offset / self->rowstride, /* top */
-                        n_offset % self->rowstride)); /* left */
+                gst_event_new_crop (n_offset / self->rowstride, /* top */
+                        n_offset % self->rowstride, /* left */
+                        -1, -1)); /* width/height: can be invalid for now */
     }
     return parent_class->push_buffer (omx_base, buf);
 }
