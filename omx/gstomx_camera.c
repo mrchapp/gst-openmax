@@ -1287,6 +1287,8 @@ stop_ports (GstOmxCamera *self)
 #endif
 }
 
+#define CALC_RELATIVE(mult, image_size, chunk_size) ((mult * chunk_size) / image_size)
+
 #ifdef USE_OMXTICORE
 static gboolean
 gst_camera_handle_src_event (GstPad * pad, GstEvent * event)
@@ -1360,13 +1362,24 @@ gst_camera_handle_src_event (GstPad * pad, GstEvent * event)
     {
         OMX_IMAGE_CONFIG_FOCUSCONTROLTYPE config;
         OMX_CONFIG_EXTFOCUSREGIONTYPE ext_config;
+        OMX_PARAM_PORTDEFINITIONTYPE param;
         GOmxCore *gomx;
+        gint prv_width, prv_height;
         OMX_ERRORTYPE error_val = OMX_ErrorNone;
         new_focus_setting = 0;
 
         gomx = (GOmxCore *) omx_base->gomx;
         _G_OMX_INIT_PARAM (&config);
         _G_OMX_INIT_PARAM (&ext_config);
+        _G_OMX_INIT_PARAM (&param);
+
+        param.nPortIndex = omx_base->out_port->port_index;
+        error_val = OMX_GetParameter (omx_base->gomx->omx_handle,
+                OMX_IndexParamPortDefinition, &param);
+        g_assert (error_val == OMX_ErrorNone);
+
+        prv_width = param.format.video.nFrameWidth;
+        prv_height = param.format.video.nFrameHeight;
 
         error_val = OMX_GetConfig (gomx->omx_handle,
                                    OMX_IndexConfigExtFocusRegion,
@@ -1394,6 +1407,17 @@ gst_camera_handle_src_event (GstPad * pad, GstEvent * event)
         config.eFocusControl = OMX_IMAGE_FocusRegionPriorityMode;
 
         GST_DEBUG_OBJECT (self, "FocusRegion: Mode=%d Left=%d Top=%d "
+                          "Width=%d Height=%d", config.eFocusControl,
+                          ext_config.nLeft, ext_config.nTop,
+                          ext_config.nWidth, ext_config.nHeight);
+
+        /* Calculate the coordinates relative with a base of 255 */
+        ext_config.nTop    = CALC_RELATIVE(255, prv_height, ext_config.nTop);
+        ext_config.nLeft   = CALC_RELATIVE(255, prv_width, ext_config.nLeft);
+        ext_config.nWidth  = CALC_RELATIVE(255, prv_width, ext_config.nWidth);
+        ext_config.nHeight = CALC_RELATIVE(255, prv_height, ext_config.nHeight);
+
+        GST_DEBUG_OBJECT (self, "After conv FocusRegion: Mode=%d Left=%d Top=%d "
                           "Width=%d Height=%d", config.eFocusControl,
                           ext_config.nLeft, ext_config.nTop,
                           ext_config.nWidth, ext_config.nHeight);
