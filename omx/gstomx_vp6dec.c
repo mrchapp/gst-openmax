@@ -40,6 +40,13 @@ generate_sink_template (void)
 
     gst_caps_append_structure (caps, struc);
 
+    struc = gst_structure_new ("video/x-vp6-flash",
+                               "width", GST_TYPE_INT_RANGE, 16, 4096,
+                               "height", GST_TYPE_INT_RANGE, 16, 4096,
+                               "framerate", GST_TYPE_FRACTION_RANGE, 0, 1, G_MAXINT, 1,
+                               NULL);
+
+    gst_caps_append_structure (caps, struc);
     return caps;
 }
 
