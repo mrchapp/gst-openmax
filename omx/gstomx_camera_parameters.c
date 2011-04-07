@@ -763,6 +763,7 @@ set_property (GObject *obj,
 
             gomx = (GOmxCore *) omx_base->gomx;
             _G_OMX_INIT_PARAM (&param);
+            param.nPortIndex = self->img_port->port_index;
             error_val = OMX_GetParameter (gomx->omx_handle,
                                           OMX_IndexParamThumbnail,
                                           &param);
@@ -783,6 +784,7 @@ set_property (GObject *obj,
 
             gomx = (GOmxCore *) omx_base->gomx;
             _G_OMX_INIT_PARAM (&param);
+            param.nPortIndex = self->img_port->port_index;
             error_val = OMX_GetParameter (gomx->omx_handle,
                                           OMX_IndexParamThumbnail,
                                           &param);
@@ -1312,6 +1314,7 @@ get_property (GObject *obj,
 
             gomx = (GOmxCore *) omx_base->gomx;
             _G_OMX_INIT_PARAM (&param);
+            param.nPortIndex = self->img_port->port_index;
             error_val = OMX_GetParameter(gomx->omx_handle,
                                        OMX_IndexParamThumbnail,
                                        &param);
@@ -1329,6 +1332,7 @@ get_property (GObject *obj,
 
             gomx = (GOmxCore *) omx_base->gomx;
             _G_OMX_INIT_PARAM (&param);
+            param.nPortIndex = self->img_port->port_index;
             error_val = OMX_GetParameter(gomx->omx_handle,
                                        OMX_IndexParamThumbnail,
                                        &param);
