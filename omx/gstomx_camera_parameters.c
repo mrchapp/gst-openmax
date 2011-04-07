@@ -1021,108 +1021,6 @@ set_property (GObject *obj,
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
-        case ARG_WIDTHFOCUSREGION:
-        {
-            OMX_IMAGE_CONFIG_FOCUSCONTROLTYPE config;
-            OMX_CONFIG_EXTFOCUSREGIONTYPE ext_config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
-
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&config);
-            _G_OMX_INIT_PARAM (&ext_config);
-
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigExtFocusRegion,
-                                       &ext_config);
-            g_assert (error_val == OMX_ErrorNone);
-            ext_config.nPortIndex = omx_base->out_port->port_index;
-            ext_config.nWidth = g_value_get_uint (value);
-            self->img_focusregion_width = ext_config.nWidth;
-            ext_config.nHeight = self->img_focusregion_height;
-            if ((self->img_focusregion_width / 2) > self->img_regioncenter_x)
-                ext_config.nLeft = 0;
-            else
-                ext_config.nLeft = self->img_regioncenter_x -
-                    (self->img_focusregion_width / 2);
-
-            if ((self->img_focusregion_height / 2) > self->img_regioncenter_y)
-                ext_config.nTop = 0;
-            else
-                ext_config.nTop = self->img_regioncenter_y -
-                    (self->img_focusregion_height / 2);
-
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigFocusControl, &config);
-            g_assert (error_val == OMX_ErrorNone);
-            config.nPortIndex = omx_base->out_port->port_index;
-            config.eFocusControl = OMX_IMAGE_FocusRegionPriorityMode;
-
-            GST_DEBUG_OBJECT (self, "FocusRegion: Mode=%d Left=%d Top=%d "
-                              "Width=%d Height=%d", config.eFocusControl,
-                              ext_config.nLeft, ext_config.nTop,
-                              ext_config.nWidth, ext_config.nHeight);
-
-            error_val = OMX_SetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigExtFocusRegion,
-                                       &ext_config);
-            g_assert (error_val == OMX_ErrorNone);
-            error_val = OMX_SetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigFocusControl, &config);
-            g_assert (error_val == OMX_ErrorNone);
-            break;
-        }
-        case ARG_HEIGHTFOCUSREGION:
-        {
-            OMX_IMAGE_CONFIG_FOCUSCONTROLTYPE config;
-            OMX_CONFIG_EXTFOCUSREGIONTYPE ext_config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
-
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&config);
-            _G_OMX_INIT_PARAM (&ext_config);
-
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigExtFocusRegion,
-                                       &ext_config);
-            g_assert (error_val == OMX_ErrorNone);
-            ext_config.nPortIndex = omx_base->out_port->port_index;
-            ext_config.nHeight = g_value_get_uint (value);
-            self->img_focusregion_height = ext_config.nHeight;
-            ext_config.nWidth = self->img_focusregion_width;
-            if ((self->img_focusregion_height / 2) > self->img_regioncenter_y)
-                ext_config.nTop = 0;
-            else
-                ext_config.nTop = self->img_regioncenter_y -
-                    (self->img_focusregion_height / 2);
-
-            if ((self->img_focusregion_width / 2) > self->img_regioncenter_x)
-                ext_config.nLeft = 0;
-            else
-                ext_config.nLeft = self->img_regioncenter_x -
-                    (self->img_focusregion_width / 2);
-
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigFocusControl, &config);
-            g_assert (error_val == OMX_ErrorNone);
-            config.nPortIndex = omx_base->out_port->port_index;
-            config.eFocusControl = OMX_IMAGE_FocusRegionPriorityMode;
-
-            GST_DEBUG_OBJECT (self, "FocusRegion: Mode=%d Left=%d Top=%d "
-                              "Width=%d Height=%d", config.eFocusControl,
-                              ext_config.nLeft, ext_config.nTop,
-                              ext_config.nWidth, ext_config.nHeight);
-
-            error_val = OMX_SetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigExtFocusRegion,
-                                       &ext_config);
-            g_assert (error_val == OMX_ErrorNone);
-            error_val = OMX_SetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigFocusControl, &config);
-            g_assert (error_val == OMX_ErrorNone);
-            break;
-        }
         case ARG_SHARPNESS:
         {
             OMX_IMAGE_CONFIG_PROCESSINGLEVELTYPE config;
@@ -1619,44 +1517,6 @@ get_property (GObject *obj,
             g_value_set_enum (value, config.eMode);
             break;
         }
-        case ARG_WIDTHFOCUSREGION:
-        {
-            OMX_CONFIG_EXTFOCUSREGIONTYPE ext_config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
-
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&ext_config);
-
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigExtFocusRegion,
-                                       &ext_config);
-            g_assert (error_val == OMX_ErrorNone);
-            GST_DEBUG_OBJECT (self, "FocusRegion: Left=%d Top=%d Width=%d "
-                              "Height=%d", ext_config.nLeft, ext_config.nTop,
-                              ext_config.nWidth, ext_config.nHeight);
-            g_value_set_uint (value, ext_config.nWidth);
-            break;
-        }
-        case ARG_HEIGHTFOCUSREGION:
-        {
-            OMX_CONFIG_EXTFOCUSREGIONTYPE ext_config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
-
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&ext_config);
-
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigExtFocusRegion,
-                                       &ext_config);
-            g_assert (error_val == OMX_ErrorNone);
-            GST_DEBUG_OBJECT (self, "FocusRegion: Left=%d Top=%d Width=%d"
-                              "Height=%d", ext_config.nLeft, ext_config.nTop,
-                              ext_config.nWidth, ext_config.nHeight);
-            g_value_set_uint (value, ext_config.nHeight);
-            break;
-        }
         case ARG_SHARPNESS:
         {
             OMX_IMAGE_CONFIG_PROCESSINGLEVELTYPE config;
@@ -1865,16 +1725,6 @@ install_camera_properties(GObjectClass *gobject_class)
                     "Focus spot weight mode",
                     GST_TYPE_OMX_CAMERA_FOCUSSPOT_WEIGHT,
                     DEFAULT_FOCUSSPOT_WEIGHT,
-                    G_PARAM_READWRITE));
-    g_object_class_install_property (gobject_class, ARG_WIDTHFOCUSREGION,
-            g_param_spec_uint ("focusregion-width", "Width Focus Region",
-                    "Width focus region", MIN_FOCUSREGION,
-                    MAX_FOCUSREGION, DEFAULT_FOCUSREGION,
-                    G_PARAM_READWRITE));
-    g_object_class_install_property (gobject_class, ARG_HEIGHTFOCUSREGION,
-            g_param_spec_uint ("focusregion-height", "Height Focus Region",
-                    "Height focus region", MIN_FOCUSREGION,
-                    MAX_FOCUSREGION, DEFAULT_FOCUSREGION,
                     G_PARAM_READWRITE));
     g_object_class_install_property (gobject_class, ARG_SHARPNESS,
             g_param_spec_int ("sharpness", "Sharpness value",
