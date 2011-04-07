@@ -824,17 +824,17 @@ set_property (GObject *obj,
 
             gomx = (GOmxCore *) omx_base->gomx;
             _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetParameter (gomx->omx_handle,
-                                          OMX_IndexParamSceneMode,
-                                          &config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_TI_IndexConfigSceneMode,
+                                       &config);
             g_assert (error_val == OMX_ErrorNone);
             config.eSceneMode = g_value_get_enum (value);
             GST_DEBUG_OBJECT (self, "Scene mode = %d",
                               config.eSceneMode);
 
-            error_val = OMX_SetParameter (gomx->omx_handle,
-                                          OMX_IndexParamSceneMode,
-                                          &config);
+            error_val = OMX_SetConfig (gomx->omx_handle,
+                                       OMX_TI_IndexConfigSceneMode,
+                                       &config);
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
@@ -1363,8 +1363,8 @@ get_property (GObject *obj,
 
             gomx = (GOmxCore *) omx_base->gomx;
             _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetParameter (gomx->omx_handle,
-                                          OMX_IndexParamSceneMode, &config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_TI_IndexConfigSceneMode, &config);
             g_assert (error_val == OMX_ErrorNone);
             GST_DEBUG_OBJECT (self, "Scene mode = %d", config.eSceneMode);
             g_value_set_enum (value, config.eSceneMode);
