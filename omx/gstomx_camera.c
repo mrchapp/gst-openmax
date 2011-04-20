@@ -276,6 +276,34 @@ static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     );
 #endif
 
+static void
+set_allocate_buffer_size (GstOmxCamera *self)
+{
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+    OMX_PARAM_PORTDEFINITIONTYPE param;
+    GOmxPort *port, *ports[] = { omx_base->out_port, self->img_port };
+    guint32 buffer_size = 0;
+    gint i;
+
+    for (i = 0; i < G_N_ELEMENTS (ports); i++)
+    {
+        port = ports[i];
+        if (!port->omx_allocate)
+            continue;
+        G_OMX_PORT_GET_DEFINITION (port, &param);
+        buffer_size = MAX (buffer_size, param.nBufferSize);
+    }
+
+    for (i = 0; i < G_N_ELEMENTS (ports); i++)
+    {
+        port = ports[i];
+        if (!port->omx_allocate)
+            continue;
+        param.nBufferSize = buffer_size;
+        G_OMX_PORT_SET_DEFINITION (port, &param);
+    }
+}
+
 static gboolean
 src_setcaps (GstPad *pad, GstCaps *caps)
 {
@@ -990,6 +1018,7 @@ create (GstBaseSrc *gst_base,
 
         set_camera_operating_mode (self);
         gst_omx_base_src_setup_ports (omx_base);
+        set_allocate_buffer_size (self);
         g_omx_core_prepare (omx_base->gomx);
         self->mode = self->next_mode;
         start_ports (self);
