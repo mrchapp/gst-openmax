@@ -25,7 +25,6 @@
 #include "gstomx_util.h"
 #include "gstomx_port.h"
 #include "gstomx.h"
-#include "gstomx_base_filter.h"
 
 #ifdef USE_OMXTICORE
 #  include <OMX_TI_Common.h>
@@ -70,7 +69,6 @@ g_omx_port_new (GOmxCore *core, const gchar *name, guint index)
 
     port->ignore_count = 0;
     port->n_offset = 0;
-    port->vp6_hack = FALSE;
 
     return port;
 }
@@ -443,28 +441,8 @@ send_prep_buffer_data (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffer, GstBuff
     {
         omx_buffer->nFilledLen = MIN (GST_BUFFER_SIZE (buf),
                 omx_buffer->nAllocLen - omx_buffer->nOffset);
-
-        if (G_UNLIKELY (port->vp6_hack))
-        {
-            DEBUG (port, "VP6 hack begin");
-
-            DEBUG (port, "Adding the frame-length");
-            memcpy (omx_buffer->pBuffer, &(omx_buffer->nFilledLen), 4);
-
-            DEBUG (port, "memcpy the vp6 data");
-            memcpy (omx_buffer->pBuffer + 4, GST_BUFFER_DATA (buf),
-                    omx_buffer->nFilledLen);
-
-            DEBUG (port, "add four bytes to nFilledLen");
-            omx_buffer->nFilledLen += 4;
-
-            DEBUG (port, "VP6 hack end");
-        }
-        else
-        {
-            memcpy (omx_buffer->pBuffer + omx_buffer->nOffset,
-                    GST_BUFFER_DATA (buf), omx_buffer->nFilledLen);
-        }
+        memcpy (omx_buffer->pBuffer + omx_buffer->nOffset,
+                GST_BUFFER_DATA (buf), omx_buffer->nFilledLen);
     }
 
     if (port->core->use_timestamps)

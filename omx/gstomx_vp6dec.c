@@ -90,11 +90,8 @@ type_instance_init (GTypeInstance *instance,
                     gpointer g_class)
 {
     GstOmxBaseVideoDec *omx_base;
-    GstOmxBaseFilter *omx_filter;
 
     omx_base = GST_OMX_BASE_VIDEODEC (instance);
-    omx_filter = GST_OMX_BASE_FILTER (instance);
 
     omx_base->compression_format = OMX_VIDEO_CodingVP6;
-    omx_filter->in_port->vp6_hack = TRUE;
 }
