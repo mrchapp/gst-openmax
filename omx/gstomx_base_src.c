@@ -202,6 +202,8 @@ unlock (GstBaseSrc *gst_base)
 {
     GstOmxBaseSrc *self = GST_OMX_BASE_SRC (gst_base);
 
+    /* unblock buffer_alloc calls blocked in v4l2sink */
+    gst_pad_push_event (gst_base->srcpad, gst_event_new_live_flush ());
     g_omx_port_pause (self->out_port);
     return TRUE;
 }
