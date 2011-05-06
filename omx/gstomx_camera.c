@@ -944,6 +944,7 @@ create (GstBaseSrc *gst_base,
         GST_BUFFER_TIMESTAMP (vid_buf) = timestamp;
         if (vstab_evt)
             gst_pad_push_event (self->vidsrcpad, gst_event_ref (vstab_evt));
+        gst_buffer_set_caps (vid_buf, GST_PAD_CAPS (gst_base->srcpad));
         gst_pad_push (self->vidsrcpad, vid_buf);
         if (G_UNLIKELY (pending_eos))
             gst_pad_push_event (self->vidsrcpad, gst_event_new_eos ());
