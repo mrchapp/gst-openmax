@@ -103,7 +103,12 @@ GSTOMX_BOILERPLATE (GstOmxCamera, gst_omx_camera, GstOmxBaseSrc, GST_OMX_BASE_SR
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
         GST_PAD_SRC,
         GST_PAD_ALWAYS,
-        GST_STATIC_CAPS (GST_VIDEO_CAPS_YUV_STRIDED (GSTOMX_ALL_FORMATS, "[ 0, max ]"))
+        GST_STATIC_CAPS (
+                "video/x-raw-rgb-strided, bpp=16, depth=16, red_mask=63488, "
+                "green_mask=2016, blue_mask=31, endianness=1234, "
+                "rowstride=(int)[1,max], width=(int)[1,max], height=(int)[1,max], "
+                "framerate=(fraction)[0,max]; "
+                GST_VIDEO_CAPS_YUV_STRIDED (GSTOMX_ALL_FORMATS, "[ 0, max ]"))
     );
 
 static GstStaticPadTemplate imgsrc_template = GST_STATIC_PAD_TEMPLATE ("imgsrc",
@@ -120,7 +125,12 @@ static GstStaticPadTemplate imgsrc_template = GST_STATIC_PAD_TEMPLATE ("imgsrc",
 static GstStaticPadTemplate vidsrc_template = GST_STATIC_PAD_TEMPLATE ("vidsrc",
         GST_PAD_SRC,
         GST_PAD_SOMETIMES,
-        GST_STATIC_CAPS (GST_VIDEO_CAPS_YUV_STRIDED (GSTOMX_ALL_FORMATS, "[ 0, max ]"))
+        GST_STATIC_CAPS (
+                "video/x-raw-rgb-strided, bpp=16, depth=16, red_mask=63488, "
+                "green_mask=2016, blue_mask=31, endianness=1234, "
+                "rowstride=(int)[1,max], width=(int)[1,max], height=(int)[1,max], "
+                "framerate=(fraction)[0,max]; "
+                GST_VIDEO_CAPS_YUV_STRIDED (GSTOMX_ALL_FORMATS, "[ 0, max ]"))
     );
 
 static GstStaticPadTemplate thumbsrc_template = GST_STATIC_PAD_TEMPLATE ("thumbsrc",
