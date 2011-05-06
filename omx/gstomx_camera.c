@@ -495,7 +495,11 @@ src_query (GstPad *pad, GstQuery *query)
          *
          * @todo should we save and restore current caps??
          */
+#if 0
+        /* FIXME: why is this needed? it breaks renegotiation happening inside
+         * camerabin2 */
         src_setcaps (pad, (GstCaps *)caps);
+#endif
 
         param.nPortIndex = omx_base->out_port->port_index;
         err = OMX_GetParameter (omx_base->gomx->omx_handle,
