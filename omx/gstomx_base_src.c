@@ -198,6 +198,24 @@ create (GstBaseSrc *gst_base,
 }
 
 static gboolean
+unlock (GstBaseSrc *gst_base)
+{
+    GstOmxBaseSrc *self = GST_OMX_BASE_SRC (gst_base);
+
+    g_omx_port_pause (self->out_port);
+    return TRUE;
+}
+
+static gboolean
+unlock_stop (GstBaseSrc *gst_base)
+{
+    GstOmxBaseSrc *self = GST_OMX_BASE_SRC (gst_base);
+
+    g_omx_port_resume (self->out_port);
+    return TRUE;
+}
+
+static gboolean
 handle_event (GstBaseSrc *gst_base,
               GstEvent *event)
 {
@@ -328,6 +346,8 @@ type_class_init (gpointer g_class,
     gst_base_src_class->stop = stop;
     gst_base_src_class->event = handle_event;
     gst_base_src_class->create = create;
+    gst_base_src_class->unlock = unlock;
+    gst_base_src_class->unlock_stop = unlock_stop;
 
     /* Properties stuff */
     {
