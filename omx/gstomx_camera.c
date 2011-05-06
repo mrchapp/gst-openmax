@@ -284,6 +284,27 @@ src_setcaps (GstPad *pad, GstCaps *caps)
     return TRUE;
 }
 
+static void
+src_fixatecaps (GstPad *pad, GstCaps *caps)
+{
+    GstStructure *structure;
+    const GValue *value;
+    gint width;
+
+    structure = gst_caps_get_structure (caps, 0);
+
+    gst_structure_fixate_field_nearest_int (structure, "width", 864);
+    gst_structure_fixate_field_nearest_int (structure, "height", 480);
+    gst_structure_fixate_field_nearest_fraction (structure, "framerate", 30, 1);
+
+    value = gst_structure_get_value (structure, "rowstride");
+    if (value == NULL || G_VALUE_TYPE (value) == GST_TYPE_INT_RANGE) {
+        gst_structure_get_int (structure, "width", &width);
+        gst_caps_set_simple (caps, "rowstride",
+            G_TYPE_INT, width, NULL);
+    }
+}
+
 static gboolean
 imgsrc_setcaps (GstPad *pad, GstCaps *caps)
 {
@@ -373,6 +394,17 @@ imgsrc_setcaps (GstPad *pad, GstCaps *caps)
     }
 
     return TRUE;
+}
+
+static void
+imgsrc_fixatecaps (GstPad *pad, GstCaps *caps)
+{
+    GstStructure *structure;
+
+    structure = gst_caps_get_structure (caps, 0);
+
+    gst_structure_fixate_field_nearest_int (structure, "width", 864);
+    gst_structure_fixate_field_nearest_int (structure, "height", 480);
 }
 
 static gboolean
@@ -1137,6 +1169,8 @@ type_instance_init (GTypeInstance *instance,
 
     gst_pad_set_setcaps_function (basesrc->srcpad,
             GST_DEBUG_FUNCPTR (src_setcaps));
+    gst_pad_set_fixatecaps_function (basesrc->srcpad,
+            GST_DEBUG_FUNCPTR (src_fixatecaps));
 
     /* create/setup vidsrc pad: */
     pad_template = gst_element_class_get_pad_template (
@@ -1159,6 +1193,8 @@ type_instance_init (GTypeInstance *instance,
     self->imgsrcpad = gst_pad_new_from_template (pad_template, "imgsrc");
     gst_pad_set_setcaps_function (self->imgsrcpad,
             GST_DEBUG_FUNCPTR (imgsrc_setcaps));
+    gst_pad_set_fixatecaps_function (self->imgsrcpad,
+            GST_DEBUG_FUNCPTR (imgsrc_fixatecaps));
 
     /* create/setup thumbsrc pad: */
     pad_template = gst_element_class_get_pad_template (
