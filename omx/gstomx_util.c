@@ -343,10 +343,8 @@ OMX_COLOR_FORMATTYPE g_omx_gstvformat_to_colorformat (GstVideoFormat videoformat
             return OMX_COLOR_Format24bitRGB888;
         case GST_VIDEO_FORMAT_ARGB:
             return OMX_COLOR_Format32bitARGB8888;
-        /* Remove this comment after RGB_16 being added to GstVideoFormat list
-        case GST_VIDEO_FORMAT_RGB_16:
+        case GST_VIDEO_FORMAT_RGB16:
             return OMX_COLOR_Format16bitRGB565;
-        */
         default:
             return OMX_COLOR_FormatUnused;
     }
