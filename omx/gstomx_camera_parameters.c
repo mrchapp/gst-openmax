@@ -102,6 +102,15 @@ gst_omx_camera_focus_get_type (void)
             {OMX_IMAGE_FocusControlOn,       "on",               "on"},
             {OMX_IMAGE_FocusControlAuto,     "auto",             "auto"},
             {OMX_IMAGE_FocusControlAutoLock, "autolock",         "autolock"},
+#ifdef USE_OMXTICORE
+            {OMX_IMAGE_FocusControlAutoMacro,         "AutoMacro",      "automacro"},
+            {OMX_IMAGE_FocusControlAutoInfinity,      "AutoInfinity",   "autoinfinity"},
+            {OMX_IMAGE_FocusControlHyperfocal,        "Hyperfocal",     "hyperfocal"},
+            {OMX_IMAGE_FocusControlPortrait,          "Portrait",       "portrait"},
+            {OMX_IMAGE_FocusControlExtended,          "Extended",       "extended"},
+            {OMX_IMAGE_FocusControlContinousNormal,   "Cont-Normal",    "cont-normal"},
+            {OMX_IMAGE_FocusControlContinousExtended, "Cont-Extended",  "cont-extended"},
+#endif
             {0, NULL, NULL},
         };
 
