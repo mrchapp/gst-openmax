@@ -367,6 +367,27 @@ gst_omx_camera_focusspot_weight_get_type (void)
     return type;
 }
 
+GType
+gst_omx_camera_bce_get_type (void)
+{
+    static GType type = 0;
+
+    if (!type)
+    {
+        static const GEnumValue vals[] =
+        {
+            {OMX_TI_BceModeOff,     "bce control off",    "off"},
+            {OMX_TI_BceModeOn,      "bce control on",     "on"},
+            {OMX_TI_BceModeAuto,    "bce control auto",   "auto"},
+            {0, NULL, NULL },
+        };
+
+        type = g_enum_register_static ("GstOmxCameraBrightnessContrastEnhance", vals);
+    }
+
+    return type;
+}
+
 #endif
 
 
@@ -1072,6 +1093,50 @@ set_property (GObject *obj,
                                   &param);
             break;
         }
+        case ARG_GBCE:
+        {
+            OMX_TI_CONFIG_LOCAL_AND_GLOBAL_BRIGHTNESSCONTRASTTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_TI_IndexConfigGlobalBrightnessContrastEnhance,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            config.eControl = g_value_get_enum (value);
+            GST_DEBUG_OBJECT (self, "Global Brightness Contrast Enhance mode = %d",
+                              config.eControl);
+
+            error_val = OMX_SetConfig (gomx->omx_handle,
+                                       OMX_TI_IndexConfigGlobalBrightnessContrastEnhance,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
+        case ARG_GLBCE:
+        {
+            OMX_TI_CONFIG_LOCAL_AND_GLOBAL_BRIGHTNESSCONTRASTTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_TI_IndexConfigLocalBrightnessContrastEnhance,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            config.eControl = g_value_get_enum (value);
+            GST_DEBUG_OBJECT (self, "Local Brightness Contrast Enhance mode = %d",
+                              config.eControl);
+
+            error_val = OMX_SetConfig (gomx->omx_handle,
+                                       OMX_TI_IndexConfigLocalBrightnessContrastEnhance,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
 #endif
         default:
         {
@@ -1559,6 +1624,42 @@ get_property (GObject *obj,
             g_value_set_boolean (value, param.bEnabled);
             break;
         }
+        case ARG_GBCE:
+        {
+            OMX_TI_CONFIG_LOCAL_AND_GLOBAL_BRIGHTNESSCONTRASTTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_TI_IndexConfigGlobalBrightnessContrastEnhance,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            GST_DEBUG_OBJECT (self, "Global Brightness Contrast Enhance mode = %d",
+                              config.eControl);
+            g_value_set_enum (value, config.eControl);
+
+            break;
+        }
+        case ARG_GLBCE:
+        {
+            OMX_TI_CONFIG_LOCAL_AND_GLOBAL_BRIGHTNESSCONTRASTTYPE config;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&config);
+            error_val = OMX_GetConfig (gomx->omx_handle,
+                                       OMX_TI_IndexConfigLocalBrightnessContrastEnhance,
+                                       &config);
+            g_assert (error_val == OMX_ErrorNone);
+            GST_DEBUG_OBJECT (self, "Local Brightness Contrast Enhance mode = %d",
+                              config.eControl);
+            g_value_set_enum (value, config.eControl);
+
+            break;
+        }
 #endif
         default:
         {
@@ -1748,6 +1849,18 @@ install_camera_properties(GObjectClass *gobject_class)
             g_param_spec_boolean ("cac", "Chromatic Aberration Correction",
                     "Chromatic Aberration Correction state",
                     FALSE,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_GBCE,
+            g_param_spec_enum ("gbce", "Global Brightness Contrast Enhance",
+                    "global brightness contrast enhance",
+                    GST_TYPE_OMX_CAMERA_BCE,
+                    DEFAULT_GBCE,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_GLBCE,
+            g_param_spec_enum ("lbce", "Local Brightness Contrast Enhance",
+                    "local brightness contrast enhance",
+                    GST_TYPE_OMX_CAMERA_BCE,
+                    DEFAULT_GLBCE,
                     G_PARAM_READWRITE));
 #endif
 

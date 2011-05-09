@@ -110,6 +110,8 @@ enum
     ARG_FOCUSSPOT_WEIGHT,
     ARG_SHARPNESS,
     ARG_CAC,
+    ARG_GBCE,
+    ARG_GLBCE,
 #endif
 };
 
@@ -164,6 +166,8 @@ enum
 #  define MIN_SHARPNESS_VALUE       -100
 #  define MAX_SHARPNESS_VALUE       100
 #  define DEFAULT_SHARPNESS_VALUE   0
+#  define DEFAULT_GBCE              OMX_TI_BceModeOff
+#  define DEFAULT_GLBCE             OMX_TI_BceModeOff
 #endif
 
 
@@ -216,6 +220,9 @@ GType gst_omx_camera_nsf_get_type (void);
 
 #define GST_TYPE_OMX_CAMERA_FOCUSSPOT_WEIGHT (gst_omx_camera_focusspot_weight_get_type ())
 GType gst_omx_camera_focusspot_weight_get_type (void);
+
+#define GST_TYPE_OMX_CAMERA_BCE (gst_omx_camera_bce_get_type ())
+GType gst_omx_camera_bce_get_type (void);
 
 #endif
 
