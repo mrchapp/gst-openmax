@@ -146,8 +146,31 @@ change_state (GstElement *element,
             break;
 
         case GST_STATE_CHANGE_READY_TO_NULL:
+        {
+            gboolean in_allocate, in_share, out_allocate, out_share;
+            GstBuffer * (*out_alloc)(GOmxPort *port, gint len);
+
+            /* g_omx_core_deinit deallocates ports, so we need to save and
+             * restore state */
+            in_allocate = self->in_port->omx_allocate;
+            in_share = self->in_port->share_buffer;
+            out_allocate = self->out_port->omx_allocate;
+            out_share = self->out_port->share_buffer;
+            out_alloc = self->out_port->buffer_alloc;
+
             g_omx_core_deinit (core);
+
+            self->in_port = g_omx_core_get_port (self->gomx, "in", 0);
+            self->in_port->omx_allocate = in_allocate;
+            self->in_port->share_buffer = in_share;
+
+            self->out_port = g_omx_core_get_port (self->gomx, "out", 1);
+            self->out_port->omx_allocate = out_allocate;
+            self->out_port->share_buffer = out_share;
+            self->out_port->buffer_alloc = out_alloc;
+
             break;
+        }
 
         default:
             break;
