@@ -129,6 +129,15 @@ change_state (GstElement *element,
 
     switch (transition)
     {
+        case GST_STATE_CHANGE_PLAYING_TO_PAUSED:
+            g_mutex_lock (self->ready_lock);
+            if (self->ready)
+            {
+                g_omx_core_flush_start (core);
+                g_omx_core_flush_stop (core);
+            }
+            g_mutex_unlock (self->ready_lock);
+            break;
         case GST_STATE_CHANGE_PAUSED_TO_READY:
             g_mutex_lock (self->ready_lock);
             if (self->ready)

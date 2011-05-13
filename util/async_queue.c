@@ -133,3 +133,17 @@ async_queue_flush (AsyncQueue *queue)
     queue->length = 0;
     g_mutex_unlock (queue->mutex);
 }
+
+gboolean async_queue_exist (AsyncQueue *queue, gpointer data)
+{
+    GList *head;
+
+    g_mutex_lock (queue->mutex);
+    for (head=queue->head; head != NULL; head = head->next)
+    {
+        if (head->data == data)
+            return TRUE;
+    }
+    g_mutex_unlock (queue->mutex);
+    return FALSE;
+}
