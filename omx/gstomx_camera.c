@@ -480,56 +480,76 @@ src_query (GstPad *pad, GstQuery *query)
 
     GST_DEBUG_OBJECT (self, "Begin");
 
-    if (GST_QUERY_TYPE (query) == GST_QUERY_BUFFERS)
+    switch (GST_QUERY_TYPE (query))
     {
-        const GstCaps *caps;
-        OMX_ERRORTYPE err;
-        OMX_PARAM_PORTDEFINITIONTYPE param;
+        case GST_QUERY_BUFFERS:
+        {
+            const GstCaps *caps;
+            OMX_ERRORTYPE err;
+            OMX_PARAM_PORTDEFINITIONTYPE param;
 
-        _G_OMX_INIT_PARAM (&param);
+            _G_OMX_INIT_PARAM (&param);
 
-        gst_query_parse_buffers_caps (query, &caps);
+            gst_query_parse_buffers_caps (query, &caps);
 
-        /* ensure the caps we are querying are the current ones, otherwise
-         * results are meaningless..
-         *
-         * @todo should we save and restore current caps??
-         */
+            /* ensure the caps we are querying are the current ones, otherwise
+             * results are meaningless..
+             *
+             * @todo should we save and restore current caps??
+             */
 #if 0
-        /* FIXME: why is this needed? it breaks renegotiation happening inside
-         * camerabin2 */
-        src_setcaps (pad, (GstCaps *)caps);
+            /* FIXME: why is this needed? it breaks renegotiation happening inside
+             * camerabin2 */
+            src_setcaps (pad, (GstCaps *)caps);
 #endif
 
-        param.nPortIndex = omx_base->out_port->port_index;
-        err = OMX_GetParameter (omx_base->gomx->omx_handle,
-                OMX_IndexParamPortDefinition, &param);
-        g_assert (err == OMX_ErrorNone);
+            param.nPortIndex = omx_base->out_port->port_index;
+            err = OMX_GetParameter (omx_base->gomx->omx_handle,
+                    OMX_IndexParamPortDefinition, &param);
+            g_assert (err == OMX_ErrorNone);
 
-        GST_DEBUG_OBJECT (self, "Actual buffers: %d", param.nBufferCountActual);
+            GST_DEBUG_OBJECT (self, "Actual buffers: %d", param.nBufferCountActual);
 
-        gst_query_set_buffers_count (query, param.nBufferCountActual);
+            gst_query_set_buffers_count (query, param.nBufferCountActual);
 
 #ifdef USE_OMXTICORE
-        {
-            OMX_CONFIG_RECTTYPE rect;
-            _G_OMX_INIT_PARAM (&rect);
-
-            rect.nPortIndex = omx_base->out_port->port_index;
-            err = OMX_GetParameter (omx_base->gomx->omx_handle,
-                    OMX_TI_IndexParam2DBufferAllocDimension, &rect);
-            if (err == OMX_ErrorNone)
             {
-                GST_DEBUG_OBJECT (self, "Min dimensions: %dx%d",
-                        rect.nWidth, rect.nHeight);
+                OMX_CONFIG_RECTTYPE rect;
+                _G_OMX_INIT_PARAM (&rect);
 
-                gst_query_set_buffers_dimensions (query,
-                        rect.nWidth, rect.nHeight);
+                rect.nPortIndex = omx_base->out_port->port_index;
+                err = OMX_GetParameter (omx_base->gomx->omx_handle,
+                        OMX_TI_IndexParam2DBufferAllocDimension, &rect);
+                if (err == OMX_ErrorNone)
+                {
+                    GST_DEBUG_OBJECT (self, "Min dimensions: %dx%d",
+                            rect.nWidth, rect.nHeight);
+
+                    gst_query_set_buffers_dimensions (query,
+                            rect.nWidth, rect.nHeight);
+                }
             }
-        }
 #endif
 
-        ret = TRUE;
+            ret = TRUE;
+            break;
+        }
+
+        case GST_QUERY_LATENCY:
+        {
+            GstClockTime min, max;
+
+            /* FIXME this is hardcoded for now but we should try to do better */
+            min = 0;
+            max = GST_CLOCK_TIME_NONE;
+            gst_query_set_latency (query, TRUE, min, max);
+
+            ret = TRUE;
+            break;
+        }
+
+        default:
+            ret = GST_BASE_SRC_CLASS (parent_class)->query (GST_BASE_SRC (self), query);
     }
 
     GST_DEBUG_OBJECT (self, "End -> %d", ret);
@@ -683,7 +703,7 @@ get_timestamp (GstOmxCamera *self)
     if (clock) {
       /* the time now is the time of the clock minus the base time */
       /* Hack: Need to subtract the extra lag that is causing problems to AV sync */
-      timestamp = gst_clock_get_time (clock) - timestamp - (140 * GST_MSECOND);
+      timestamp = gst_clock_get_time (clock) - timestamp;
       gst_object_unref (clock);
 
       /* if we have a framerate adjust timestamp for frame latency */
