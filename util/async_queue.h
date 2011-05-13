@@ -44,5 +44,6 @@ gpointer async_queue_pop (AsyncQueue *queue);
 void async_queue_disable (AsyncQueue *queue);
 void async_queue_enable (AsyncQueue *queue);
 void async_queue_flush (AsyncQueue *queue);
+gboolean async_queue_exist (AsyncQueue *queue, gpointer data);
 
 #endif /* ASYNC_QUEUE_H */

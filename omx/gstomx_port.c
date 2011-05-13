@@ -47,7 +47,8 @@ static void setup_shared_buffer (GOmxPort *port, OMX_BUFFERHEADERTYPE *omx_buffe
     GST_LOG ("<%s:%s> "fmt, GST_OBJECT_NAME ((port)->core->object), (port)->name, ##args)
 #define WARNING(port, fmt, args...) \
     GST_WARNING ("<%s:%s> "fmt, GST_OBJECT_NAME ((port)->core->object), (port)->name, ##args)
-
+#define ERROR(port, fmt, args...) \
+    GST_ERROR ("<%s:%s> "fmt, GST_OBJECT_NAME ((port)->core->object), (port)->name, ##args)
 /*
  * Port
  */
@@ -255,6 +256,8 @@ void
 g_omx_port_free_buffers (GOmxPort *port)
 {
     guint i;
+    guint n_free_buffers = 0;
+    OMX_BUFFERHEADERTYPE *omx_buffer;
 
     if (!port->buffers)
         return;
@@ -263,7 +266,6 @@ g_omx_port_free_buffers (GOmxPort *port)
 
     for (i = 0; i < port->num_buffers; i++)
     {
-        OMX_BUFFERHEADERTYPE *omx_buffer;
 
         /* pop the buffer, to be sure that it has been returned from the
          * OMX component, to avoid freeing a buffer that the component
@@ -272,19 +274,35 @@ g_omx_port_free_buffers (GOmxPort *port)
         omx_buffer = async_queue_pop_full (port->queue, TRUE, TRUE);
 
         if (omx_buffer)
+        /* the queue could have repeated pointers, thus the 'sizeof' check
+         * avoids duplicate omx_freebuffer call */
+        if (omx_buffer && (omx_buffer->nSize == sizeof(OMX_BUFFERHEADERTYPE)))
         {
-#if 0
-            /** @todo how shall we free that buffer? */
-            if (!port->omx_allocate)
-            {
-                g_free (omx_buffer->pBuffer);
-                omx_buffer->pBuffer = NULL;
+            if (omx_buffer->pAppPrivate != NULL) {
+              gst_buffer_unref (GST_BUFFER_CAST (omx_buffer->pAppPrivate));
+              omx_buffer->pAppPrivate = NULL;
             }
-#endif
 
             DEBUG (port, "OMX_FreeBuffer(%p)", omx_buffer);
             OMX_FreeBuffer (port->core->omx_handle, port->port_index, omx_buffer);
-            port->buffers[i] = NULL;
+            n_free_buffers++;
+        }
+    }
+
+    /* if the queue does not contain all allocated buffers, then (omx) free the ones
+     * missing
+     */
+    DEBUG (port, "n_free_buffers %d port->num_buffers %d\n", n_free_buffers, port->num_buffers);
+    if (n_free_buffers < port->num_buffers)
+    {
+        for (i = 0; i < port->num_buffers; i++)
+        {
+            omx_buffer = port->buffers[i];
+            if (!async_queue_exist (port->queue, (gpointer) omx_buffer))
+            {
+                DEBUG (port, "OMX_FreeBuffer(%p)", omx_buffer);
+                OMX_FreeBuffer (port->core->omx_handle, port->port_index, omx_buffer);
+            }
         }
     }
 
