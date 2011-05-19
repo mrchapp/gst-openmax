@@ -113,7 +113,7 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
 
 static GstStaticPadTemplate imgsrc_template = GST_STATIC_PAD_TEMPLATE ("imgsrc",
         GST_PAD_SRC,
-        GST_PAD_SOMETIMES,
+        GST_PAD_ALWAYS,
         /* Note: imgsrc pad supports JPEG format, Bayer, as well as
            non-strided YUV. */
         GST_STATIC_CAPS (
@@ -124,7 +124,7 @@ static GstStaticPadTemplate imgsrc_template = GST_STATIC_PAD_TEMPLATE ("imgsrc",
 
 static GstStaticPadTemplate vidsrc_template = GST_STATIC_PAD_TEMPLATE ("vidsrc",
         GST_PAD_SRC,
-        GST_PAD_SOMETIMES,
+        GST_PAD_ALWAYS,
         GST_STATIC_CAPS (
                 "video/x-raw-rgb-strided, bpp=16, depth=16, red_mask=63488, "
                 "green_mask=2016, blue_mask=31, endianness=1234, "
@@ -767,18 +767,7 @@ start_ports (GstOmxCamera *self)
     if (config[self->mode] & PORT_VIDEO)
     {
         GST_DEBUG_OBJECT (self, "enable video port");
-        gst_pad_set_active (self->thumbsrcpad, TRUE);
-        gst_element_add_pad (GST_ELEMENT_CAST (self), self->thumbsrcpad);
         g_omx_port_enable (self->vid_port);
-    }
-#endif
-
-#ifdef USE_GSTOMXCAM_VIDSRCPAD
-    if (self->mode == MODE_VIDEO)
-    {
-        GST_DEBUG_OBJECT (self, "enable video srcpad");
-        gst_pad_set_active (self->vidsrcpad, TRUE);
-        gst_element_add_pad (GST_ELEMENT_CAST (self), self->vidsrcpad);
     }
 #endif
 
@@ -788,8 +777,6 @@ start_ports (GstOmxCamera *self)
         guint32 capture_start_time;
 
         GST_DEBUG_OBJECT (self, "enable image port");
-        gst_pad_set_active (self->imgsrcpad, TRUE);
-        gst_element_add_pad (GST_ELEMENT_CAST (self), self->imgsrcpad);
 
         /* WORKAROUND: Image capture set only in LOADED state */
         /* set_camera_operating_mode (self); */
@@ -824,17 +811,7 @@ stop_ports (GstOmxCamera *self)
     if (config[self->mode] & PORT_VIDEO)
     {
         GST_DEBUG_OBJECT (self, "disable video port");
-        gst_pad_set_active (self->thumbsrcpad, FALSE);
-        //gst_element_remove_pad (GST_ELEMENT_CAST (self), self->thumbsrcpad);
         g_omx_port_disable (self->vid_port);
-    }
-#endif
-
-#ifdef USE_GSTOMXCAM_VIDSRCPAD
-    if (self->mode == MODE_VIDEO)
-    {
-        GST_DEBUG_OBJECT (self, "disable video src pad");
-        gst_pad_set_active (self->vidsrcpad, FALSE);
     }
 #endif
 
@@ -842,8 +819,6 @@ stop_ports (GstOmxCamera *self)
     if (config[self->mode] & PORT_IMAGE)
     {
         GST_DEBUG_OBJECT (self, "disable image port");
-        gst_pad_set_active (self->imgsrcpad, FALSE);
-        //gst_element_remove_pad (GST_ELEMENT_CAST (self), self->imgsrcpad);
         g_omx_port_disable (self->img_port);
     }
 #endif
@@ -1204,6 +1179,7 @@ type_instance_init (GTypeInstance *instance,
 
     GST_DEBUG_OBJECT (basesrc, "creating vidsrc pad");
     self->vidsrcpad = gst_pad_new_from_template (pad_template, "vidsrc");
+    gst_element_add_pad (GST_ELEMENT_CAST (self), self->vidsrcpad);
 
     /* src and vidsrc pads have same caps: */
     gst_pad_set_setcaps_function (self->vidsrcpad,
@@ -1216,6 +1192,7 @@ type_instance_init (GTypeInstance *instance,
 
     GST_DEBUG_OBJECT (basesrc, "creating imgsrc pad");
     self->imgsrcpad = gst_pad_new_from_template (pad_template, "imgsrc");
+    gst_element_add_pad (GST_ELEMENT_CAST (self), self->imgsrcpad);
     gst_pad_set_setcaps_function (self->imgsrcpad,
             GST_DEBUG_FUNCPTR (imgsrc_setcaps));
     gst_pad_set_fixatecaps_function (self->imgsrcpad,
@@ -1228,6 +1205,7 @@ type_instance_init (GTypeInstance *instance,
 
     GST_DEBUG_OBJECT (basesrc, "creating thumbsrc pad");
     self->thumbsrcpad = gst_pad_new_from_template (pad_template, "thumbsrc");
+    gst_element_add_pad (GST_ELEMENT_CAST (self), self->thumbsrcpad);
     gst_pad_set_setcaps_function (self->thumbsrcpad,
             GST_DEBUG_FUNCPTR (thumbsrc_setcaps));
 
@@ -1239,8 +1217,8 @@ type_instance_init (GTypeInstance *instance,
 #if 0
     /* disable all ports to begin with: */
     g_omx_port_disable (self->in_port);
-    g_omx_port_disable (omx_base->out_port);
 #endif
+    g_omx_port_disable (omx_base->out_port);
     g_omx_port_disable (self->vid_port);
     g_omx_port_disable (self->img_port);
     g_omx_port_disable (self->in_port);
