@@ -752,16 +752,13 @@ set_capture (GstOmxCamera *self, gboolean capture_mode)
 static void
 start_ports (GstOmxCamera *self)
 {
-
-#if 0
-    /* Not utilized  because we are setting the preview port enable since the beginning*/
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
 
     if (config[self->mode] & PORT_PREVIEW)
     {
         GST_DEBUG_OBJECT (self, "enable preview port");
         g_omx_port_enable (omx_base->out_port);
     }
-#endif
 
 #ifdef USE_GSTOMXCAM_THUMBSRCPAD
     if (config[self->mode] & PORT_VIDEO)
@@ -798,14 +795,12 @@ static void
 stop_ports (GstOmxCamera *self)
 {
 
-#if 0
     GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
     if (config[self->mode] & PORT_PREVIEW)
     {
         GST_DEBUG_OBJECT (self, "disable preview port");
         g_omx_port_disable (omx_base->out_port);
     }
-#endif
 
 #ifdef USE_GSTOMXCAM_THUMBSRCPAD
     if (config[self->mode] & PORT_VIDEO)
@@ -820,6 +815,7 @@ stop_ports (GstOmxCamera *self)
     {
         GST_DEBUG_OBJECT (self, "disable image port");
         g_omx_port_disable (self->img_port);
+        set_capture (self, FALSE);
     }
 #endif
 }
@@ -856,17 +852,18 @@ create (GstBaseSrc *gst_base,
 
     GST_LOG_OBJECT (self, "state: %d", omx_base->gomx->omx_state);
 
-    if (omx_base->gomx->omx_state == OMX_StateLoaded)
-    {
-        GST_INFO_OBJECT (self, "omx: prepare");
-        gst_omx_base_src_setup_ports (omx_base);
-        g_omx_core_prepare (omx_base->gomx);
-    }
-
     if (self->mode != self->next_mode)
     {
         if (self->mode != -1)
+        {
             stop_ports (self);
+            g_omx_core_stop (omx_base->gomx);
+            g_omx_core_unload (omx_base->gomx);
+        }
+
+        set_camera_operating_mode (self);
+        gst_omx_base_src_setup_ports (omx_base);
+        g_omx_core_prepare (omx_base->gomx);
         self->mode = self->next_mode;
         start_ports (self);
 

@@ -460,14 +460,8 @@ set_property (GObject *obj,
         }
         case ARG_MODE:
         {
-            /* WORKAROUND: Image capture set only once (in LOADED state) */
-            static gboolean first_time = TRUE;
             self->next_mode = g_value_get_enum (value);
             GST_DEBUG_OBJECT (self, "mode: %d", self->next_mode);
-            /* WORKAROUND : Image capture set only once (in LOADED state) */
-            if (first_time)
-                set_camera_operating_mode (self);
-            first_time = FALSE;
             break;
         }
         case ARG_SHUTTER:
