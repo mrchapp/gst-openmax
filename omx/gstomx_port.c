@@ -282,6 +282,12 @@ g_omx_port_free_buffers (GOmxPort *port)
             }
 #endif
 
+            if (omx_buffer->pAppPrivate != NULL)
+            {
+              gst_buffer_unref (GST_BUFFER_CAST (omx_buffer->pAppPrivate));
+              omx_buffer->pAppPrivate = NULL;
+            }
+
             DEBUG (port, "OMX_FreeBuffer(%p)", omx_buffer);
             OMX_FreeBuffer (port->core->omx_handle, port->port_index, omx_buffer);
             port->buffers[i] = NULL;
