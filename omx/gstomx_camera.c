@@ -266,19 +266,7 @@ src_setcaps (GstPad *pad, GstCaps *caps)
         if  (!gst_pad_set_caps (GST_BASE_SRC (self)->srcpad, caps))
             return FALSE;
 
-#if 0
-        /* force the src pad and vidsrc pad to use the same caps: */
-        if (pad == self->vidsrcpad)
-        {
-            gst_pad_set_caps (GST_BASE_SRC (self)->srcpad, caps);
-        }
-        else
-        {
-            gst_pad_set_caps (self->vidsrcpad, caps);
-        }
-
         GST_INFO_OBJECT (omx_base, " exit setcaps src: %");
-#endif
     }
 
     return TRUE;
@@ -1177,10 +1165,6 @@ type_instance_init (GTypeInstance *instance,
     GST_DEBUG_OBJECT (basesrc, "creating vidsrc pad");
     self->vidsrcpad = gst_pad_new_from_template (pad_template, "vidsrc");
     gst_element_add_pad (GST_ELEMENT_CAST (self), self->vidsrcpad);
-
-    /* src and vidsrc pads have same caps: */
-    gst_pad_set_setcaps_function (self->vidsrcpad,
-            GST_DEBUG_FUNCPTR (src_setcaps));
 
     /* create/setup imgsrc pad: */
     pad_template = gst_element_class_get_pad_template (
