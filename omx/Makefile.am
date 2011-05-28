@@ -47,7 +47,11 @@ libgstomx_la_SOURCES = gstomx.c gstomx.h \
 		       gstomx_camera.c gstomx_camera.h \
 		       gstomx_filereadersrc.c gstomx_filereadersrc.h
 
-libgstomx_la_CFLAGS = $(OMXCORE_CFLAGS) $(OMXTIAUDIODEC_CFLAGS) $(USE_OMXTIAUDIODEC) $(GST_CFLAGS) $(GST_BASE_CFLAGS) -I$(top_srcdir)/util
-libgstomx_la_LIBADD = $(OMXCORE_LIBS) $(GST_LIBS) $(GST_BASE_LIBS) -lgstvideo-0.10 $(top_builddir)/util/libutil.la
+libgstomx_la_CFLAGS = $(OMXCORE_CFLAGS) $(OMXTIAUDIODEC_CFLAGS) \
+											$(USE_OMXTIAUDIODEC) $(GST_CFLAGS) $(GST_BASE_CFLAGS) \
+											$(GST_PLUGINS_BAD_CFLAGS) -I$(top_srcdir)/util
+libgstomx_la_LIBADD = $(OMXCORE_LIBS) $(GST_LIBS) $(GST_BASE_LIBS) \
+											$(GST_PLUGINS_BAD_LIBS) -lgstvideo-0.10 \
+											$(top_builddir)/util/libutil.la -lgstinterfaces-0.10
 libgstomx_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
 
