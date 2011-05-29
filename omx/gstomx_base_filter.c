@@ -112,7 +112,12 @@ change_state (GstElement *element,
                 goto leave;
             }
             break;
-
+        case GST_STATE_CHANGE_READY_TO_PAUSED:
+            self->in_port->enabled = TRUE;
+            g_omx_port_resume (self->in_port);
+            self->out_port->enabled = TRUE;
+            g_omx_port_resume (self->out_port);
+            break;
         default:
             break;
     }
