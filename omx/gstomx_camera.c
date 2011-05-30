@@ -90,17 +90,38 @@ GST_ELEMENT_DETAILS ("Video OMX Camera Source",
     "Reads frames from a OMX Camera Component",
     "Rob Clark <rob@ti.com>");
 
+static gboolean
+gst_omx_camera_interface_supported (GstImplementsInterface *iface,
+    GType type)
+{
+    g_assert (type == GST_TYPE_PHOTOGRAPHY);
+    return TRUE;
+}
+
 static void gst_omx_camera_photography_init (GstPhotographyInterface *iface);
+
+static void
+gst_omx_camera_interface_init (GstImplementsInterfaceClass *klass)
+{
+    klass->supported = gst_omx_camera_interface_supported;
+}
 
 static void
 _do_init (GType omx_camera_type)
 {
+    static const GInterfaceInfo iface_info = {
+        (GInterfaceInitFunc) gst_omx_camera_interface_init,
+        NULL,
+        NULL,
+    };
     static const GInterfaceInfo photography_info = {
         (GInterfaceInitFunc) gst_omx_camera_photography_init,
         NULL,
         NULL,
     };
 
+    g_type_add_interface_static (omx_camera_type,
+            GST_TYPE_IMPLEMENTS_INTERFACE, &iface_info);
     g_type_add_interface_static (omx_camera_type, GST_TYPE_PHOTOGRAPHY,
             &photography_info);
 }
