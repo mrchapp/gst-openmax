@@ -30,13 +30,15 @@
 #  include <OMX_TI_Index.h>
 #endif
 
+#define GST_USE_UNSTABLE_API TRUE
+
 #include <stdint.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <linux/timer-32k.h>
 #include <OMX_CoreExt.h>
 #include <OMX_IndexExt.h>
-
+#include <omx/OMX_IVCommon.h>
 
 /*
  * Enums:
@@ -394,6 +396,338 @@ gst_omx_camera_bce_get_type (void)
 /*
  *  Methods:
  */
+
+gboolean
+gst_omx_camera_photography_get_ev_compensation (GstPhotography *photo,
+        gfloat *evcomp)
+{
+    OMX_CONFIG_EXPOSUREVALUETYPE config;
+    GOmxCore *gomx;
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
+    GstOmxCamera *self = GST_OMX_CAMERA (photo);
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    gomx = (GOmxCore *) omx_base->gomx;
+    _G_OMX_INIT_PARAM (&config);
+    error_val = OMX_GetConfig (gomx->omx_handle,
+            OMX_IndexConfigCommonExposureValue, &config);
+    g_assert (error_val == OMX_ErrorNone);
+    GST_DEBUG_OBJECT (self, "xEVCompensation: EVCompensation=%d",
+            config.xEVCompensation);
+
+    return TRUE;
+}
+
+gboolean
+gst_omx_camera_photography_get_iso_speed (GstPhotography *photo,
+        guint *iso_speed)
+{
+    OMX_CONFIG_EXPOSUREVALUETYPE config;
+    GOmxCore *gomx;
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (photo);
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
+    GstOmxCamera *self = GST_OMX_CAMERA (photo);
+
+    gomx = (GOmxCore *) omx_base->gomx;
+
+    _G_OMX_INIT_PARAM (&config);
+    error_val = OMX_GetConfig (gomx->omx_handle,
+            OMX_IndexConfigCommonExposureValue, &config);
+    g_assert (error_val == OMX_ErrorNone);
+    GST_DEBUG_OBJECT (self, "ISO Speed: param=%d", config.nSensitivity);
+    *iso_speed = config.nSensitivity;
+
+    return TRUE;
+}
+
+static void
+gst_omx_camera_get_white_balance_mode (GstPhotography *photo,
+        OMX_WHITEBALCONTROLTYPE *wb_mode)
+{
+    OMX_CONFIG_WHITEBALCONTROLTYPE config;
+    GOmxCore *gomx;
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (photo);
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
+    GstOmxCamera *self = GST_OMX_CAMERA (photo);
+
+    gomx = (GOmxCore *) omx_base->gomx;
+
+    _G_OMX_INIT_PARAM (&config);
+    error_val = OMX_GetConfig (gomx->omx_handle,
+            OMX_IndexConfigCommonWhiteBalance,
+            &config);
+    g_assert (error_val == OMX_ErrorNone);
+    config.nPortIndex = omx_base->out_port->port_index;
+    GST_DEBUG_OBJECT (self, "AWB: param=%d", config.eWhiteBalControl);
+    *wb_mode = config.eWhiteBalControl;
+}
+
+gboolean
+gst_omx_camera_photography_get_white_balance_mode (GstPhotography *photo,
+        GstWhiteBalanceMode *wb_mode)
+{
+    OMX_WHITEBALCONTROLTYPE omx_wb;
+    gint convert_wb;
+
+    gst_omx_camera_get_white_balance_mode (photo, &omx_wb);
+    convert_wb = omx_wb - 1;
+    if (convert_wb < 0 || convert_wb > 6)
+        return FALSE;
+
+    *wb_mode = convert_wb;
+    return TRUE;
+}
+
+static void
+gst_omx_camera_get_scene_mode (GstPhotography *photo,
+        OMX_SCENEMODETYPE *scene_mode)
+{
+    OMX_CONFIG_SCENEMODETYPE config;
+    GOmxCore *gomx;
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
+    GstOmxCamera *self = GST_OMX_CAMERA (photo);
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    gomx = (GOmxCore *) omx_base->gomx;
+    _G_OMX_INIT_PARAM (&config);
+    error_val = OMX_GetConfig (gomx->omx_handle,
+            OMX_TI_IndexConfigSceneMode, &config);
+    g_assert (error_val == OMX_ErrorNone);
+    GST_DEBUG_OBJECT (self, "Scene mode = %d", config.eSceneMode);
+    *scene_mode = config.eSceneMode;
+}
+
+gboolean
+gst_omx_camera_photography_get_scene_mode (GstPhotography *photo,
+        GstSceneMode *scene_mode)
+{
+    OMX_SCENEMODETYPE scene_omx_camera;
+
+    gst_omx_camera_get_scene_mode (photo, &scene_omx_camera);
+    if (scene_omx_camera <= 3)
+        *scene_mode = scene_omx_camera;
+    else if (scene_omx_camera == 5)
+        *scene_mode = GST_PHOTOGRAPHY_SCENE_MODE_SPORT;
+    else
+        /* scene does not exist in photography */
+        return FALSE;
+
+    return TRUE;
+}
+
+static void
+gst_omx_camera_get_zoom (GstPhotography *photo, guint *zoom)
+{
+    OMX_CONFIG_SCALEFACTORTYPE zoom_scalefactor;
+    GOmxCore *gomx;
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
+    GstOmxCamera *self = GST_OMX_CAMERA (photo);
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    *zoom = 100;
+    gomx = (GOmxCore *) omx_base->gomx;
+    GST_DEBUG_OBJECT (self, "Get Property for zoom");
+    _G_OMX_INIT_PARAM (&zoom_scalefactor);
+    error_val = OMX_GetConfig (gomx->omx_handle,
+                               OMX_IndexConfigCommonDigitalZoom,
+                               &zoom_scalefactor);
+    g_assert (error_val == OMX_ErrorNone);
+}
+
+gboolean
+gst_omx_camera_photography_get_zoom (GstPhotography *photo, gfloat *zoom)
+{
+    guint zoom_int_value;
+
+    gst_omx_camera_get_zoom (photo, &zoom_int_value);
+    *zoom = zoom_int_value / 700.0 * 9.0;
+    return TRUE;
+}
+
+
+gboolean
+gst_omx_camera_photography_set_ev_compensation (GstPhotography *photo,
+        gfloat evcomp)
+{
+    OMX_CONFIG_EXPOSUREVALUETYPE config;
+    GOmxCore *gomx;
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
+    GstOmxCamera *self = GST_OMX_CAMERA (photo);
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    gomx = (GOmxCore *) omx_base->gomx;
+    _G_OMX_INIT_PARAM (&config);
+    error_val = OMX_GetConfig (gomx->omx_handle,
+            OMX_IndexConfigCommonExposureValue, &config);
+    g_assert (error_val == OMX_ErrorNone);
+    /* Converting into Q16 ( X << 16  = X*65536 ) */
+    config.xEVCompensation = (OMX_S32) (evcomp * 65536);
+    GST_DEBUG_OBJECT (self, "xEVCompensation: value=%f EVCompensation=%d",
+            evcomp, config.xEVCompensation);
+
+    error_val = OMX_SetConfig (gomx->omx_handle,
+            OMX_IndexConfigCommonExposureValue, &config);
+    g_assert (error_val == OMX_ErrorNone);
+
+    return TRUE;
+}
+
+gboolean
+gst_omx_camera_photography_set_iso_speed (GstPhotography *photo,
+        guint iso_speed)
+{
+    OMX_CONFIG_EXPOSUREVALUETYPE config;
+    GOmxCore *gomx;
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
+    GstOmxCamera *self = GST_OMX_CAMERA (photo);
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    gomx = (GOmxCore *) omx_base->gomx;
+    _G_OMX_INIT_PARAM (&config);
+    error_val = OMX_GetConfig (gomx->omx_handle,
+            OMX_IndexConfigCommonExposureValue, &config);
+    g_assert (error_val == OMX_ErrorNone);
+    if (iso_speed > 1600)
+      return FALSE;
+    config.bAutoSensitivity = (iso_speed < 100) ? OMX_TRUE : OMX_FALSE;
+    if (config.bAutoSensitivity == OMX_FALSE)
+    {
+        config.nSensitivity = iso_speed;
+    }
+    GST_DEBUG_OBJECT (self, "ISO Speed: Auto=%d Sensitivity=%d",
+            config.bAutoSensitivity, config.nSensitivity);
+
+    error_val = OMX_SetConfig (gomx->omx_handle,
+            OMX_IndexConfigCommonExposureValue, &config);
+    g_assert (error_val == OMX_ErrorNone);
+
+    return TRUE;
+}
+
+static void
+gst_omx_camera_set_white_balance_mode (GstPhotography *photo,
+        OMX_WHITEBALCONTROLTYPE wb_mode)
+{
+    OMX_CONFIG_WHITEBALCONTROLTYPE config;
+    GOmxCore *gomx;
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
+    GstOmxCamera *self = GST_OMX_CAMERA (photo);
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    gomx = (GOmxCore *) omx_base->gomx;
+    _G_OMX_INIT_PARAM (&config);
+    error_val = OMX_GetConfig (gomx->omx_handle,
+            OMX_IndexConfigCommonWhiteBalance,
+            &config);
+    g_assert (error_val == OMX_ErrorNone);
+    config.nPortIndex = omx_base->out_port->port_index;
+
+    config.eWhiteBalControl = wb_mode;
+
+    GST_DEBUG_OBJECT (self, "AWB: param=%d",
+            config.eWhiteBalControl,
+            config.nPortIndex);
+
+    error_val = OMX_SetConfig (gomx->omx_handle,
+            OMX_IndexConfigCommonWhiteBalance,
+            &config);
+    g_assert (error_val == OMX_ErrorNone);
+}
+
+gboolean
+gst_omx_camera_photography_set_white_balance_mode (GstPhotography *photo,
+        GstWhiteBalanceMode wb_mode)
+{
+    OMX_WHITEBALCONTROLTYPE wb_omx_camera;
+
+    wb_omx_camera = wb_mode + 1;
+    gst_omx_camera_set_white_balance_mode (photo, wb_omx_camera);
+    return TRUE;
+}
+
+static void
+gst_omx_camera_set_scene_mode (GstPhotography *photo,
+        OMX_SCENEMODETYPE scene_mode)
+{
+    OMX_CONFIG_SCENEMODETYPE config;
+    GOmxCore *gomx;
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
+    GstOmxCamera *self = GST_OMX_CAMERA (photo);
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    gomx = (GOmxCore *) omx_base->gomx;
+    _G_OMX_INIT_PARAM (&config);
+    error_val = OMX_GetConfig (gomx->omx_handle,
+            OMX_TI_IndexConfigSceneMode,
+            &config);
+    g_assert (error_val == OMX_ErrorNone);
+    config.eSceneMode = scene_mode;
+    GST_DEBUG_OBJECT (self, "Scene mode = %d",
+            config.eSceneMode);
+
+    error_val = OMX_SetConfig (gomx->omx_handle,
+            OMX_TI_IndexConfigSceneMode,
+            &config);
+    g_assert (error_val == OMX_ErrorNone);
+}
+
+gboolean
+gst_omx_camera_photography_set_scene_mode (GstPhotography *photo,
+        GstSceneMode scene_mode)
+{
+    OMX_SCENEMODETYPE scene_omx_camera;
+
+    if (scene_mode <= 3)
+        scene_omx_camera = scene_mode;
+    else if (scene_mode == GST_PHOTOGRAPHY_SCENE_MODE_SPORT)
+        scene_omx_camera = 5;
+    else
+        /* scene does not exist in omx_camera */
+        return FALSE;
+
+    gst_omx_camera_set_scene_mode (photo, scene_omx_camera);
+    return TRUE;
+}
+
+static void
+gst_omx_camera_set_zoom (GstPhotography *photo, guint zoom)
+{
+    OMX_CONFIG_SCALEFACTORTYPE zoom_scalefactor;
+    GOmxCore *gomx;
+    OMX_U32 zoom_factor;
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
+    GstOmxCamera *self = GST_OMX_CAMERA (photo);
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    gomx = (GOmxCore *) omx_base->gomx;
+    zoom_factor = (OMX_U32)((CAM_ZOOM_IN_STEP * zoom) / 100);
+    GST_DEBUG_OBJECT (self, "Set Property for zoom factor = %d", zoom);
+
+    _G_OMX_INIT_PARAM (&zoom_scalefactor);
+    error_val = OMX_GetConfig (gomx->omx_handle,
+            OMX_IndexConfigCommonDigitalZoom, &zoom_scalefactor);
+    g_assert (error_val == OMX_ErrorNone);
+    GST_DEBUG_OBJECT (self, "OMX_GetConfig Successful for zoom");
+    zoom_scalefactor.xWidth = (zoom_factor);
+    zoom_scalefactor.xHeight = (zoom_factor);
+    GST_DEBUG_OBJECT (self, "zoom_scalefactor = %d", zoom_scalefactor.xHeight);
+    error_val = OMX_SetConfig (gomx->omx_handle,
+            OMX_IndexConfigCommonDigitalZoom,
+            &zoom_scalefactor);
+    g_assert (error_val == OMX_ErrorNone);
+    GST_DEBUG_OBJECT (self, "OMX_SetConfig Successful for zoom");
+}
+
+gboolean
+gst_omx_camera_photography_set_zoom (GstPhotography *photo, gfloat zoom)
+{
+    guint zoom_int_value;
+
+    zoom_int_value = abs (zoom * 900.0 / 7.0);
+    gst_omx_camera_set_zoom (photo, zoom_int_value);
+    return TRUE;
+}
+
 void
 set_camera_operating_mode (GstOmxCamera *self)
 {
@@ -438,6 +772,7 @@ set_property (GObject *obj,
 {
     GstOmxCamera *self = GST_OMX_CAMERA (obj);
     GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+    GstPhotography *photo = GST_PHOTOGRAPHY (self);
 
     switch (prop_id)
     {
@@ -472,28 +807,10 @@ set_property (GObject *obj,
         }
         case ARG_ZOOM:
         {
-            OMX_CONFIG_SCALEFACTORTYPE zoom_scalefactor;
-            GOmxCore *gomx;
-            OMX_U32 zoom_factor;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
             gint32 zoom_value;
             zoom_value = g_value_get_int (value);
-            gomx = (GOmxCore *) omx_base->gomx;
-            zoom_factor = (OMX_U32)((CAM_ZOOM_IN_STEP * zoom_value) / 100);
-            GST_DEBUG_OBJECT (self, "Set Property for zoom factor = %d", zoom_value);
+            gst_omx_camera_set_zoom (photo, zoom_value);
 
-            _G_OMX_INIT_PARAM (&zoom_scalefactor);
-            error_val = OMX_GetConfig (gomx->omx_handle, OMX_IndexConfigCommonDigitalZoom,
-                                       &zoom_scalefactor);
-            g_assert (error_val == OMX_ErrorNone);
-            GST_DEBUG_OBJECT (self, "OMX_GetConfig Successful for zoom");
-            zoom_scalefactor.xWidth = (zoom_factor);
-            zoom_scalefactor.xHeight = (zoom_factor);
-            GST_DEBUG_OBJECT (self, "zoom_scalefactor = %d", zoom_scalefactor.xHeight);
-            error_val = OMX_SetConfig (gomx->omx_handle, OMX_IndexConfigCommonDigitalZoom,
-                                       &zoom_scalefactor);
-            g_assert (error_val == OMX_ErrorNone);
-            GST_DEBUG_OBJECT (self, "OMX_SetConfig Successful for zoom");
             break;
         }
         case ARG_FOCUS:
@@ -556,26 +873,10 @@ set_property (GObject *obj,
         }
         case ARG_AWB:
         {
-            OMX_CONFIG_WHITEBALCONTROLTYPE config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+            OMX_WHITEBALCONTROLTYPE wb_enum_value;
 
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigCommonWhiteBalance,
-                                       &config);
-            g_assert (error_val == OMX_ErrorNone);
-            config.nPortIndex = omx_base->out_port->port_index;
-            config.eWhiteBalControl = g_value_get_enum (value);
-            GST_DEBUG_OBJECT (self, "AWB: param=%d",
-                                     config.eWhiteBalControl,
-                                     config.nPortIndex);
-
-            error_val = OMX_SetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigCommonWhiteBalance,
-                                       &config);
-            g_assert (error_val == OMX_ErrorNone);
+            wb_enum_value = g_value_get_enum (value);
+            gst_omx_camera_set_white_balance_mode (photo, wb_enum_value);
             break;
         }
         case ARG_CONTRAST:
@@ -640,28 +941,10 @@ set_property (GObject *obj,
         }
         case ARG_ISO:
         {
-            OMX_CONFIG_EXPOSUREVALUETYPE config;
-            GOmxCore *gomx;
             OMX_U32 iso_requested;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
 
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigCommonExposureValue, &config);
-            g_assert (error_val == OMX_ErrorNone);
             iso_requested = g_value_get_uint (value);
-            config.bAutoSensitivity = (iso_requested < 100) ? OMX_TRUE : OMX_FALSE;
-            if (config.bAutoSensitivity == OMX_FALSE)
-            {
-                config.nSensitivity = iso_requested;
-            }
-            GST_DEBUG_OBJECT (self, "ISO Speed: Auto=%d Sensitivity=%d",
-                              config.bAutoSensitivity, config.nSensitivity);
-
-            error_val = OMX_SetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigCommonExposureValue, &config);
-            g_assert (error_val == OMX_ErrorNone);
+            gst_omx_camera_photography_set_iso_speed (photo, iso_requested);
             break;
         }
         case ARG_ROTATION:
@@ -708,25 +991,12 @@ set_property (GObject *obj,
         }
         case ARG_EXPOSUREVALUE:
         {
-            OMX_CONFIG_EXPOSUREVALUETYPE config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
             gfloat exposure_float_value;
-
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigCommonExposureValue, &config);
-            g_assert (error_val == OMX_ErrorNone);
             exposure_float_value = g_value_get_float (value);
-            /* Converting into Q16 ( X << 16  = X*65536 ) */
-            config.xEVCompensation = (OMX_S32) (exposure_float_value * 65536);
-            GST_DEBUG_OBJECT (self, "xEVCompensation: value=%f EVCompensation=%d",
-                              exposure_float_value, config.xEVCompensation);
 
-            error_val = OMX_SetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigCommonExposureValue, &config);
-            g_assert (error_val == OMX_ErrorNone);
+            gst_omx_camera_photography_set_ev_compensation (photo,
+                    exposure_float_value);
+
             break;
         }
         case ARG_MANUALFOCUS:
@@ -844,24 +1114,10 @@ set_property (GObject *obj,
         }
         case ARG_SCENE:
         {
-            OMX_CONFIG_SCENEMODETYPE config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+            OMX_SCENEMODETYPE scene_enum;
 
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_TI_IndexConfigSceneMode,
-                                       &config);
-            g_assert (error_val == OMX_ErrorNone);
-            config.eSceneMode = g_value_get_enum (value);
-            GST_DEBUG_OBJECT (self, "Scene mode = %d",
-                              config.eSceneMode);
-
-            error_val = OMX_SetConfig (gomx->omx_handle,
-                                       OMX_TI_IndexConfigSceneMode,
-                                       &config);
-            g_assert (error_val == OMX_ErrorNone);
+            scene_enum = g_value_get_enum (value);
+            gst_omx_camera_set_scene_mode (photo, scene_enum);
             break;
         }
         case ARG_VNF:
@@ -1148,6 +1404,7 @@ get_property (GObject *obj,
 {
     GstOmxCamera *self = GST_OMX_CAMERA (obj);
     GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+    GstPhotography *photo = GST_PHOTOGRAPHY (self);
 
     switch (prop_id)
     {
@@ -1178,16 +1435,9 @@ get_property (GObject *obj,
         }
         case ARG_ZOOM:
         {
-            OMX_CONFIG_SCALEFACTORTYPE zoom_scalefactor;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
-            gomx = (GOmxCore *) omx_base->gomx;
-            GST_DEBUG_OBJECT (self, "Get Property for zoom");
+            guint zoom_int_value;
+            gst_omx_camera_get_zoom (photo, &zoom_int_value);
 
-            _G_OMX_INIT_PARAM (&zoom_scalefactor);
-            error_val = OMX_GetConfig (gomx->omx_handle, OMX_IndexConfigCommonDigitalZoom,
-                                       &zoom_scalefactor);
-            g_assert (error_val == OMX_ErrorNone);
             break;
         }
         case ARG_FOCUS:
@@ -1210,20 +1460,10 @@ get_property (GObject *obj,
         }
         case ARG_AWB:
         {
-            OMX_CONFIG_WHITEBALCONTROLTYPE config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
-            gomx = (GOmxCore *) omx_base->gomx;
+            OMX_WHITEBALCONTROLTYPE wb_enum_value;
 
-            _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigCommonWhiteBalance,
-                                       &config);
-            g_assert (error_val == OMX_ErrorNone);
-            config.nPortIndex = omx_base->out_port->port_index;
-            GST_DEBUG_OBJECT (self, "AWB: param=%d", config.eWhiteBalControl);
-            g_value_set_enum (value, config.eWhiteBalControl);
-
+            gst_omx_camera_get_white_balance_mode (photo, &wb_enum_value);
+            g_value_set_enum (value, wb_enum_value);
             break;
         }
         case ARG_CONTRAST:
@@ -1274,18 +1514,10 @@ get_property (GObject *obj,
         }
         case ARG_ISO:
         {
-            OMX_CONFIG_EXPOSUREVALUETYPE config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
-            gomx = (GOmxCore *) omx_base->gomx;
+            guint iso_uint_value;
 
-            _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigCommonExposureValue, &config);
-            g_assert (error_val == OMX_ErrorNone);
-            GST_DEBUG_OBJECT (self, "ISO Speed: param=%d", config.nSensitivity);
-            g_value_set_uint (value, config.nSensitivity);
-
+            gst_omx_camera_photography_get_iso_speed (photo, &iso_uint_value);
+            g_value_set_uint (value, iso_uint_value);
             break;
         }
         case ARG_ROTATION:
@@ -1323,17 +1555,9 @@ get_property (GObject *obj,
         }
         case ARG_EXPOSUREVALUE:
         {
-            OMX_CONFIG_EXPOSUREVALUETYPE config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
-
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigCommonExposureValue, &config);
-            g_assert (error_val == OMX_ErrorNone);
-            GST_DEBUG_OBJECT (self, "xEVCompensation: EVCompensation=%d",
-                              config.xEVCompensation);
+            gfloat float_value = 0;
+            gst_omx_camera_photography_get_ev_compensation (photo,
+                    &float_value);
             break;
         }
         case ARG_MANUALFOCUS:
@@ -1429,18 +1653,10 @@ get_property (GObject *obj,
         }
         case ARG_SCENE:
         {
-            OMX_CONFIG_SCENEMODETYPE config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+            OMX_SCENEMODETYPE scene_enum;
 
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_TI_IndexConfigSceneMode, &config);
-            g_assert (error_val == OMX_ErrorNone);
-            GST_DEBUG_OBJECT (self, "Scene mode = %d", config.eSceneMode);
-            g_value_set_enum (value, config.eSceneMode);
-
+            gst_omx_camera_get_scene_mode (photo, &scene_enum);
+            g_value_set_enum (value, scene_enum);
             break;
         }
         case ARG_VNF:

@@ -21,7 +21,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#define GST_USE_UNSTABLE_API TRUE
+
 #include "gstomx_camera.h"
+#include <gst/interfaces/photography.h>
 
 
 /*
@@ -234,3 +237,24 @@ void set_property (GObject *obj, guint prop_id, const GValue *value, GParamSpec 
 void get_property (GObject *obj, guint prop_id, GValue *value, GParamSpec *pspec);
 void install_camera_properties(GObjectClass *gobject_class);
 
+
+gboolean gst_omx_camera_photography_get_ev_compensation (GstPhotography *photo,
+                                                         gfloat *evcomp);
+gboolean gst_omx_camera_photography_get_iso_speed (GstPhotography *photo,
+                                                   guint *iso_speed);
+gboolean gst_omx_camera_photography_get_white_balance_mode (
+    GstPhotography *photo, GstWhiteBalanceMode *wb_mode);
+gboolean gst_omx_camera_photography_get_scene_mode (GstPhotography *photo,
+                                                    GstSceneMode *scene_mode);
+gboolean gst_omx_camera_photography_get_zoom (GstPhotography *photo,
+                                              gfloat *zoom);
+gboolean gst_omx_camera_photography_set_ev_compensation (GstPhotography *photo,
+                                                         gfloat evcomp);
+gboolean gst_omx_camera_photography_set_iso_speed (GstPhotography *photo,
+                                                   guint iso_speed);
+gboolean gst_omx_camera_photography_set_white_balance_mode (
+    GstPhotography *photo, GstWhiteBalanceMode wb_mode);
+gboolean gst_omx_camera_photography_set_scene_mode (GstPhotography *photo,
+                                                    GstSceneMode scene_mode);
+gboolean gst_omx_camera_photography_set_zoom (GstPhotography *photo,
+                                              gfloat zoom);

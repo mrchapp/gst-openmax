@@ -26,6 +26,8 @@
 #include "gstomx.h"
 
 #include <gst/video/video.h>
+#include <gst/interfaces/photography.h>
+#include <gst/interfaces/photography-enumtypes.h>
 
 #ifdef USE_OMXTICORE
 #  include <OMX_TI_IVCommon.h>
@@ -88,8 +90,41 @@ GST_ELEMENT_DETAILS ("Video OMX Camera Source",
     "Reads frames from a OMX Camera Component",
     "Rob Clark <rob@ti.com>");
 
+static void gst_omx_camera_photography_init (GstPhotographyInterface *iface);
 
-GSTOMX_BOILERPLATE (GstOmxCamera, gst_omx_camera, GstOmxBaseSrc, GST_OMX_BASE_SRC_TYPE);
+static void
+_do_init (GType omx_camera_type)
+{
+    static const GInterfaceInfo photography_info = {
+        (GInterfaceInitFunc) gst_omx_camera_photography_init,
+        NULL,
+        NULL,
+    };
+
+    g_type_add_interface_static (omx_camera_type, GST_TYPE_PHOTOGRAPHY,
+            &photography_info);
+}
+
+GSTOMX_BOILERPLATE_FULL (GstOmxCamera, gst_omx_camera, GstOmxBaseSrc,
+        GST_OMX_BASE_SRC_TYPE, _do_init);
+
+
+
+static void gst_omx_camera_photography_init (GstPhotographyInterface *iface)
+{
+  iface->get_ev_compensation = gst_omx_camera_photography_get_ev_compensation;
+  iface->get_iso_speed = gst_omx_camera_photography_get_iso_speed;
+  iface->get_white_balance_mode = gst_omx_camera_photography_get_white_balance_mode;
+  iface->get_scene_mode = gst_omx_camera_photography_get_scene_mode;
+  iface->get_zoom = gst_omx_camera_photography_get_zoom;
+
+  iface->set_ev_compensation = gst_omx_camera_photography_set_ev_compensation;
+  iface->set_iso_speed = gst_omx_camera_photography_set_iso_speed;
+  iface->set_white_balance_mode = gst_omx_camera_photography_set_white_balance_mode;
+  iface->set_scene_mode = gst_omx_camera_photography_set_scene_mode;
+  iface->set_zoom = gst_omx_camera_photography_set_zoom;
+}
+
 
 #define USE_GSTOMXCAM_IMGSRCPAD
 #define USE_GSTOMXCAM_VIDSRCPAD
