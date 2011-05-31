@@ -397,6 +397,16 @@ gst_omx_camera_bce_get_type (void)
  *  Methods:
  */
 
+GstPhotoCaps
+gst_omx_camera_photography_get_capabilities (GstPhotography *photo)
+{
+  return GST_PHOTOGRAPHY_CAPS_EV_COMP |
+         GST_PHOTOGRAPHY_CAPS_ISO_SPEED |
+         GST_PHOTOGRAPHY_CAPS_WB_MODE |
+         GST_PHOTOGRAPHY_CAPS_SCENE |
+         GST_PHOTOGRAPHY_CAPS_ZOOM;
+}
+
 gboolean
 gst_omx_camera_photography_get_ev_compensation (GstPhotography *photo,
         gfloat *evcomp)

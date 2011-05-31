@@ -238,6 +238,8 @@ void get_property (GObject *obj, guint prop_id, GValue *value, GParamSpec *pspec
 void install_camera_properties(GObjectClass *gobject_class);
 
 
+GstPhotoCaps gst_omx_camera_photography_get_capabilities (
+        GstPhotography *photo);
 gboolean gst_omx_camera_photography_get_ev_compensation (GstPhotography *photo,
                                                          gfloat *evcomp);
 gboolean gst_omx_camera_photography_get_iso_speed (GstPhotography *photo,

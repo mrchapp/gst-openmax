@@ -144,6 +144,7 @@ static void gst_omx_camera_photography_init (GstPhotographyInterface *iface)
   iface->set_white_balance_mode = gst_omx_camera_photography_set_white_balance_mode;
   iface->set_scene_mode = gst_omx_camera_photography_set_scene_mode;
   iface->set_zoom = gst_omx_camera_photography_set_zoom;
+  iface->get_capabilities = gst_omx_camera_photography_get_capabilities;
 }
 
 
