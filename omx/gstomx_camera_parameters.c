@@ -39,6 +39,7 @@
 #include <OMX_CoreExt.h>
 #include <OMX_IndexExt.h>
 #include <omx/OMX_IVCommon.h>
+#include <gst/interfaces/photography.h>
 
 /*
  * Enums:
@@ -1130,6 +1131,14 @@ set_property (GObject *obj,
             gst_omx_camera_set_scene_mode (photo, scene_enum);
             break;
         }
+        case ARG_SCENE_MODE:
+        {
+            GstSceneMode scene_enum;
+
+            scene_enum = g_value_get_enum (value);
+            gst_omx_camera_photography_set_scene_mode (photo, scene_enum);
+            break;
+        }
         case ARG_VNF:
         {
             OMX_PARAM_VIDEONOISEFILTERTYPE param;
@@ -1669,6 +1678,14 @@ get_property (GObject *obj,
             g_value_set_enum (value, scene_enum);
             break;
         }
+        case ARG_SCENE_MODE:
+        {
+            GstSceneMode scene_enum;
+
+            gst_omx_camera_photography_get_scene_mode (photo, &scene_enum);
+            g_value_set_enum (value, scene_enum);
+            break;
+        }
         case ARG_VNF:
         {
             OMX_PARAM_VIDEONOISEFILTERTYPE param;
@@ -2004,6 +2021,12 @@ install_camera_properties(GObjectClass *gobject_class)
                     GST_TYPE_OMX_CAMERA_SCENE,
                     DEFAULT_SCENE,
                     G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_SCENE_MODE,
+            g_param_spec_enum ("scene-mode", "GstPhotography Scene Mode",
+                    "Scene mode as in GstPhotography",
+                    GST_TYPE_SCENE_MODE,
+                    GST_PHOTOGRAPHY_SCENE_MODE_AUTO,
+                    G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
     g_object_class_install_property (gobject_class, ARG_VNF,
             g_param_spec_enum ("vnf", "Video Noise Filter",
                     "is video noise filter algorithm enabled?",

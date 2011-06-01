@@ -115,6 +115,7 @@ enum
     ARG_CAC,
     ARG_GBCE,
     ARG_GLBCE,
+    ARG_SCENE_MODE
 #endif
 };
 
