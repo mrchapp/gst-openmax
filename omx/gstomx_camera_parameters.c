@@ -890,6 +890,15 @@ set_property (GObject *obj,
             gst_omx_camera_set_white_balance_mode (photo, wb_enum_value);
             break;
         }
+        case ARG_WHITE_BALANCE:
+        {
+            GstWhiteBalanceMode wb_enum_value;
+
+            wb_enum_value = g_value_get_enum (value);
+            gst_omx_camera_photography_set_white_balance_mode (photo,
+                                                               wb_enum_value);
+            break;
+        }
         case ARG_CONTRAST:
         {
             OMX_CONFIG_CONTRASTTYPE config;
@@ -1485,6 +1494,15 @@ get_property (GObject *obj,
             g_value_set_enum (value, wb_enum_value);
             break;
         }
+        case ARG_WHITE_BALANCE:
+        {
+            GstWhiteBalanceMode wb_enum_value;
+
+            gst_omx_camera_photography_get_white_balance_mode (photo,
+                                                               &wb_enum_value);
+            g_value_set_enum (value, wb_enum_value);
+            break;
+        }
         case ARG_CONTRAST:
         {
             OMX_CONFIG_CONTRASTTYPE config;
@@ -1946,6 +1964,13 @@ install_camera_properties(GObjectClass *gobject_class)
                     "auto white balance state",
                     GST_TYPE_OMX_CAMERA_AWB,
                     DEFAULT_AWB,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_WHITE_BALANCE,
+            g_param_spec_enum ("white-balance-mode",
+                    "GstPhotography White Balance",
+                    "Auto white balance state as defined in GstPhotography",
+                    GST_TYPE_WHITE_BALANCE_MODE,
+                    GST_PHOTOGRAPHY_WB_MODE_AUTO,
                     G_PARAM_READWRITE));
     g_object_class_install_property (gobject_class, ARG_CONTRAST,
             g_param_spec_int ("contrast", "Contrast",

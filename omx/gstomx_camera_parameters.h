@@ -115,7 +115,8 @@ enum
     ARG_CAC,
     ARG_GBCE,
     ARG_GLBCE,
-    ARG_SCENE_MODE
+    ARG_SCENE_MODE,
+    ARG_WHITE_BALANCE
 #endif
 };
 
