@@ -80,6 +80,8 @@
  * </refsect2>
  */
 
+static void create_ports (GstOmxCamera *self);
+
 static const GstElementDetails element_details =
 GST_ELEMENT_DETAILS ("Video OMX Camera Source",
     "Source/Video",
@@ -814,6 +816,20 @@ stop_ports (GstOmxCamera *self)
 /*
  * GstBaseSrc Methods:
  */
+static gboolean
+stop (GstBaseSrc *gst_base)
+{
+    gboolean res;
+    GstOmxCamera *self = GST_OMX_CAMERA (gst_base);
+
+    res = GST_BASE_SRC_CLASS (parent_class)->stop (gst_base);
+
+    self->next_mode = self->mode;
+    self->mode = -1;
+    create_ports (self);
+
+    return TRUE;
+}
 
 static GstFlowReturn
 create (GstBaseSrc *gst_base,
@@ -1044,6 +1060,7 @@ type_class_init (gpointer g_class,
 
     /* GstBaseSrc methods: */
     gst_base_src_class->create = GST_DEBUG_FUNCPTR (create);
+    gst_base_src_class->stop = GST_DEBUG_FUNCPTR (stop);
 
     /* GstElement methods: */
     gst_element_class->send_event = GST_DEBUG_FUNCPTR (send_event);
@@ -1130,23 +1147,7 @@ type_instance_init (GTypeInstance *instance,
 
     omx_base->gomx->use_timestamps = TRUE;
 
-    self->vid_port = g_omx_core_get_port (omx_base->gomx, "vid",
-            OMX_CAMERA_PORT_VIDEO_OUT_VIDEO);
-    self->img_port = g_omx_core_get_port (omx_base->gomx, "img",
-            OMX_CAMERA_PORT_IMAGE_OUT_IMAGE);
-    self->in_port = g_omx_core_get_port (omx_base->gomx, "in",
-            OMX_CAMERA_PORT_OTHER_IN);
-    self->in_vid_port = g_omx_core_get_port (omx_base->gomx, "in_vid",
-            OMX_CAMERA_PORT_VIDEO_IN_VIDEO);
-    self->msr_port = g_omx_core_get_port (omx_base->gomx, "msr",
-            OMX_CAMERA_PORT_VIDEO_OUT_MEASUREMENT);
-
-    self->img_port->buffer_alloc = img_buffer_alloc;
-    self->vid_port->buffer_alloc = thumb_buffer_alloc;
-#if 0
-    self->in_port = g_omx_core_get_port (omx_base->gomx, "in"
-            OMX_CAMERA_PORT_VIDEO_IN_VIDEO);
-#endif
+    create_ports (self);
 
     gst_base_src_set_live (basesrc, TRUE);
 
@@ -1194,6 +1195,32 @@ type_instance_init (GTypeInstance *instance,
             GST_DEBUG_FUNCPTR (src_query));
     gst_pad_set_query_function (self->vidsrcpad,
             GST_DEBUG_FUNCPTR (src_query));
+
+    GST_DEBUG_OBJECT (omx_base, "end");
+}
+
+static void
+create_ports (GstOmxCamera *self)
+{
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    self->vid_port = g_omx_core_get_port (omx_base->gomx, "vid",
+            OMX_CAMERA_PORT_VIDEO_OUT_VIDEO);
+    self->img_port = g_omx_core_get_port (omx_base->gomx, "img",
+            OMX_CAMERA_PORT_IMAGE_OUT_IMAGE);
+    self->in_port = g_omx_core_get_port (omx_base->gomx, "in",
+            OMX_CAMERA_PORT_OTHER_IN);
+    self->in_vid_port = g_omx_core_get_port (omx_base->gomx, "in_vid",
+            OMX_CAMERA_PORT_VIDEO_IN_VIDEO);
+    self->msr_port = g_omx_core_get_port (omx_base->gomx, "msr",
+            OMX_CAMERA_PORT_VIDEO_OUT_MEASUREMENT);
+
+    self->img_port->buffer_alloc = img_buffer_alloc;
+    self->vid_port->buffer_alloc = thumb_buffer_alloc;
+#if 0
+    self->in_port = g_omx_core_get_port (omx_base->gomx, "in"
+            OMX_CAMERA_PORT_VIDEO_IN_VIDEO);
+#endif
 
 #if 0
     /* disable all ports to begin with: */
