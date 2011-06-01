@@ -24,6 +24,8 @@
 
 #include <string.h> /* for memset, memcpy */
 
+static GstBuffer * buffer_alloc (GOmxPort *port, gint len);
+
 enum
 {
     ARG_0,
@@ -72,6 +74,7 @@ static gboolean
 stop (GstBaseSrc *gst_base)
 {
     GstOmxBaseSrc *self;
+    GstOmxBaseSrcClass *klass;
 
     self = GST_OMX_BASE_SRC (gst_base);
 
@@ -83,6 +86,11 @@ stop (GstBaseSrc *gst_base)
 
     if (self->gomx->omx_error)
         return GST_STATE_CHANGE_FAILURE;
+
+    klass = GST_OMX_BASE_SRC_CLASS (G_OBJECT_GET_CLASS (self));
+    self->out_port = g_omx_core_get_port (self->gomx, "out",
+            klass->out_port_index);
+    self->out_port->buffer_alloc = buffer_alloc;
 
     GST_LOG_OBJECT (self, "end");
 
