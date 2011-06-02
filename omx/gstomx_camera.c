@@ -138,12 +138,14 @@ static void gst_omx_camera_photography_init (GstPhotographyInterface *iface)
   iface->get_white_balance_mode = gst_omx_camera_photography_get_white_balance_mode;
   iface->get_scene_mode = gst_omx_camera_photography_get_scene_mode;
   iface->get_zoom = gst_omx_camera_photography_get_zoom;
+  iface->get_flicker_mode = gst_omx_camera_photography_get_flicker_mode;
 
   iface->set_ev_compensation = gst_omx_camera_photography_set_ev_compensation;
   iface->set_iso_speed = gst_omx_camera_photography_set_iso_speed;
   iface->set_white_balance_mode = gst_omx_camera_photography_set_white_balance_mode;
   iface->set_scene_mode = gst_omx_camera_photography_set_scene_mode;
   iface->set_zoom = gst_omx_camera_photography_set_zoom;
+  iface->set_flicker_mode = gst_omx_camera_photography_set_flicker_mode;
   iface->get_capabilities = gst_omx_camera_photography_get_capabilities;
 }
 

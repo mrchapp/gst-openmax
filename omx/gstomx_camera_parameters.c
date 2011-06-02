@@ -555,6 +555,27 @@ gst_omx_camera_photography_get_zoom (GstPhotography *photo, gfloat *zoom)
     return TRUE;
 }
 
+gboolean
+gst_omx_camera_photography_get_flicker_mode (GstPhotography *photo,
+    GstFlickerReductionMode *flicker_mode)
+{
+    OMX_CONFIG_FLICKERCANCELTYPE config;
+    GOmxCore *gomx;
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
+    GstOmxCamera *self = GST_OMX_CAMERA (photo);
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    gomx = (GOmxCore *) omx_base->gomx;
+    _G_OMX_INIT_PARAM (&config);
+    error_val = OMX_GetConfig (gomx->omx_handle,
+            OMX_IndexConfigFlickerCancel,
+            &config);
+    g_assert (error_val == OMX_ErrorNone);
+    GST_DEBUG_OBJECT (self, "Flicker control = %d", config.eFlickerCancel);
+    *flicker_mode = config.eFlickerCancel;
+    return TRUE;
+}
+
 
 gboolean
 gst_omx_camera_photography_set_ev_compensation (GstPhotography *photo,
@@ -736,6 +757,32 @@ gst_omx_camera_photography_set_zoom (GstPhotography *photo, gfloat zoom)
 
     zoom_int_value = abs (zoom * 900.0 / 7.0);
     gst_omx_camera_set_zoom (photo, zoom_int_value);
+    return TRUE;
+}
+
+gboolean
+gst_omx_camera_photography_set_flicker_mode (GstPhotography *photo,
+    GstFlickerReductionMode flicker_mode)
+{
+    OMX_CONFIG_FLICKERCANCELTYPE config;
+    GOmxCore *gomx;
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
+    GstOmxCamera *self = GST_OMX_CAMERA (photo);
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    gomx = (GOmxCore *) omx_base->gomx;
+    _G_OMX_INIT_PARAM (&config);
+    error_val = OMX_GetConfig (gomx->omx_handle,
+            OMX_IndexConfigFlickerCancel,
+            &config);
+    g_assert (error_val == OMX_ErrorNone);
+    config.eFlickerCancel = flicker_mode;
+    GST_DEBUG_OBJECT (self, "Flicker control = %d", config.eFlickerCancel);
+
+    error_val = OMX_SetConfig (gomx->omx_handle,
+            OMX_IndexConfigFlickerCancel,
+            &config);
+    g_assert (error_val == OMX_ErrorNone);
     return TRUE;
 }
 
@@ -1113,23 +1160,20 @@ set_property (GObject *obj,
         }
         case ARG_FLICKER:
         {
-            OMX_CONFIG_FLICKERCANCELTYPE config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+            GstFlickerReductionMode flicker_enum_value;
 
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigFlickerCancel,
-                                       &config);
-            g_assert (error_val == OMX_ErrorNone);
-            config.eFlickerCancel = g_value_get_enum (value);
-            GST_DEBUG_OBJECT (self, "Flicker control = %d", config.eFlickerCancel);
+            flicker_enum_value = g_value_get_enum (value);
+            gst_omx_camera_photography_set_flicker_mode (photo,
+                                                         flicker_enum_value);
+            break;
+        }
+        case ARG_FLICKER_MODE:
+        {
+            GstFlickerReductionMode flicker_enum_value;
 
-            error_val = OMX_SetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigFlickerCancel,
-                                       &config);
-            g_assert (error_val == OMX_ErrorNone);
+            flicker_enum_value = g_value_get_enum (value);
+            gst_omx_camera_photography_set_flicker_mode (photo,
+                                                         flicker_enum_value);
             break;
         }
         case ARG_SCENE:
@@ -1673,19 +1717,20 @@ get_property (GObject *obj,
         }
         case ARG_FLICKER:
         {
-            OMX_CONFIG_FLICKERCANCELTYPE config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
-            gomx = (GOmxCore *) omx_base->gomx;
+            GstFlickerReductionMode flicker_enum_value;
 
-            _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigFlickerCancel,
-                                       &config);
-            g_assert (error_val == OMX_ErrorNone);
-            GST_DEBUG_OBJECT (self, "Flicker control = %d", config.eFlickerCancel);
-            g_value_set_enum (value, config.eFlickerCancel);
+            gst_omx_camera_photography_get_flicker_mode (photo,
+                                                         &flicker_enum_value);
+            g_value_set_enum (value, flicker_enum_value);
+            break;
+        }
+        case ARG_FLICKER_MODE:
+        {
+            GstFlickerReductionMode flicker_enum_value;
 
+            gst_omx_camera_photography_get_flicker_mode (photo,
+                                                         &flicker_enum_value);
+            g_value_set_enum (value, flicker_enum_value);
             break;
         }
         case ARG_SCENE:
@@ -2039,6 +2084,12 @@ install_camera_properties(GObjectClass *gobject_class)
                     "flicker control state",
                     GST_TYPE_OMX_CAMERA_FLICKER,
                     DEFAULT_FLICKER,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_FLICKER_MODE,
+            g_param_spec_enum ("flicker-mode", "Photography Flicker Control",
+                    "flicker control state as described in GstPhotography",
+                    GST_TYPE_FLICKER_REDUCTION_MODE,
+                    GST_PHOTOGRAPHY_FLICKER_REDUCTION_OFF,
                     G_PARAM_READWRITE));
     g_object_class_install_property (gobject_class, ARG_SCENE,
             g_param_spec_enum ("scene", "Scene Mode",

@@ -116,7 +116,8 @@ enum
     ARG_GBCE,
     ARG_GLBCE,
     ARG_SCENE_MODE,
-    ARG_WHITE_BALANCE
+    ARG_WHITE_BALANCE,
+    ARG_FLICKER_MODE
 #endif
 };
 
@@ -252,6 +253,8 @@ gboolean gst_omx_camera_photography_get_scene_mode (GstPhotography *photo,
                                                     GstSceneMode *scene_mode);
 gboolean gst_omx_camera_photography_get_zoom (GstPhotography *photo,
                                               gfloat *zoom);
+gboolean gst_omx_camera_photography_get_flicker_mode (
+    GstPhotography *photo, GstFlickerReductionMode * flicker_mode);
 gboolean gst_omx_camera_photography_set_ev_compensation (GstPhotography *photo,
                                                          gfloat evcomp);
 gboolean gst_omx_camera_photography_set_iso_speed (GstPhotography *photo,
@@ -262,3 +265,5 @@ gboolean gst_omx_camera_photography_set_scene_mode (GstPhotography *photo,
                                                     GstSceneMode scene_mode);
 gboolean gst_omx_camera_photography_set_zoom (GstPhotography *photo,
                                               gfloat zoom);
+gboolean gst_omx_camera_photography_set_flicker_mode (
+    GstPhotography *photo, GstFlickerReductionMode flicker_mode);
