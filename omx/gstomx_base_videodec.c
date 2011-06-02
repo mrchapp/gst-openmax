@@ -229,7 +229,7 @@ src_getcaps (GstPad *pad)
         for (i=0; i<2; i++)
         {
             GstStructure *struc = gst_structure_new (
-                    (i ? "video/x-raw-yuv-strided" : "video/x-raw-yuv"),
+                    (i == 0 ? "video/x-raw-yuv-strided" : "video/x-raw-yuv"),
                     "width",  G_TYPE_INT, param.format.video.nFrameWidth,
                     "height", G_TYPE_INT, param.format.video.nFrameHeight,
 #ifdef VIDDEC_COLOR_WORKAROUND
