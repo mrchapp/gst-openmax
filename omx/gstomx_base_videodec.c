@@ -210,7 +210,8 @@ src_getcaps (GstPad *pad)
          * could possibly be supported by enabling/disabling the port..
          */
         GST_DEBUG_OBJECT (self, "cannot getcaps in %d state", omx_base->gomx->omx_state);
-        return GST_PAD_CAPS (pad);
+        caps = gst_caps_copy (gst_pad_get_pad_template_caps (pad));
+        goto done;
     }
 
     if (self->inport_configured)
@@ -278,6 +279,7 @@ src_getcaps (GstPad *pad)
     caps = g_omx_port_set_video_formats (omx_base->out_port, caps);
 #endif
 
+done:
     GST_DEBUG_OBJECT (self, "caps=%"GST_PTR_FORMAT, caps);
 
     return caps;
@@ -347,7 +349,9 @@ src_query (GstPad *pad, GstQuery *query)
          *
          * @todo should we save and restore current caps??
          */
+#if 0
         src_setcaps (pad, (GstCaps *)caps);
+#endif
 
         param.nPortIndex = omx_base->out_port->port_index;
         err = OMX_GetParameter (omx_base->gomx->omx_handle,
