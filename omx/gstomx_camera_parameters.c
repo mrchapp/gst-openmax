@@ -1066,6 +1066,16 @@ set_property (GObject *obj,
 
             break;
         }
+        case ARG_EVCOMPENSATION:
+        {
+            gfloat exposure_float_value;
+            exposure_float_value = g_value_get_float (value);
+
+            gst_omx_camera_photography_set_ev_compensation (photo,
+                exposure_float_value);
+
+            break;
+        }
         case ARG_MANUALFOCUS:
         {
             OMX_IMAGE_CONFIG_FOCUSCONTROLTYPE config;
@@ -1641,6 +1651,13 @@ get_property (GObject *obj,
                     &float_value);
             break;
         }
+        case ARG_EVCOMPENSATION:
+        {
+            gfloat float_value = 0;
+            gst_omx_camera_photography_get_ev_compensation (photo,
+                    &float_value);
+            break;
+        }
         case ARG_MANUALFOCUS:
         {
             OMX_IMAGE_CONFIG_FOCUSCONTROLTYPE config;
@@ -2057,6 +2074,11 @@ install_camera_properties(GObjectClass *gobject_class)
             g_param_spec_float ("exposure-value", "Exposure value",
                     "EVCompensation level", MIN_EXPOSURE_VALUE,
                     MAX_EXPOSURE_VALUE, DEFAULT_EXPOSURE_VALUE,
+                    G_PARAM_READWRITE));
+    g_object_class_install_property (gobject_class, ARG_EVCOMPENSATION,
+            g_param_spec_float ("ev-compensation", "Exposure compensation",
+                    "Exposure Value Compensation level",
+                    -2.5, 2.5, DEFAULT_EXPOSURE_VALUE,
                     G_PARAM_READWRITE));
     g_object_class_install_property (gobject_class, ARG_MANUALFOCUS,
             g_param_spec_uint ("manual-focus", "Manual Focus",
