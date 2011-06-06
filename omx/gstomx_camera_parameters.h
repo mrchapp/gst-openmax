@@ -268,3 +268,5 @@ gboolean gst_omx_camera_photography_set_zoom (GstPhotography *photo,
                                               gfloat zoom);
 gboolean gst_omx_camera_photography_set_flicker_mode (
     GstPhotography *photo, GstFlickerReductionMode flicker_mode);
+void gst_omx_camera_photography_set_autofocus (GstPhotography *photo,
+                                               gboolean autofocus);
