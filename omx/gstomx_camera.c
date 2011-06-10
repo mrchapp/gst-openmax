@@ -786,7 +786,6 @@ static void
 setup_ports (GstOmxBaseSrc *base_src)
 {
     GstOmxCamera *self = GST_OMX_CAMERA (base_src);
-    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
     OMX_PARAM_PORTDEFINITIONTYPE param;
 
 #ifdef USE_GSTOMXCAM_THUMBSRCPAD
@@ -808,9 +807,6 @@ setup_ports (GstOmxBaseSrc *base_src)
     self->vid_port->share_buffer = TRUE;
     self->img_port->share_buffer = TRUE;
 */
-    omx_base->out_port->omx_allocate = FALSE;
-    omx_base->out_port->share_buffer = TRUE;
-
 #ifdef USE_GSTOMXCAM_IMGSRCPAD
     self->img_port->omx_allocate = TRUE;
     self->img_port->share_buffer = FALSE;
@@ -1400,6 +1396,8 @@ create_ports (GstOmxCamera *self)
 
     self->img_port->buffer_alloc = img_buffer_alloc;
     self->vid_port->buffer_alloc = thumb_buffer_alloc;
+
+    g_object_set (self, "allocate-buffers", FALSE, NULL);
 #if 0
     self->in_port = g_omx_core_get_port (omx_base->gomx, "in"
             OMX_CAMERA_PORT_VIDEO_IN_VIDEO);
