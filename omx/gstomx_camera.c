@@ -28,6 +28,7 @@
 #include <gst/video/video.h>
 #include <gst/interfaces/photography.h>
 #include <gst/interfaces/photography-enumtypes.h>
+#include <gst/interfaces/colorbalance.h>
 
 #ifdef USE_OMXTICORE
 #  include <OMX_TI_IVCommon.h>
@@ -94,11 +95,12 @@ static gboolean
 gst_omx_camera_interface_supported (GstImplementsInterface *iface,
     GType type)
 {
-    g_assert (type == GST_TYPE_PHOTOGRAPHY);
+    g_assert (type == GST_TYPE_PHOTOGRAPHY || type == GST_TYPE_COLOR_BALANCE);
     return TRUE;
 }
 
 static void gst_omx_camera_photography_init (GstPhotographyInterface *iface);
+static void gst_omx_camera_colorbalance_init (GstColorBalanceClass *iface);
 
 static void
 gst_omx_camera_interface_init (GstImplementsInterfaceClass *klass)
@@ -120,16 +122,77 @@ _do_init (GType omx_camera_type)
         NULL,
     };
 
+    static const GInterfaceInfo colorbalance_info = {
+      (GInterfaceInitFunc) gst_omx_camera_colorbalance_init,
+      NULL,
+      NULL,
+    };
+
     g_type_add_interface_static (omx_camera_type,
             GST_TYPE_IMPLEMENTS_INTERFACE, &iface_info);
     g_type_add_interface_static (omx_camera_type, GST_TYPE_PHOTOGRAPHY,
             &photography_info);
+    g_type_add_interface_static (omx_camera_type, GST_TYPE_COLOR_BALANCE,
+            &colorbalance_info);
 }
 
 GSTOMX_BOILERPLATE_FULL (GstOmxCamera, gst_omx_camera, GstOmxBaseSrc,
         GST_OMX_BASE_SRC_TYPE, _do_init);
 
+const GList *
+gst_omx_camera_colorbalance_list_channels (GstColorBalance *balance)
+{
+    GstOmxCamera *self = GST_OMX_CAMERA (balance);
 
+    g_return_val_if_fail (self != NULL, NULL);
+    return self->channels;
+}
+
+static gint
+gst_omx_camera_colorbalance_get_value (GstColorBalance *balance,
+                                       GstColorBalanceChannel *channel)
+{
+    GstOmxCamera *self = GST_OMX_CAMERA (balance);
+    gint value = 0;
+
+    g_return_val_if_fail (self != NULL, 0);
+
+    if (!g_ascii_strcasecmp (channel->label, "BRIGHTNESS"))
+        gst_omx_camera_get_brightness (self, &value);
+    else if (!g_ascii_strcasecmp (channel->label, "SATURATION"))
+        gst_omx_camera_get_saturation (self, &value);
+    else if (!g_ascii_strcasecmp (channel->label, "SHARPNESS"))
+        gst_omx_camera_get_sharpness (self, &value);
+    else if (!g_ascii_strcasecmp (channel->label, "CONTRAST"))
+        gst_omx_camera_get_contrast (self, &value);
+    return value;
+}
+
+static void
+gst_omx_camera_colorbalance_set_value (GstColorBalance *balance,
+                                       GstColorBalanceChannel *channel,
+                                       gint value)
+{
+    GstOmxCamera *self = GST_OMX_CAMERA (balance);
+
+    g_return_if_fail (self != NULL);
+
+    if (!g_ascii_strcasecmp (channel->label, "BRIGHTNESS"))
+        gst_omx_camera_set_brightness (self, value);
+    else if (!g_ascii_strcasecmp (channel->label, "SATURATION"))
+        gst_omx_camera_set_saturation (self, value);
+    else if (!g_ascii_strcasecmp (channel->label, "SHARPNESS"))
+        gst_omx_camera_set_sharpness (self, value);
+    else if (!g_ascii_strcasecmp (channel->label, "CONTRAST"))
+        gst_omx_camera_set_contrast (self, value);
+}
+
+static void gst_omx_camera_colorbalance_init (GstColorBalanceClass *iface)
+{
+  iface->list_channels = gst_omx_camera_colorbalance_list_channels;
+  iface->get_value = gst_omx_camera_colorbalance_get_value;
+  iface->set_value = gst_omx_camera_colorbalance_set_value;
+}
 
 static void gst_omx_camera_photography_init (GstPhotographyInterface *iface)
 {
@@ -1194,6 +1257,11 @@ type_instance_init (GTypeInstance *instance,
     GstOmxBaseSrc  *omx_base = GST_OMX_BASE_SRC (self);
     GstBaseSrc     *basesrc  = GST_BASE_SRC (self);
     GstPadTemplate *pad_template;
+    GstColorBalanceChannel *channel;
+    const gchar *channels[3] = { "SATURATION",
+      "CONTRAST", "SHARPNESS"
+    };
+    gint i;
 
     GST_DEBUG_OBJECT (omx_base, "begin");
 
@@ -1255,6 +1323,32 @@ type_instance_init (GTypeInstance *instance,
             GST_DEBUG_FUNCPTR (src_query));
     gst_pad_set_query_function (self->vidsrcpad,
             GST_DEBUG_FUNCPTR (src_query));
+
+    /* set colorbalance channels */
+
+#if 0
+    self->contrast = DEFAULT_PROP_CONTRAST;
+    self->brightness = DEFAULT_PROP_BRIGHTNESS;
+    self->hue = DEFAULT_PROP_HUE;
+    self->saturation = DEFAULT_PROP_SATURATION;
+#endif
+
+    g_assert (self->channels == NULL);
+    for (i = 0; i < G_N_ELEMENTS (channels); i++)
+    {
+      channel = g_object_new (GST_TYPE_COLOR_BALANCE_CHANNEL, NULL);
+      channel->label = g_strdup (channels[i]);
+      channel->min_value = -100;
+      channel->max_value = 100;
+
+      self->channels = g_list_append (self->channels, channel);
+    }
+
+    channel = g_object_new (GST_TYPE_COLOR_BALANCE_CHANNEL, NULL);
+    channel->label = g_strdup ("BRIGHTNESS");
+    channel->min_value = 0;
+    channel->max_value = 100;
+    self->channels = g_list_append (self->channels, channel);
 
     GST_DEBUG_OBJECT (omx_base, "end");
 }

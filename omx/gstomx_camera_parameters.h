@@ -270,3 +270,11 @@ gboolean gst_omx_camera_photography_set_flicker_mode (
     GstPhotography *photo, GstFlickerReductionMode flicker_mode);
 void gst_omx_camera_photography_set_autofocus (GstPhotography *photo,
                                                gboolean autofocus);
+void gst_omx_camera_set_brightness (GstOmxCamera *self, gint brightness);
+void gst_omx_camera_set_saturation (GstOmxCamera *self, gint saturation);
+void gst_omx_camera_set_contrast (GstOmxCamera *self, gint contrast);
+void gst_omx_camera_set_sharpness (GstOmxCamera *self, gint sharpness);
+void gst_omx_camera_get_brightness (GstOmxCamera *self, gint *brightness);
+void gst_omx_camera_get_saturation (GstOmxCamera *self, gint *saturation);
+void gst_omx_camera_get_contrast (GstOmxCamera *self, gint *contrast);
+void gst_omx_camera_get_sharpness (GstOmxCamera *self, gint *sharpness);

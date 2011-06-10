@@ -398,6 +398,165 @@ gst_omx_camera_bce_get_type (void)
  *  Methods:
  */
 
+void
+gst_omx_camera_set_brightness (GstOmxCamera *self, gint brightness)
+{
+    OMX_CONFIG_BRIGHTNESSTYPE config;
+    GOmxCore *gomx;
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    gomx = (GOmxCore *) omx_base->gomx;
+    _G_OMX_INIT_PARAM (&config);
+    error_val = OMX_GetConfig (gomx->omx_handle,
+            OMX_IndexConfigCommonBrightness, &config);
+    g_assert (error_val == OMX_ErrorNone);
+    config.nBrightness = brightness;
+    GST_DEBUG_OBJECT (self, "Brightness: param=%d", config.nBrightness);
+
+    error_val = OMX_SetConfig (gomx->omx_handle,
+            OMX_IndexConfigCommonBrightness, &config);
+    g_assert (error_val == OMX_ErrorNone);
+}
+
+void
+gst_omx_camera_get_brightness (GstOmxCamera *self, gint *brightness)
+{
+    OMX_CONFIG_BRIGHTNESSTYPE config;
+    GOmxCore *gomx;
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    gomx = (GOmxCore *) omx_base->gomx;
+    _G_OMX_INIT_PARAM (&config);
+    error_val = OMX_GetConfig (gomx->omx_handle,
+            OMX_IndexConfigCommonBrightness, &config);
+    *brightness = config.nBrightness;
+    g_assert (error_val == OMX_ErrorNone);
+    GST_DEBUG_OBJECT (self, "Brightness=%d", config.nBrightness);
+}
+
+void
+gst_omx_camera_set_saturation (GstOmxCamera *self, gint saturation)
+{
+    OMX_CONFIG_SATURATIONTYPE config;
+    GOmxCore *gomx;
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    gomx = (GOmxCore *) omx_base->gomx;
+    _G_OMX_INIT_PARAM (&config);
+    error_val = OMX_GetConfig (gomx->omx_handle,
+            OMX_IndexConfigCommonSaturation, &config);
+    g_assert (error_val == OMX_ErrorNone);
+    config.nSaturation = saturation;
+    GST_DEBUG_OBJECT (self, "Saturation: param=%d", config.nSaturation);
+
+    error_val = OMX_SetConfig (gomx->omx_handle,
+            OMX_IndexConfigCommonSaturation, &config);
+    g_assert (error_val == OMX_ErrorNone);
+}
+
+void
+gst_omx_camera_get_saturation (GstOmxCamera *self, gint *saturation)
+{
+    OMX_CONFIG_SATURATIONTYPE config;
+    GOmxCore *gomx;
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    gomx = (GOmxCore *) omx_base->gomx;
+    _G_OMX_INIT_PARAM (&config);
+    error_val = OMX_GetConfig (gomx->omx_handle,
+            OMX_IndexConfigCommonSaturation, &config);
+    g_assert (error_val == OMX_ErrorNone);
+    *saturation = config.nSaturation;
+    GST_DEBUG_OBJECT (self, "Saturation=%d", config.nSaturation);
+}
+
+void
+gst_omx_camera_set_sharpness (GstOmxCamera *self, gint sharpness)
+{
+    OMX_IMAGE_CONFIG_PROCESSINGLEVELTYPE config;
+    GOmxCore *gomx;
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    gomx = (GOmxCore *) omx_base->gomx;
+    _G_OMX_INIT_PARAM (&config);
+    error_val = OMX_GetConfig (gomx->omx_handle,
+            OMX_IndexConfigSharpeningLevel, &config);
+    g_assert (error_val == OMX_ErrorNone);
+    config.nPortIndex = omx_base->out_port->port_index;
+    config.nLevel = sharpness;
+    if (config.nLevel == 0)
+        config.bAuto = OMX_TRUE;
+    else
+        config.bAuto = OMX_FALSE;
+    GST_DEBUG_OBJECT (self, "Sharpness: value=%d", config.nLevel);
+
+    error_val = OMX_SetConfig (gomx->omx_handle,
+            OMX_IndexConfigSharpeningLevel, &config);
+    g_assert (error_val == OMX_ErrorNone);
+}
+
+void
+gst_omx_camera_get_sharpness (GstOmxCamera *self, gint *sharpness)
+{
+    OMX_IMAGE_CONFIG_PROCESSINGLEVELTYPE config;
+    GOmxCore *gomx;
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    gomx = (GOmxCore *) omx_base->gomx;
+    _G_OMX_INIT_PARAM (&config);
+
+    error_val = OMX_GetConfig (gomx->omx_handle,
+            OMX_IndexConfigSharpeningLevel, &config);
+    g_assert (error_val == OMX_ErrorNone);
+    GST_DEBUG_OBJECT (self, "Sharpness: value=%d  bAuto=%d",
+            config.nLevel, config.bAuto);
+    *sharpness = config.nLevel;
+}
+
+void
+gst_omx_camera_set_contrast (GstOmxCamera *self, gint contrast)
+{
+    OMX_CONFIG_CONTRASTTYPE config;
+    GOmxCore *gomx;
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    gomx = (GOmxCore *) omx_base->gomx;
+    _G_OMX_INIT_PARAM (&config);
+    error_val = OMX_GetConfig (gomx->omx_handle,
+            OMX_IndexConfigCommonContrast, &config);
+    g_assert (error_val == OMX_ErrorNone);
+    config.nContrast = contrast;
+    GST_DEBUG_OBJECT (self, "Contrast: param=%d", config.nContrast);
+
+    error_val = OMX_SetConfig (gomx->omx_handle,
+            OMX_IndexConfigCommonContrast, &config);
+    g_assert (error_val == OMX_ErrorNone);
+}
+
+void
+gst_omx_camera_get_contrast (GstOmxCamera *self, gint *contrast)
+{
+    OMX_CONFIG_CONTRASTTYPE config;
+    GOmxCore *gomx;
+    OMX_ERRORTYPE error_val = OMX_ErrorNone;
+    GstOmxBaseSrc *omx_base = GST_OMX_BASE_SRC (self);
+
+    gomx = (GOmxCore *) omx_base->gomx;
+    _G_OMX_INIT_PARAM (&config);
+    error_val = OMX_GetConfig (gomx->omx_handle,
+            OMX_IndexConfigCommonContrast, &config);
+    g_assert (error_val == OMX_ErrorNone);
+    GST_DEBUG_OBJECT (self, "Contrast=%d", config.nContrast);
+    *contrast = config.nContrast;
+}
+
 GstPhotoCaps
 gst_omx_camera_photography_get_capabilities (GstPhotography *photo)
 {
@@ -971,40 +1130,17 @@ set_property (GObject *obj,
         }
         case ARG_CONTRAST:
         {
-            OMX_CONFIG_CONTRASTTYPE config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+            gint contrast = g_value_get_int (value);
 
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigCommonContrast, &config);
-            g_assert (error_val == OMX_ErrorNone);
-            config.nContrast = g_value_get_int (value);
-            GST_DEBUG_OBJECT (self, "Contrast: param=%d", config.nContrast);
-
-            error_val = OMX_SetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigCommonContrast, &config);
-            g_assert (error_val == OMX_ErrorNone);
+            gst_omx_camera_set_contrast (self, contrast);
             break;
         }
         case ARG_BRIGHTNESS:
         {
-            OMX_CONFIG_BRIGHTNESSTYPE config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+            gint brightness;
 
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigCommonBrightness, &config);
-            g_assert (error_val == OMX_ErrorNone);
-            config.nBrightness = g_value_get_int (value);
-            GST_DEBUG_OBJECT (self, "Brightness: param=%d", config.nBrightness);
-
-            error_val = OMX_SetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigCommonBrightness, &config);
-            g_assert (error_val == OMX_ErrorNone);
+            brightness = g_value_get_int (value);
+            gst_omx_camera_set_brightness (self, brightness);
             break;
         }
         case ARG_EXPOSURE:
@@ -1062,21 +1198,9 @@ set_property (GObject *obj,
         }
         case ARG_SATURATION:
         {
-            OMX_CONFIG_SATURATIONTYPE config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+            gint saturation = g_value_get_int (value);
 
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigCommonSaturation, &config);
-            g_assert (error_val == OMX_ErrorNone);
-            config.nSaturation = g_value_get_int (value);
-            GST_DEBUG_OBJECT (self, "Saturation: param=%d", config.nSaturation);
-
-            error_val = OMX_SetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigCommonSaturation, &config);
-            g_assert (error_val == OMX_ErrorNone);
+            gst_omx_camera_set_saturation (self, saturation);
             break;
         }
         case ARG_EXPOSUREVALUE:
@@ -1410,26 +1534,9 @@ set_property (GObject *obj,
         }
         case ARG_SHARPNESS:
         {
-            OMX_IMAGE_CONFIG_PROCESSINGLEVELTYPE config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+            gint sharpness = g_value_get_int (value);
 
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigSharpeningLevel, &config);
-            g_assert (error_val == OMX_ErrorNone);
-            config.nPortIndex = omx_base->out_port->port_index;
-            config.nLevel = g_value_get_int (value);
-            if (config.nLevel == 0)
-                config.bAuto = OMX_TRUE;
-            else
-                config.bAuto = OMX_FALSE;
-            GST_DEBUG_OBJECT (self, "Sharpness: value=%d", config.nLevel);
-
-            error_val = OMX_SetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigSharpeningLevel, &config);
-            g_assert (error_val == OMX_ErrorNone);
+            gst_omx_camera_set_sharpness (self, sharpness);
             break;
         }
         case ARG_CAC:
@@ -1582,30 +1689,18 @@ get_property (GObject *obj,
         }
         case ARG_CONTRAST:
         {
-            OMX_CONFIG_CONTRASTTYPE config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+            gint contrast;
+            gst_omx_camera_get_contrast (self, &contrast);
+            g_value_set_int (value, contrast);
 
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigCommonContrast, &config);
-            g_assert (error_val == OMX_ErrorNone);
-            GST_DEBUG_OBJECT (self, "Contrast=%d", config.nContrast);
             break;
         }
         case ARG_BRIGHTNESS:
         {
-            OMX_CONFIG_BRIGHTNESSTYPE config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+            gint brightness;
 
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigCommonBrightness, &config);
-            g_assert (error_val == OMX_ErrorNone);
-            GST_DEBUG_OBJECT (self, "Brightness=%d", config.nBrightness);
+            gst_omx_camera_get_brightness (self, &brightness);
+            g_value_set_int (value, brightness);
             break;
         }
         case ARG_EXPOSURE:
@@ -1655,16 +1750,10 @@ get_property (GObject *obj,
         }
         case ARG_SATURATION:
         {
-            OMX_CONFIG_SATURATIONTYPE config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+            gint saturation;
 
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&config);
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigCommonSaturation, &config);
-            g_assert (error_val == OMX_ErrorNone);
-            GST_DEBUG_OBJECT (self, "Saturation=%d", config.nSaturation);
+            gst_omx_camera_get_contrast (self, &saturation);
+            g_value_set_int (value, saturation);
             break;
         }
         case ARG_EXPOSUREVALUE:
@@ -1937,19 +2026,10 @@ get_property (GObject *obj,
         }
         case ARG_SHARPNESS:
         {
-            OMX_IMAGE_CONFIG_PROCESSINGLEVELTYPE config;
-            GOmxCore *gomx;
-            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+            gint sharpness;
 
-            gomx = (GOmxCore *) omx_base->gomx;
-            _G_OMX_INIT_PARAM (&config);
-
-            error_val = OMX_GetConfig (gomx->omx_handle,
-                                       OMX_IndexConfigSharpeningLevel, &config);
-            g_assert (error_val == OMX_ErrorNone);
-            GST_DEBUG_OBJECT (self, "Sharpness: value=%d  bAuto=%d",
-                              config.nLevel, config.bAuto);
-            g_value_set_int (value, config.nLevel);
+            gst_omx_camera_get_sharpness (self, &sharpness);
+            g_value_set_int (value, sharpness);
             break;
         }
         case ARG_CAC:

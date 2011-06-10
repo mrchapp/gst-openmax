@@ -55,6 +55,7 @@ struct GstOmxCamera
     gdouble click_x;
     gdouble click_y;
 #endif
+    GList *channels;
 
     gint rowstride;     /**< rowstride of preview/video buffer */
 
