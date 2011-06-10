@@ -33,7 +33,10 @@ enum
     ARG_COMPONENT_NAME,
     ARG_LIBRARY_NAME,
     ARG_NUM_OUTPUT_BUFFERS,
+    ARG_ALLOCATE_BUFFERS
 };
+
+#define DEFAULT_ALLOCATE_BUFFERS FALSE
 
 GSTOMX_BOILERPLATE (GstOmxBaseSrc, gst_omx_base_src, GstBaseSrc, GST_TYPE_BASE_SRC);
 
@@ -45,6 +48,9 @@ gst_omx_base_src_setup_ports (GstOmxBaseSrc *self)
     /* Output port configuration. */
     G_OMX_PORT_GET_DEFINITION (self->out_port, &param);
     g_omx_port_setup (self->out_port, &param);
+
+    self->out_port->omx_allocate = self->allocate_buffers;
+    self->out_port->share_buffer = !self->allocate_buffers;
 
     if (self->setup_ports)
     {
@@ -293,6 +299,11 @@ set_property (GObject *obj,
                 G_OMX_PORT_SET_DEFINITION (self->out_port, &param);
             }
             break;
+        case ARG_ALLOCATE_BUFFERS:
+            self->allocate_buffers = g_value_get_boolean (value);
+            GST_INFO_OBJECT (self, "set allocate_buffers=%d",
+                self->allocate_buffers);
+            break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
             break;
@@ -326,6 +337,9 @@ get_property (GObject *obj,
                 G_OMX_PORT_GET_DEFINITION (self->out_port, &param);
                 g_value_set_uint (value, param.nBufferCountActual);
             }
+            break;
+        case ARG_ALLOCATE_BUFFERS:
+            g_value_set_boolean (value, self->allocate_buffers);
             break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -387,6 +401,13 @@ type_class_init (gpointer g_class,
                                          g_param_spec_uint ("output-buffers", "Output buffers",
                                                             "The number of OMX output buffers",
                                                             1, 10, 4, G_PARAM_READWRITE));
+
+        g_object_class_install_property (gobject_class, ARG_ALLOCATE_BUFFERS,
+                g_param_spec_boolean ("allocate-buffers", "Allocate buffers",
+                          "Use OMX_AllocateBuffer to allocate output buffers",
+                          DEFAULT_ALLOCATE_BUFFERS,
+                          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
     }
 
     omx_base_class->out_port_index = 0;

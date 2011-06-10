@@ -47,6 +47,7 @@ struct GstOmxBaseSrc
     char *omx_role;
     char *omx_component;
     char *omx_library;
+    gboolean allocate_buffers;
     GstOmxBaseSrcCb setup_ports;
 };
 
