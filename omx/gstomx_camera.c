@@ -442,7 +442,7 @@ src_fixatecaps (GstPad *pad, GstCaps *caps)
     if (value == NULL || G_VALUE_TYPE (value) == GST_TYPE_INT_RANGE) {
         gst_structure_get_int (structure, "width", &width);
         gst_caps_set_simple (caps, "rowstride",
-            G_TYPE_INT, width, NULL);
+            G_TYPE_INT, 4096, NULL);
     }
 }
 
