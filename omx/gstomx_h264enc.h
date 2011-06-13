@@ -38,6 +38,8 @@ struct GstOmxH264Enc
 {
     GstOmxBaseVideoEnc omx_base;
     gboolean bytestream;
+    guint profile;
+    guint level;
 };
 
 struct GstOmxH264EncClass
