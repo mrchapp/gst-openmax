@@ -24,6 +24,11 @@
 
 #include <string.h> /* for memset */
 
+#ifdef USE_OMXTICORE
+#  include <OMX_TI_IVCommon.h>
+#  include <OMX_TI_Index.h>
+#endif
+
 GSTOMX_BOILERPLATE (GstOmxH264Enc, gst_omx_h264enc, GstOmxBaseVideoEnc, GST_OMX_BASE_VIDEOENC_TYPE);
 
 enum
@@ -32,11 +37,13 @@ enum
     ARG_BYTESTREAM,
     ARG_PROFILE,
     ARG_LEVEL,
+    ARG_RATECTRL,
 };
 
 #define DEFAULT_BYTESTREAM FALSE
 #define DEFAULT_PROFILE OMX_VIDEO_AVCProfileHigh
 #define DEFAULT_LEVEL OMX_VIDEO_AVCLevel4
+#define DEFAULT_RATECTRL OMX_Video_RC_Low_Delay
 
 #define GST_TYPE_OMX_VIDEO_AVCPROFILETYPE (gst_omx_video_avcprofiletype_get_type ())
 static GType
@@ -98,6 +105,33 @@ gst_omx_video_avcleveltype_get_type ()
 
     return type;
 }
+
+#ifdef USE_OMXTICORE
+#define GST_TYPE_OMX_VIDEO_RATECTRLTYPE (gst_omx_video_ratectrltype_get_type ())
+static GType
+gst_omx_video_ratectrltype_get_type ()
+{
+    static GType type = 0;
+
+    if (!type)
+    {
+        static const GEnumValue vals[] =
+        {
+            {OMX_Video_RC_Low_Delay,       "Low Delay",          "low-delay"},
+            {OMX_Video_RC_Storage,         "Storage",            "storage"},
+            {OMX_Video_RC_Twopass,         "Two-Pass",           "two-pass"},
+            {OMX_Video_RC_None,            "None",               "none"},
+            {OMX_Video_RC_User_Defined,    "User Defined",       "user"},
+            {0, NULL, NULL},
+        };
+
+        type = g_enum_register_static ("GstOmxVideoRateControl", vals);
+    }
+
+    return type;
+}
+#endif
+
 
 static GstCaps *
 generate_src_template (void)
@@ -207,6 +241,31 @@ set_property (GObject *obj,
             g_assert (error_val == OMX_ErrorNone);
             break;
         }
+#ifdef USE_OMXTICORE
+        case ARG_RATECTRL:
+        {
+            OMX_VIDEO_PARAM_ENCODER_PRESETTYPE param;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&param);
+            param.nPortIndex = omx_base->out_port->port_index;
+            error_val = OMX_GetParameter (gomx->omx_handle,
+                                          OMX_TI_IndexParamVideoEncoderPreset,
+                                          &param);
+            g_assert (error_val == OMX_ErrorNone);
+            param.eRateControlPreset = g_value_get_enum (value);
+            GST_DEBUG_OBJECT (self, "Level: param=%d",
+                              (gint)param.eRateControlPreset);
+
+            error_val = OMX_SetParameter (gomx->omx_handle,
+                                          OMX_TI_IndexParamVideoEncoderPreset,
+                                          &param);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
+#endif
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
             break;
@@ -270,6 +329,28 @@ get_property (GObject *obj,
 
             break;
         }
+#ifdef USE_OMXTICORE
+        case ARG_RATECTRL:
+        {
+            OMX_VIDEO_PARAM_ENCODER_PRESETTYPE param;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&param);
+            param.nPortIndex = omx_base->out_port->port_index;
+            error_val = OMX_GetParameter (gomx->omx_handle,
+                                          OMX_TI_IndexParamVideoEncoderPreset,
+                                          &param);
+            g_assert (error_val == OMX_ErrorNone);
+            g_value_set_enum (value, param.eRateControlPreset);
+
+            GST_DEBUG_OBJECT (self, "Level: param=%d",
+                              (gint)param.eRateControlPreset);
+
+            break;
+        }
+#endif
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
             break;
@@ -304,6 +385,14 @@ type_class_init (gpointer g_class,
                     GST_TYPE_OMX_VIDEO_AVCLEVELTYPE,
                     DEFAULT_LEVEL,
                     G_PARAM_READWRITE));
+#ifdef USE_OMXTICORE
+        g_object_class_install_property (gobject_class, ARG_RATECTRL,
+                    g_param_spec_enum ("ratectrl", "H.264 Rate Control",
+                    "H.264 Rate Control",
+                    GST_TYPE_OMX_VIDEO_RATECTRLTYPE,
+                    DEFAULT_RATECTRL,
+                    G_PARAM_READWRITE));
+#endif
 
     }
 }
