@@ -24,6 +24,15 @@
 
 GSTOMX_BOILERPLATE (GstOmxH264Dec, gst_omx_h264dec, GstOmxBaseVideoDec, GST_OMX_BASE_VIDEODEC_TYPE);
 
+enum
+{
+    ARG_0,
+    ARG_REFFRAMES,
+};
+
+#define MIN_REFFRAMES        1
+#define MAX_REFFRAMES        16
+#define DEFAULT_REFFRAMES    4
 #define MIN_H264_TAG_SIZE    7
 
 
@@ -394,6 +403,89 @@ type_base_init (gpointer g_class)
 }
 
 static void
+set_property (GObject *obj,
+              guint prop_id,
+              const GValue *value,
+              GParamSpec *pspec)
+{
+    GstOmxBaseFilter *omx_base;
+    GstOmxH264Dec *self;
+
+    omx_base = GST_OMX_BASE_FILTER (obj);
+    self = GST_OMX_H264DEC (obj);
+
+    switch (prop_id)
+    {
+        case ARG_REFFRAMES:
+        {
+            OMX_VIDEO_PARAM_AVCTYPE param;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&param);
+            param.nPortIndex = omx_base->in_port->port_index;
+            error_val = OMX_GetParameter (gomx->omx_handle,
+                                          OMX_IndexParamVideoAvc,
+                                          &param);
+            g_assert (error_val == OMX_ErrorNone);
+            param.nRefFrames = g_value_get_uint (value);
+            GST_DEBUG_OBJECT (self, "Number of Reference Frames: param=%d",
+                              param.nRefFrames);
+
+            error_val = OMX_SetParameter (gomx->omx_handle,
+                                          OMX_IndexParamVideoAvc,
+                                          &param);
+            g_assert (error_val == OMX_ErrorNone);
+            break;
+        }
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
+            break;
+    }
+}
+
+static void
+get_property (GObject *obj,
+              guint prop_id,
+              GValue *value,
+              GParamSpec *pspec)
+{
+    GstOmxH264Dec *self;
+    GstOmxBaseFilter *omx_base;
+
+    omx_base = GST_OMX_BASE_FILTER (obj);
+    self = GST_OMX_H264DEC (obj);
+
+    switch (prop_id)
+    {
+        case ARG_REFFRAMES:
+        {
+            OMX_VIDEO_PARAM_AVCTYPE param;
+            GOmxCore *gomx;
+            OMX_ERRORTYPE error_val = OMX_ErrorNone;
+
+            gomx = (GOmxCore *) omx_base->gomx;
+            _G_OMX_INIT_PARAM (&param);
+            param.nPortIndex = omx_base->in_port->port_index;
+            error_val = OMX_GetParameter (gomx->omx_handle,
+                                          OMX_IndexParamVideoAvc,
+                                          &param);
+            g_assert (error_val == OMX_ErrorNone);
+            g_value_set_uint (value, param.nRefFrames);
+
+            GST_DEBUG_OBJECT (self, "Number of Reference Frames: param=%d",
+                              param.nRefFrames);
+
+            break;
+        }
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
+            break;
+    }
+}
+
+static void
 type_class_init (gpointer g_class,
                  gpointer class_data)
 {
@@ -405,6 +497,17 @@ type_class_init (gpointer g_class,
 
     bclass->pad_chain = pad_chain;
 
+    /* Properties stuff */
+    {
+        gobject_class->set_property = set_property;
+        gobject_class->get_property = get_property;
+
+        g_object_class_install_property (gobject_class, ARG_REFFRAMES,
+            g_param_spec_uint ("ref-frames", "Reference Frames",
+                    "Number of reference frames, 1:Minimum  16:Maximum",
+                    MIN_REFFRAMES, MAX_REFFRAMES, DEFAULT_REFFRAMES,
+                    G_PARAM_READWRITE));
+    }
 }
 
 static void
